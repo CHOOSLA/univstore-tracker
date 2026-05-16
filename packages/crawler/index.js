@@ -130,10 +130,29 @@ async function run() {
         const studentPriceText = document.querySelector('.usItemCardInfoPrice2')?.innerText?.trim() || 
                                 document.querySelector('.usItemSumValue')?.innerText?.trim() || '0';
         
-        // 상품 이미지 URL 추출
-        const imageElement = document.querySelector('.usItemImageArea img') || 
-                             document.querySelector('.usItemAreaTop img');
-        const imageUrl = imageElement?.src || null;
+        // 상품 이미지 URL 추출 (가장 정확한 상품 이미지를 찾기 위해 우선순위 적용)
+        const selectors = [
+          '.usItemImageSwiperSlide img',
+          '.usItemImageArea img',
+          '.usItemThumbnail img',
+          '.usItemAreaTop img'
+        ];
+        
+        let imageUrl = null;
+        for (const selector of selectors) {
+          const img = document.querySelector(selector);
+          // 페이코, 토스 등 결제 아이콘이나 화살표 등은 제외
+          if (img && img.src && !img.src.includes('icon') && !img.src.includes('arrow') && img.src.includes('http')) {
+            imageUrl = img.src;
+            break;
+          }
+        }
+        
+        // 만약 못 찾았다면 /goods/ 가 포함된 첫 번째 이미지 선택 (가장 일반적인 상품 이미지 경로)
+        if (!imageUrl) {
+          const goodsImg = Array.from(document.querySelectorAll('img')).find(img => img.src.includes('/goods/'));
+          imageUrl = goodsImg?.src || null;
+        }
         
         // 재고 상태 유추
         let stockStatus = 'In Stock';
