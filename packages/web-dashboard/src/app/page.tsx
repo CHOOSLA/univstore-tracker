@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { 
   TrendingDown, 
   Award, 
@@ -62,17 +63,17 @@ const CATEGORY_STATS = [
 export default function HomePage() {
   return (
     <div className="min-h-screen pb-20">
-      {/* Navigation (Simplified) */}
+      {/* Navigation */}
       <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-8">
-        <div className="flex items-center space-x-2">
+        <Link href="/" className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">U</div>
-          <span className="text-xl font-bold tracking-tighter">UnivWatch.</span>
-        </div>
+          <span className="text-xl font-bold tracking-tighter text-white">UnivWatch.</span>
+        </Link>
         <div className="hidden md:flex space-x-8 text-sm font-medium text-zinc-400">
-          <a href="#" className="text-white">Dashboard</a>
-          <a href="#" className="hover:text-white transition-colors">Products</a>
-          <a href="#" className="hover:text-white transition-colors">Alerts</a>
-          <a href="#" className="hover:text-white transition-colors">Analytics</a>
+          <Link href="/" className="text-white">Dashboard</Link>
+          <Link href="/products" className="hover:text-white transition-colors">Products</Link>
+          <Link href="/alerts" className="hover:text-white transition-colors">Alerts</Link>
+          <Link href="/analytics" className="hover:text-white transition-colors">Analytics</Link>
         </div>
         <div className="flex items-center space-x-4">
           <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
@@ -110,18 +111,17 @@ export default function HomePage() {
                 <ArrowDownRight className="mr-2 text-red-500" />
                 Featured Price Drops
               </h2>
-              <button className="text-sm font-medium text-zinc-500 hover:text-white flex items-center">
+              <Link href="/products" className="text-sm font-medium text-zinc-500 hover:text-white flex items-center">
                 View all items <ChevronRight size={16} />
-              </button>
+              </Link>
             </div>
 
             <div className="space-y-3">
               {MOCK_TOP_DROPS.map((item) => (
-                <div key={item.id} className="glass glass-hover p-4 rounded-2xl flex items-center justify-between group cursor-pointer">
+                <Link key={item.id} href={`/product/${item.id}`} className="glass glass-hover p-4 rounded-2xl flex items-center justify-between group cursor-pointer block">
                   <div className="flex items-center space-x-5">
                     <div className="relative w-16 h-16 bg-zinc-900 rounded-xl flex items-center justify-center border border-white/5 overflow-hidden">
                       <div className="text-[10px] text-zinc-600 uppercase font-black tracking-tighter">PRODUCT</div>
-                      {/* 실제 이미지는 여기에 <img> 태그로 */}
                     </div>
                     <div>
                       <div className="flex items-center space-x-2">
@@ -148,7 +148,7 @@ export default function HomePage() {
                       <p className="text-[10px] font-mono text-zinc-500 italic">ID: {item.id}</p>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -158,7 +158,7 @@ export default function HomePage() {
             <h2 className="text-2xl font-bold text-white">Brand Pulse</h2>
             <div className="grid grid-cols-2 gap-4">
               {CATEGORY_STATS.map((cat, i) => (
-                <div key={i} className="glass p-5 rounded-3xl flex flex-col justify-between aspect-square">
+                <Link key={i} href={`/products?brand=${cat.label}`} className="glass glass-hover p-5 rounded-3xl flex flex-col justify-between aspect-square block">
                   <div className={cn("p-3 w-fit rounded-2xl bg-zinc-950/50 border border-white/5", cat.color)}>
                     <cat.icon size={20} />
                   </div>
@@ -167,7 +167,7 @@ export default function HomePage() {
                     <p className="text-2xl font-black text-white">{cat.count}</p>
                     <p className="text-[10px] text-emerald-500 font-bold mt-1">Avg. {cat.avgDrop} Discount</p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
             
