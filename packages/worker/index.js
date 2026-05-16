@@ -37,6 +37,12 @@ async function processQueue() {
         orderBy: { timestamp: 'desc' }
       });
 
+      if (lastRecord) {
+        console.log(`📊 이전 가격: ${lastRecord.price.toLocaleString()}원 | 현재 가격: ${price.toLocaleString()}원`);
+      } else {
+        console.log(`ℹ️ 이 상품의 첫 번째 수집 기록입니다. (비교 대상 없음)`);
+      }
+
       // 2. 상품 정보 업데이트 (Upsert)
       await prisma.product.upsert({
         where: { id: id },

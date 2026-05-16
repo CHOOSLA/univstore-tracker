@@ -7,6 +7,7 @@
   "scripts": {
     "crawler:dev": "dotenv -e .env -- npm run dev --workspace=packages/crawler",
     "worker:dev": "dotenv -e .env -- node packages/worker/index.js",
+    "dashboard:dev": "dotenv -e .env -- npm run dev --workspace=packages/web-dashboard",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "services:status": "docker compose ps"
