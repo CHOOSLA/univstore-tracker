@@ -80,14 +80,15 @@ async function discoverSpecials(page) {
         });
       });
 
-      // 2. 특가(Flash Sale) 탐색 - .usShortcut 클래스 위주
-      const ignoreKeywords = ['혜택/이벤트', '로그인', '더보기', '회원가입', '장바구니', '마이페이지', '일기', '로조', '확인하기', '구매하기'];
-      const dealLinks = Array.from(document.querySelectorAll('.usShortcut, a')).filter(a => {
-        const text = a.innerText.trim();
-        const isSpecial = text.includes('특가') || text.includes('SALE');
-        const isLong = text.length > 30; // 너무 긴 설명문 제외
+      // 2. 특가(Flash Sale) 탐색 - .usShortcut 클래스 또는 명확한 특가 키워드
+      const ignoreKeywords = ['혜택/이벤트', '로그인', '더보기', '회원가입', '장바구니', '마이페이지', '일기', '로조', '확인하기', '구매하기', '공지사항', '쿠폰'];
+      const dealLinks = Array.from(document.querySelectorAll('.usShortcut, .usMainBanner a, a')).filter(a => {
+        const text = a.innerText.trim().replace(/\s+/g, ' ');
+        const isSpecial = text.includes('특가') || text.includes('SALE') || text.includes('할인');
+        // 텍스트 길이가 2자에서 15자 사이인 것만 취합 (진짜 제목일 확률 높음)
+        const isIdealLength = text.length >= 2 && text.length <= 15;
         const isMenu = ignoreKeywords.some(k => text.includes(k));
-        return isSpecial && !isLong && !isMenu;
+        return isSpecial && isIdealLength && !isMenu;
       });
 
       // 중복 제거 (제목 기준)

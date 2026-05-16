@@ -11,6 +11,8 @@ services:
       - "5432:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
+    networks:
+      - univ-network
 
   redis:
     image: redis:7-alpine
@@ -20,27 +22,33 @@ services:
       - "6379:6379"
     volumes:
       - ./redis_data:/data
+    networks:
+      - univ-network
 
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
-    container_name: univstore-search
-    restart: always
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # 메모리 제한 (저사양 서버 배려)
-    ports:
-      - "9200:9200"
-    volumes:
-      - ./es_data:/usr/share/elasticsearch/data
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.15.0
+  dashboard:
+    build:
+      context: .
+      dockerfile: packages/web-dashboard/Dockerfile
     container_name: univstore-dashboard
     restart: always
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    ports:
-      - "5601:5601"
+      - DATABASE_URL=postgresql://univuser:univpassword@postgres:5432/univstore?schema=public
+      - REDIS_URL=redis://redis:6379
+      - VIRTUAL_HOST=choouniv.duckdns.org
+      - VIRTUAL_PORT=3000
+      - LETSENCRYPT_HOST=choouniv.duckdns.org
+      - LETSENCRYPT_EMAIL=juebug4027@gmail.com
+      - TELEGRAM_BOT_TOKEN=8939869039:AAFXFmUQU3IzZt6hWgOGNsXfJ1HHVDc84C8
+      - TELEGRAM_CHAT_ID=7968628859
     depends_on:
-      - elasticsearch
+      - postgres
+      - redis
+    networks:
+      - univ-network
+      - proxy-tier
+
+networks:
+  univ-network:
+    driver: bridge
+  proxy-tier:
+    external: true
