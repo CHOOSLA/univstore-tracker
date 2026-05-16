@@ -66,32 +66,45 @@ async function discoverSpecials(page) {
     const specials = await page.evaluate(() => {
       const results = { raffles: [], flashSales: [] };
       
-      const raffleElements = Array.from(document.querySelectorAll('*')).filter(el => 
-        el.innerText.includes('래플') && el.className.includes('Raffle')
+      // 1. 래플 탐색 (주소에 raffle이 포함된 링크 위주)
+      const raffleLinks = Array.from(document.querySelectorAll('a')).filter(a => 
+        a.href.includes('/raffle') || (a.innerText.includes('래플') && a.innerText.length < 20)
       );
       
-      raffleElements.forEach(el => {
+      raffleLinks.forEach(a => {
         results.raffles.push({
-          title: el.querySelector('.title')?.innerText || '진행 중인 래플',
-          brand: el.querySelector('.brand')?.innerText || 'Brand',
-          entries: parseInt(el.querySelector('.entries')?.innerText.replace(/[^0-9]/g, '') || '0'),
+          title: a.innerText.trim() || '진행 중인 래플',
+          brand: 'Event',
+          entries: 0,
           endsAt: new Date(Date.now() + 86400000 * 2).toISOString(),
         });
       });
 
-      const dealLinks = Array.from(document.querySelectorAll('a')).filter(a => 
-        a.innerText.includes('특가') || a.href.includes('event')
-      );
-
-      dealLinks.forEach(a => {
-        results.flashSales.push({
-          title: a.innerText.trim(),
-          startTime: new Date().toISOString(),
-          endTime: new Date(Date.now() + 86400000).toISOString(),
-          status: 'Ongoing'
-        });
+      // 2. 특가(Flash Sale) 탐색 - .usShortcut 클래스 위주
+      const ignoreKeywords = ['혜택/이벤트', '로그인', '더보기', '회원가입', '장바구니', '마이페이지', '일기', '로조'];
+      const dealLinks = Array.from(document.querySelectorAll('.usShortcut, a')).filter(a => {
+        const text = a.innerText.trim();
+        const isSpecial = text.includes('특가') || text.includes('SALE');
+        const isLong = text.length > 30; // 너무 긴 설명문 제외
+        const isMenu = ignoreKeywords.some(k => text.includes(k));
+        return isSpecial && !isLong && !isMenu;
       });
 
+      // 중복 제거 (제목 기준)
+      const uniqueDeals = new Map();
+      dealLinks.forEach(a => {
+        const title = a.innerText.trim();
+        if (!uniqueDeals.has(title)) {
+          uniqueDeals.set(title, {
+            title: title,
+            startTime: new Date().toISOString(),
+            endTime: new Date(Date.now() + 86400000).toISOString(),
+            status: 'Ongoing'
+          });
+        }
+      });
+
+      results.flashSales = Array.from(uniqueDeals.values());
       return results;
     });
 
