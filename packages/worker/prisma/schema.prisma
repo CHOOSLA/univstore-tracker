@@ -8,9 +8,13 @@ datasource db {
 }
 
 model Product {
-  id            String         @id
+  id            String         @id // 학생복지스토어의 상품 ID
   title         String
+  brand         String?        // 브랜드명 (예: Apple, Samsung)
+  originalPrice Int?           // 정가 (할인 전 가격)
   imageUrl      String?        // 상품 이미지 URL
+  stockStatus   String?        // 재고 상태 (예: In Stock, Low Stock)
+  bestBenefit   String?        // 최적 결제 혜택 (예: KB Pay 6만원 할인)
   category      String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -20,7 +24,7 @@ model Product {
 model PriceHistory {
   id         Int      @id @default(autoincrement())
   productId  String
-  price      Int
+  price      Int      // 실시간 수집된 학생 할인가
   timestamp  DateTime @default(now())
   product    Product  @relation(fields: [productId], references: [id])
 
