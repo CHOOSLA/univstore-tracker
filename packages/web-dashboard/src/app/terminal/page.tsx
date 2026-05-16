@@ -16,31 +16,32 @@ export default async function TerminalPage() {
     password: url.password || undefined,
     username: url.username || undefined,
     db: parseInt(url.pathname.split('/')[1] || '0'),
+    lazyConnect: true // 연결 실패 시 서버가 죽지 않도록 설정
   });
   
   let queueSize = 0;
   try {
+    await redis.connect();
     queueSize = await redis.llen('univstore:price_updates');
   } catch (err) {
-    console.error("Redis LLEN error:", err);
+    console.error("Redis connection error:", err);
   } finally {
-    await redis.disconnect(); // quit 대신 disconnect로 더 확실하게 종료
+    await redis.disconnect();
   }
 
   // 2. DB 메트릭 조회 (모델 존재 여부 안전하게 확인)
   const totalProducts = await prisma.product.count().catch(() => 0);
   const totalHistory = await prisma.priceHistory.count().catch(() => 0);
 
-  // 3. 최신 시스템 로그 조회 (Prisma 인스턴스가 갱신되도록 처리)
+  // 3. 최신 시스템 로그 조회
   let rawLogs = [];
   try {
-    rawLogs = await (prisma as any).systemLog.findMany({
+    rawLogs = await prisma.systemLog.findMany({
       orderBy: { time: 'desc' },
       take: 20,
     });
   } catch (err) {
     console.error("Prisma SystemLog Query Error:", err);
-    // 아직 모델을 못 찾을 경우 빈 배열로 처리하여 크래시 방지
   }
 
   const formattedLogs = rawLogs.map(log => ({
@@ -51,9 +52,29 @@ export default async function TerminalPage() {
     message: log.message
   }));
 
+  // 4. 데이터 이슈 조회 (신설)
+  let rawIssues = [];
+  try {
+    rawIssues = await prisma.dataIssue.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: 10,
+    });
+  } catch (err) {
+    console.error("Prisma DataIssue Query Error:", err);
+  }
+
+  const formattedIssues = rawIssues.map(issue => ({
+    id: issue.id,
+    productId: issue.productId,
+    type: issue.type,
+    message: issue.message,
+    timestamp: issue.timestamp.toISOString()
+  }));
+
   return (
     <TerminalView 
       logs={formattedLogs}
+      dataIssues={formattedIssues}
       queueSize={queueSize}
       totalProducts={totalProducts}
       totalHistory={totalHistory}

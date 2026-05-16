@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Terminal, 
   Activity, 
@@ -11,7 +11,8 @@ import {
   RefreshCcw, 
   Play, 
   Clock,
-  Info
+  Info,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,14 +24,33 @@ interface SystemLogEntry {
   message: string;
 }
 
+interface DataIssueEntry {
+  id: number;
+  productId: string;
+  type: string;
+  message: string;
+  timestamp: string;
+}
+
 interface TerminalViewProps {
   logs: SystemLogEntry[];
+  dataIssues: DataIssueEntry[];
   queueSize: number;
   totalProducts: number;
   totalHistory: number;
 }
 
-export default function TerminalView({ logs, queueSize, totalProducts, totalHistory }: TerminalViewProps) {
+export default function TerminalView({ logs, dataIssues, queueSize, totalProducts, totalHistory }: TerminalViewProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+    console.log("🚀 TerminalView Mounted");
+  }, []);
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Initializing Console...</div>;
+  }
+
   const nodeHealth = [
     { name: 'Crawler Node', status: 'Active', load: '12%', uptime: 'Online', icon: Cpu },
     { name: 'Redis Buffer', status: queueSize > 100 ? 'Congested' : 'Healthy', load: `${queueSize} items`, uptime: 'Optimal', icon: Zap },
@@ -139,6 +159,27 @@ export default function TerminalView({ logs, queueSize, totalProducts, totalHist
            </div>
 
            <div className="lg:col-span-4 space-y-6">
+              {/* Data Quality Issues Section */}
+              <div className="glass p-8 rounded-[40px] border-red-500/20 bg-red-500/[0.01] space-y-6">
+                 <div className="flex justify-between items-center">
+                    <h3 className="text-xs font-black text-red-500 uppercase tracking-widest">Data Quality Issues</h3>
+                    <AlertTriangle className="text-red-500" size={16} />
+                 </div>
+                 <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2">
+                    {dataIssues.length > 0 ? dataIssues.map((issue) => (
+                      <div key={issue.id} className="p-3 bg-zinc-950/50 rounded-xl border border-white/5 space-y-1 group hover:border-red-500/30 transition-colors">
+                         <div className="flex justify-between text-[10px] font-bold">
+                            <span className="text-red-400">{issue.type}</span>
+                            <span className="text-zinc-600 font-mono">ID: {issue.productId}</span>
+                         </div>
+                         <p className="text-[11px] text-zinc-400 leading-snug">{issue.message}</p>
+                      </div>
+                    )) : (
+                      <p className="text-[10px] text-zinc-600 italic">No critical data issues detected.</p>
+                    )}
+                 </div>
+              </div>
+
               <div className="glass p-8 rounded-[40px] border-white/[0.03] space-y-8">
                  <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Database Health</h3>
                  <div className="space-y-6">
