@@ -1,12 +1,14 @@
 require('dotenv').config();
 const { chromium } = require('playwright');
 const { PrismaClient } = require('@prisma/client');
+const Redis = require('ioredis');
 const axios = require('axios');
 const { XMLParser } = require('fast-xml-parser');
 const fs = require('fs');
 const path = require('path');
 
 const prisma = new PrismaClient();
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 const USER_DATA_DIR = path.join(__dirname, 'user_data');
 
 // 랜덤 지연 함수 (Jitter)
@@ -73,6 +75,7 @@ async function run() {
     const progress = `${i + 1}/${totalItems}`;
 
     // [Smart Skip] 오늘 이미 수집된 가격이 있다면 서버 부하 방지를 위해 건너뜁니다.
+    // (이 체크를 위해 크롤러는 여전히 DB Read 권한이 필요합니다)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -84,7 +87,6 @@ async function run() {
     });
 
     if (existingHistory) {
-      // 로그가 너무 많아질 수 있으므로 생략하거나 작게 출력
       continue;
     }
 
@@ -126,38 +128,34 @@ async function run() {
         console.log(`⚠️ 세션 만료 감지! 즉시 재로그인을 시도합니다.`);
         await loginWithEverytime(page);
         await page.goto(`https://www.univstore.com/item/${id}`, { waitUntil: 'domcontentloaded' });
-        // 재시도 후 다시 itemInfo 추출 로직이 필요할 수 있으나, 일단 다음 루프에서 처리되도록 유도
         continue;
       }
 
       console.log(`✅ 상품명: ${itemInfo.title}`);
       const priceNum = parseInt(itemInfo.price);
       
-      // 4. 데이터베이스 저장 (Prisma)
-      await prisma.product.upsert({
-        where: { id: id },
-        update: { title: itemInfo.title },
-        create: { id: id, title: itemInfo.title }
-      });
+      // 4. 메시지 큐(Redis)로 데이터 전송 (직접 DB 저장 대신)
+      // 이제 수집만 하고 처리는 워커에게 맡깁니다.
+      const payload = {
+        id,
+        title: itemInfo.title,
+        price: priceNum,
+        timestamp: new Date().toISOString()
+      };
 
-      await prisma.priceHistory.create({
-        data: {
-          productId: id,
-          price: priceNum
-        }
-      });
-      console.log(`💾 DB 저장 완료 (${priceNum.toLocaleString()}원)`);
+      await redis.rpush('univstore:price_updates', JSON.stringify(payload));
+      console.log(`📦 Redis Queue에 적재 완료 (처리 대기 중)`);
 
     } catch (err) {
       console.error(`❌ 상품 ${id} 수집 도중 에러 발생:`, err.message);
-      // 에러 발생 시 세션 문제일 수 있으므로 잠깐 더 쉼
       await sleep(5000);
     }
   }
 
-  console.log(`\n✨ 모든 상품에 대한 수집 및 저장이 완료되었습니다.`);
+  console.log(`\n✨ 모든 상품에 대한 수집 및 큐 전송이 완료되었습니다.`);
   await context.close();
   await prisma.$disconnect();
+  await redis.quit();
 }
 
 async function checkLogin(page) {
