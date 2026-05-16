@@ -20,3 +20,27 @@ services:
       - "6379:6379"
     volumes:
       - ./redis_data:/data
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: univstore-search
+    restart: always
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # 메모리 제한 (저사양 서버 배려)
+    ports:
+      - "9200:9200"
+    volumes:
+      - ./es_data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    container_name: univstore-dashboard
+    restart: always
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch

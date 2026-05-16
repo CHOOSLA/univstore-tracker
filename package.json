@@ -5,10 +5,13 @@
     "packages/*"
   ],
   "scripts": {
-    "crawler:dev": "npm run dev --workspace=packages/crawler",
-    "worker:dev": "node packages/worker/index.js",
+    "crawler:dev": "dotenv -e .env -- npm run dev --workspace=packages/crawler",
+    "worker:dev": "dotenv -e .env -- node packages/worker/index.js",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "services:status": "docker compose ps"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0"
   }
 }
