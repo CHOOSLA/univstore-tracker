@@ -1,28 +1,41 @@
 import React from 'react';
 import Link from 'next/link';
-import { Search, Filter, ArrowUpDown, ChevronRight } from "lucide-react";
+import { 
+  Search, 
+  Filter, 
+  ArrowUpDown, 
+  ChevronRight, 
+  CreditCard, 
+  Truck,
+  Zap,
+  LayoutGrid,
+  List
+} from "lucide-react";
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
 
-// --- Mock Data (Product Explorer 전용 데이터) ---
-const MOCK_PRODUCTS = Array.from({ length: 15 }).map((_, i) => ({
+// --- High Density Mock Data ---
+const MOCK_PRODUCTS = Array.from({ length: 20 }).map((_, i) => ({
   id: `${138000 + i}`,
   brand: i % 3 === 0 ? "Apple" : i % 3 === 1 ? "Samsung" : "LG",
-  name: i % 3 === 0 ? `MacBook Pro 1${4 + (i%2)} M3 Max` : i % 3 === 1 ? `Galaxy S24 Ultra` : `UltraGear Monitor`,
-  price: 1500000 - (i * 50000),
-  dropRate: (Math.random() * 20).toFixed(1),
-  isATL: i % 5 === 0,
-  history: Array.from({ length: 10 }).map(() => Math.floor(Math.random() * 500000) + 1000000)
+  name: i % 3 === 0 ? `MacBook Pro 1${4 + (i%2)} M3 Max` : i % 3 === 1 ? `Galaxy S24 Ultra Titanium` : `UltraGear 27" Gaming`,
+  currentPrice: 1500000 - (i * 20000),
+  oldPrice: 1750000 - (i * 10000),
+  dropRate: (Math.random() * 25).toFixed(1),
+  isATL: i % 4 === 0,
+  bestBenefit: i % 2 === 0 ? "KB Pay 6만" : "Payco 5만",
+  stockStatus: i % 7 === 0 ? "Low Stock" : "In Stock",
+  history: Array.from({ length: 12 }).map(() => Math.floor(Math.random() * 400000) + 1100000)
 }));
 
 export default function ProductsPage() {
   return (
-    <div className="min-h-screen pb-20">
-      {/* Universal Navigation */}
-      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-8">
+    <div className="min-h-screen pb-20 bg-zinc-950 text-zinc-50">
+      {/* Dynamic Nav */}
+      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center">
         <Link href="/" className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">U</div>
-          <span className="text-xl font-bold tracking-tighter text-white">UnivWatch.</span>
+          <span className="text-xl font-bold tracking-tighter">UnivWatch.</span>
         </Link>
         <div className="hidden md:flex space-x-8 text-sm font-medium text-zinc-400">
           <Link href="/" className="hover:text-white transition-colors">Dashboard</Link>
@@ -30,77 +43,136 @@ export default function ProductsPage() {
           <Link href="/alerts" className="hover:text-white transition-colors">Alerts</Link>
           <Link href="/analytics" className="hover:text-white transition-colors">Analytics</Link>
         </div>
-        <div className="w-20" />
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-1 bg-zinc-900 rounded-lg p-1 border border-white/5">
+            <button className="p-1.5 rounded-md bg-zinc-800 text-white"><List size={14} /></button>
+            <button className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-300"><LayoutGrid size={14} /></button>
+          </div>
+        </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-6 pt-12 space-y-8">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="space-y-2">
+            <h1 className="text-5xl font-black tracking-tighter">Explorer</h1>
+            <p className="text-zinc-500 text-lg">실시간 학생 할인가 및 카드사 혜택 데이터 센터</p>
+          </div>
+          <div className="flex items-center space-x-3">
+             <div className="bg-emerald-500/10 text-emerald-500 text-[10px] font-black px-3 py-1.5 rounded-full border border-emerald-500/20 uppercase tracking-widest">
+               {MOCK_PRODUCTS.length} Items Found
+             </div>
+          </div>
+        </header>
+
         {/* Toolbar */}
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-zinc-900/30 p-2 rounded-2xl border border-white/5">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+        <div className="flex flex-col md:flex-row gap-3 bg-zinc-900/30 p-2 rounded-[28px] border border-white/5 backdrop-blur-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
             <input 
               type="text" 
-              placeholder="Search products..." 
-              className="w-full bg-zinc-950/50 border border-white/10 rounded-xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:border-blue-500/50 transition-colors"
+              placeholder="Search by brand, name, or product ID..." 
+              className="w-full bg-transparent border-none rounded-2xl py-4 pl-14 pr-4 text-sm focus:outline-none placeholder:text-zinc-600 font-medium"
             />
           </div>
-          <div className="flex items-center space-x-2 w-full md:w-auto">
-            <button className="flex-1 md:flex-none flex items-center justify-center space-x-2 bg-zinc-900 border border-white/10 px-4 py-3 rounded-xl text-sm font-bold hover:bg-zinc-800 transition-colors">
-              <Filter size={16} />
-              <span>Filters</span>
+          <div className="flex items-center space-x-2">
+            <button className="flex items-center space-x-2 bg-zinc-900/80 border border-white/10 px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all">
+              <Filter size={14} />
+              <span>Advanced Filter</span>
             </button>
-            <button className="flex-1 md:flex-none flex items-center justify-center space-x-2 bg-blue-600 px-6 py-3 rounded-xl text-sm font-bold hover:bg-blue-500 transition-colors">
-              <span>Apply</span>
+            <button className="bg-blue-600 px-8 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-600/20">
+              Refresh
             </button>
           </div>
         </div>
 
         {/* High Density Table */}
-        <div className="glass rounded-3xl overflow-hidden border border-white/5">
+        <div className="glass rounded-[40px] overflow-hidden border-white/[0.03]">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-zinc-900/50 text-[11px] font-black uppercase tracking-widest text-zinc-500 border-b border-white/5">
-                <th className="px-6 py-5">Product Info</th>
-                <th className="px-6 py-5 text-right">Price</th>
-                <th className="px-6 py-5 text-center">Trend (7D)</th>
-                <th className="px-6 py-5 text-right">Link</th>
+              <tr className="bg-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 border-b border-white/5">
+                <th className="pl-10 pr-6 py-6">Product Details</th>
+                <th className="px-6 py-6 text-right">Price Matrix</th>
+                <th className="px-6 py-6 text-center">Trend (14D)</th>
+                <th className="pr-10 pl-6 py-6 text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {MOCK_PRODUCTS.map((item) => (
-                <tr key={item.id} className="group hover:bg-white/[0.02] transition-colors relative">
-                  <td className="px-6 py-5">
-                    {/* Entire row is clickable */}
-                    <Link href={`/product/${item.id}`} className="absolute inset-0 z-10" aria-label={`View ${item.name}`} />
-                    <div className="flex items-center space-x-4 relative z-0">
-                      <div className="w-10 h-10 bg-zinc-900 rounded-lg border border-white/5 flex items-center justify-center text-[8px] text-zinc-600 font-bold">IMG</div>
-                      <div>
+                <tr key={item.id} className="group hover:bg-white/[0.02] transition-all relative">
+                  <td className="pl-10 pr-6 py-8">
+                    <Link href={`/product/${item.id}`} className="absolute inset-0 z-10" />
+                    <div className="flex items-center space-x-6 relative z-0">
+                      <div className="w-14 h-14 bg-zinc-900 rounded-2xl border border-white/5 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden">
+                        <div className="text-[8px] text-zinc-700 font-black uppercase tracking-tighter">IMAGE</div>
+                      </div>
+                      <div className="space-y-1">
                         <div className="flex items-center space-x-2">
-                          <span className="text-[10px] font-bold text-zinc-500 uppercase">{item.brand}</span>
-                          {item.isATL && <span className="bg-amber-500/10 text-amber-500 text-[8px] font-black px-1.5 py-0.5 rounded border border-amber-500/20">ATL</span>}
+                          <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{item.brand}</span>
+                          {item.isATL && <span className="bg-amber-500/10 text-amber-500 text-[8px] font-black px-2 py-0.5 rounded border border-amber-500/20 uppercase">ATL</span>}
                         </div>
-                        <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">{item.name}</p>
+                        <p className="text-base font-black text-white group-hover:text-blue-400 transition-colors">{item.name}</p>
+                        <div className="flex items-center space-x-3 text-[11px] text-zinc-500 font-bold">
+                           <span className="flex items-center space-x-1 text-emerald-400/80">
+                             <CreditCard size={10} /> <span>{item.bestBenefit}</span>
+                           </span>
+                           <span className="w-1 h-1 bg-zinc-800 rounded-full" />
+                           <span className="flex items-center space-x-1">
+                             <Truck size={10} /> <span>무료 배송</span>
+                           </span>
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-5 text-right relative z-0">
-                    <p className="text-sm font-black text-white">₩{item.price.toLocaleString()}</p>
-                    <p className="text-[10px] font-bold text-red-500">-{item.dropRate}%</p>
-                  </td>
-                  <td className="px-6 py-5 relative z-0">
-                    <div className="flex justify-center">
-                      <Sparkline data={item.history} color={parseFloat(item.dropRate) > 10 ? "#ef4444" : "#3b82f6"} />
+                  <td className="px-6 py-8 text-right relative z-0">
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-baseline space-x-2">
+                         <span className="text-xs text-zinc-600 line-through tabular-nums font-medium">₩{item.oldPrice.toLocaleString()}</span>
+                         <span className="text-red-500 font-black text-sm">-{item.dropRate}%</span>
+                      </div>
+                      <p className="text-2xl font-black text-white tracking-tighter tabular-nums">₩{item.currentPrice.toLocaleString()}</p>
                     </div>
                   </td>
-                  <td className="px-6 py-5 text-right relative z-0">
-                    <div className="p-2 w-fit ml-auto bg-zinc-900 rounded-lg border border-white/5 group-hover:border-blue-500/50 group-hover:text-blue-500 transition-all">
-                      <ChevronRight size={18} />
+                  <td className="px-6 py-8 relative z-0">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <Sparkline data={item.history} color={parseFloat(item.dropRate) > 10 ? "#ef4444" : "#3b82f6"} />
+                      <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Volatility Check</span>
+                    </div>
+                  </td>
+                  <td className="pr-10 pl-6 py-8 text-right relative z-0">
+                    <div className="flex items-center justify-end space-x-4">
+                      <div className="flex flex-col items-end">
+                        <span className={cn(
+                          "text-[10px] font-black px-2.5 py-1 rounded-lg border uppercase tracking-widest",
+                          item.stockStatus === "Low Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                        )}>
+                          {item.stockStatus}
+                        </span>
+                        <p className="text-[10px] font-bold text-zinc-600 mt-2 italic">Ref: {item.id}</p>
+                      </div>
+                      <div className="p-3 bg-zinc-900 rounded-2xl border border-white/5 group-hover:border-blue-500/50 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-all">
+                        <Zap size={18} className={cn(item.isATL && "fill-amber-500 text-amber-500")} />
+                      </div>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          
+          {/* Pagination Placeholder */}
+          <div className="bg-white/[0.01] px-10 py-8 border-t border-white/5 flex justify-between items-center">
+            <p className="text-xs font-bold text-zinc-600 uppercase tracking-widest">Showing 1 to 20 of {MOCK_PRODUCTS.length} items</p>
+            <div className="flex space-x-2">
+               {[1, 2, 3, '...', 12].map((p, i) => (
+                 <button key={i} className={cn(
+                   "w-10 h-10 rounded-xl text-xs font-black transition-all",
+                   p === 1 ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" : "bg-zinc-900 text-zinc-500 hover:bg-zinc-800"
+                 )}>
+                   {p}
+                 </button>
+               ))}
+            </div>
+          </div>
         </div>
       </main>
     </div>
