@@ -75,7 +75,6 @@ async function run() {
     const progress = `${i + 1}/${totalItems}`;
 
     // [Smart Skip] 오늘 이미 수집된 가격이 있다면 서버 부하 방지를 위해 건너뜁니다.
-    // (이 체크를 위해 크롤러는 여전히 DB Read 권한이 필요합니다)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -107,20 +106,41 @@ async function run() {
 
         const brand = document.querySelector('.usItemCardInfoBrandName')?.innerText?.trim() || '';
         const name = document.querySelector('.usItemCardInfoName')?.innerText?.trim() || '이름 없음';
-        const price = document.querySelector('.usItemCardInfoPrice2')?.innerText?.trim() || 
-                      document.querySelector('.usItemSumValue')?.innerText?.trim() || '0';
         
-        // 상품 이미지 URL 추출 (.usItemImageArea 내의 img 태그 탐색)
+        // 정가 (originalPrice) 추출
+        const originalPriceText = document.querySelector('.usItemCardInfoPrice1')?.innerText?.trim() || '0';
+        
+        // 학생 할인가 (price) 추출
+        const studentPriceText = document.querySelector('.usItemCardInfoPrice2')?.innerText?.trim() || 
+                                document.querySelector('.usItemSumValue')?.innerText?.trim() || '0';
+        
+        // 상품 이미지 URL 추출
         const imageElement = document.querySelector('.usItemImageArea img') || 
                              document.querySelector('.usItemAreaTop img');
         const imageUrl = imageElement?.src || null;
         
+        // 재고 상태 유추
+        let stockStatus = 'In Stock';
+        if (bodyText.includes('품절') || bodyText.includes('재고 없음')) {
+          stockStatus = 'Out of Stock';
+        } else if (bodyText.includes('남은 수량') || bodyText.includes('품절 임박')) {
+          stockStatus = 'Low Stock';
+        }
+
+        // 최적 결제 혜택 추출
+        const benefitElement = document.querySelector('.usPaymentDiscountSchemeInfo');
+        const bestBenefit = benefitElement?.innerText?.trim() || null;
+        
         const isLoggedIn = !bodyText.includes('학생인증 후 가격 확인');
 
         return {
-          title: brand ? `[${brand}] ${name}` : name,
-          price: price.replace(/[^0-9]/g, ''),
+          brand,
+          title: name,
+          originalPrice: originalPriceText.replace(/[^0-9]/g, ''),
+          price: studentPriceText.replace(/[^0-9]/g, ''),
           imageUrl,
+          stockStatus,
+          bestBenefit,
           isLoggedIn
         };
       });
@@ -137,16 +157,20 @@ async function run() {
         continue;
       }
 
-      console.log(`✅ 상품명: ${itemInfo.title}`);
-      console.log(`🖼️ 이미지: ${itemInfo.imageUrl ? '수집 성공' : '없음'}`);
-      const priceNum = parseInt(itemInfo.price);
+      console.log(`✅ [${itemInfo.brand}] ${itemInfo.title}`);
+      console.log(`💰 가격: ${parseInt(itemInfo.price).toLocaleString()}원 (정가: ${parseInt(itemInfo.originalPrice).toLocaleString()}원)`);
+      console.log(`🏷️ 혜택: ${itemInfo.bestBenefit || '없음'} | 📦 상태: ${itemInfo.stockStatus}`);
       
-      // 4. 메시지 큐(Redis)로 데이터 전송
+      // 4. 메시지 큐(Redis)로 데이터 전송 (확장된 페이로드)
       const payload = {
         id,
+        brand: itemInfo.brand,
         title: itemInfo.title,
-        price: priceNum,
+        price: parseInt(itemInfo.price),
+        originalPrice: parseInt(itemInfo.originalPrice),
         imageUrl: itemInfo.imageUrl,
+        stockStatus: itemInfo.stockStatus,
+        bestBenefit: itemInfo.bestBenefit,
         timestamp: new Date().toISOString()
       };
 
