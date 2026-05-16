@@ -51,20 +51,9 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   const finalPrice = currentPrice - cardDiscount;
 
   return (
-    <div className="min-h-screen pb-20 bg-zinc-950">
-      {/* Dynamic Nav */}
-      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-8">
-        <Link href="/products" className="flex items-center space-x-2 text-zinc-400 hover:text-white transition-colors group">
-          <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="text-sm font-bold">Back to Explorer</span>
-        </Link>
-        <div className="flex items-center space-x-4">
-          <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
-          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none mt-0.5">TRACKING ACTIVE</span>
-        </div>
-      </nav>
+    <div className="pb-20 bg-zinc-950">
+      <main className="max-w-7xl mx-auto px-6 pt-4 space-y-8">
 
-      <main className="max-w-7xl mx-auto px-6 space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Left: Product Visuals & Main Info */}

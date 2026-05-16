@@ -4,21 +4,7 @@ import { Bell, Send, Settings, ShieldCheck, ChevronRight } from "lucide-react";
 
 export default function AlertsPage() {
   return (
-    <div className="min-h-screen pb-20">
-      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-8">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">U</div>
-          <span className="text-xl font-bold tracking-tighter text-white">UnivWatch.</span>
-        </Link>
-        <div className="hidden md:flex space-x-8 text-sm font-medium text-zinc-400">
-          <Link href="/" className="hover:text-white transition-colors">Dashboard</Link>
-          <Link href="/products" className="hover:text-white transition-colors">Products</Link>
-          <Link href="/alerts" className="text-white">Alerts</Link>
-          <Link href="/analytics" className="hover:text-white transition-colors">Analytics</Link>
-        </div>
-        <div className="w-20" /> {/* Spacer */}
-      </nav>
-
+    <div className="pb-20">
       <main className="max-w-4xl mx-auto px-6 space-y-12">
         <section className="space-y-4 text-center">
           <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-3xl flex items-center justify-center mb-6">

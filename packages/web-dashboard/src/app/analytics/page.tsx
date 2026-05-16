@@ -55,27 +55,7 @@ const BRAND_DISTRIBUTION = [
 
 export default function AnalyticsPage() {
   return (
-    <div className="min-h-screen pb-20 bg-zinc-950 text-zinc-50">
-      {/* Universal Navigation */}
-      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">U</div>
-          <span className="text-xl font-bold tracking-tighter">UnivWatch.</span>
-        </Link>
-        <div className="hidden md:flex space-x-8 text-sm font-medium text-zinc-400">
-          <Link href="/" className="hover:text-white transition-colors">Dashboard</Link>
-          <Link href="/products" className="hover:text-white transition-colors">Products</Link>
-          <Link href="/alerts" className="hover:text-white transition-colors">Alerts</Link>
-          <Link href="/analytics" className="text-white">Analytics</Link>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="px-3 py-1 bg-zinc-900 border border-white/5 rounded-full flex items-center space-x-2">
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black text-zinc-400 uppercase">System Online</span>
-          </div>
-        </div>
-      </nav>
-
+    <div className="pb-20 bg-zinc-950 text-zinc-50">
       <main className="max-w-7xl mx-auto px-6 pt-12 space-y-10">
         {/* Page Header */}
         <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
