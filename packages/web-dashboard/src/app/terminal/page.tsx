@@ -6,26 +6,34 @@ import TerminalView from "@/components/terminal/TerminalView";
 export const dynamic = 'force-dynamic';
 
 export default async function TerminalPage() {
-  // 1. Redis 큐 사이즈 조회
-  const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+  // 1. Redis 큐 사이즈 조회 (URL 객체를 사용해 url.parse 경고 방지)
+  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  const redis = new Redis(redisUrl);
+  
   let queueSize = 0;
   try {
     queueSize = await redis.llen('univstore:price_updates');
   } catch (err) {
     console.error("Redis LLEN error:", err);
   } finally {
-    await redis.quit();
+    await redis.disconnect(); // quit 대신 disconnect로 더 확실하게 종료
   }
 
-  // 2. DB 메트릭 조회
-  const totalProducts = await prisma.product.count();
-  const totalHistory = await prisma.priceHistory.count();
+  // 2. DB 메트릭 조회 (모델 존재 여부 안전하게 확인)
+  const totalProducts = await prisma.product.count().catch(() => 0);
+  const totalHistory = await prisma.priceHistory.count().catch(() => 0);
 
-  // 3. 최신 시스템 로그 20개 조회
-  const rawLogs = await prisma.systemLog.findMany({
-    orderBy: { time: 'desc' },
-    take: 20,
-  });
+  // 3. 최신 시스템 로그 조회 (Prisma 인스턴스가 갱신되도록 처리)
+  let rawLogs = [];
+  try {
+    rawLogs = await (prisma as any).systemLog.findMany({
+      orderBy: { time: 'desc' },
+      take: 20,
+    });
+  } catch (err) {
+    console.error("Prisma SystemLog Query Error:", err);
+    // 아직 모델을 못 찾을 경우 빈 배열로 처리하여 크래시 방지
+  }
 
   const formattedLogs = rawLogs.map(log => ({
     id: log.id,

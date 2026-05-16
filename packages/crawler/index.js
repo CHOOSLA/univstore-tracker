@@ -33,7 +33,6 @@ async function discoverAllProductIds() {
       
     console.log(`✅ 총 ${ids.length}개의 상품 ID를 확보했습니다.`);
     
-    // DB 로그 기록
     await prisma.systemLog.create({
       data: {
         type: 'SUCCESS',
@@ -67,7 +66,6 @@ async function discoverSpecials(page) {
     const specials = await page.evaluate(() => {
       const results = { raffles: [], flashSales: [] };
       
-      // 1. 래플 탐색 (텍스트와 구조 기반)
       const raffleElements = Array.from(document.querySelectorAll('*')).filter(el => 
         el.innerText.includes('래플') && el.className.includes('Raffle')
       );
@@ -77,11 +75,10 @@ async function discoverSpecials(page) {
           title: el.querySelector('.title')?.innerText || '진행 중인 래플',
           brand: el.querySelector('.brand')?.innerText || 'Brand',
           entries: parseInt(el.querySelector('.entries')?.innerText.replace(/[^0-9]/g, '') || '0'),
-          endsAt: new Date(Date.now() + 86400000 * 2).toISOString(), // 임시 마감일
+          endsAt: new Date(Date.now() + 86400000 * 2).toISOString(),
         });
       });
 
-      // 2. 특가(Flash Sale) 탐색
       const dealLinks = Array.from(document.querySelectorAll('a')).filter(a => 
         a.innerText.includes('특가') || a.href.includes('event')
       );
@@ -100,7 +97,6 @@ async function discoverSpecials(page) {
 
     console.log(`✅ ${specials.raffles.length}개의 래플, ${specials.flashSales.length}개의 특가 발견.`);
     
-    // Redis로 전송
     if (specials.raffles.length > 0 || specials.flashSales.length > 0) {
       await redis.rpush('univstore:specials_updates', JSON.stringify({
         type: 'SPECIALS',
@@ -114,18 +110,29 @@ async function discoverSpecials(page) {
 }
 
 async function run() {
-  // ... (브라우저 실행 동일)
+  const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+    headless: true,
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    viewport: { width: 1280, height: 720 },
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
+    ]
+  });
+
   const page = await context.newPage();
 
   // 1. 세션 유효성 검사 및 로그인
   await checkLogin(page);
 
-  // 2. 특가 및 래플 정보 수집 (신설)
+  // 2. 특가 및 래플 정보 수집
   await discoverSpecials(page);
 
   // 3. 전체 상품 ID 수집 (Sitemap 기반)
   const allItemIds = await discoverAllProductIds();
-  // ... (이하 동일)
+  const totalItems = allItemIds.length;
 
   if (totalItems === 0) {
     console.log("⚠️ 수집할 상품이 없습니다. 종료합니다.");
@@ -133,12 +140,11 @@ async function run() {
     return;
   }
 
-  // 3. 상품 정보 및 가격 수집 루프
+  // 4. 상품 정보 및 가격 수집 루프
   for (let i = 0; i < totalItems; i++) {
     const id = allItemIds[i];
     const progress = `${i + 1}/${totalItems}`;
 
-    // [Smart Skip] 오늘 이미 수집된 가격이 있다면 서버 부하 방지를 위해 건너뜁니다.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
@@ -153,7 +159,6 @@ async function run() {
       continue;
     }
 
-    // 사람의 행동 양식을 모방하기 위한 랜덤 지연 (1~3초)
     const jitter = Math.floor(Math.random() * 2000) + 1000;
     console.log(`\n[${progress}] ⏳ ${jitter/1000}초 대기 후 상품 ID ${id} 조회...`);
     await sleep(jitter);
@@ -162,7 +167,6 @@ async function run() {
       await page.goto(`https://www.univstore.com/item/${id}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
       
       const itemInfo = await page.evaluate(() => {
-        // 비정상적인 페이지(삭제된 상품 등) 필터링
         const bodyText = document.body.innerText;
         if (bodyText.includes('존재하지 않는 상품') || bodyText.includes('판매가 중단')) {
           return { error: 'Not available' };
@@ -170,15 +174,10 @@ async function run() {
 
         const brand = document.querySelector('.usItemCardInfoBrandName')?.innerText?.trim() || '';
         const name = document.querySelector('.usItemCardInfoName')?.innerText?.trim() || '이름 없음';
-        
-        // 정가 (originalPrice) 추출
         const originalPriceText = document.querySelector('.usItemCardInfoPrice1')?.innerText?.trim() || '0';
-        
-        // 학생 할인가 (price) 추출
         const studentPriceText = document.querySelector('.usItemCardInfoPrice2')?.innerText?.trim() || 
                                 document.querySelector('.usItemSumValue')?.innerText?.trim() || '0';
         
-        // 상품 이미지 URL 추출 (가장 정확한 상품 이미지를 찾기 위해 우선순위 적용)
         const selectors = [
           '.usItemImageSwiperSlide img',
           '.usItemImageArea img',
@@ -189,20 +188,17 @@ async function run() {
         let imageUrl = null;
         for (const selector of selectors) {
           const img = document.querySelector(selector);
-          // 페이코, 토스 등 결제 아이콘이나 화살표 등은 제외
           if (img && img.src && !img.src.includes('icon') && !img.src.includes('arrow') && img.src.includes('http')) {
             imageUrl = img.src;
             break;
           }
         }
         
-        // 만약 못 찾았다면 /goods/ 가 포함된 첫 번째 이미지 선택 (가장 일반적인 상품 이미지 경로)
         if (!imageUrl) {
           const goodsImg = Array.from(document.querySelectorAll('img')).find(img => img.src.includes('/goods/'));
           imageUrl = goodsImg?.src || null;
         }
-        
-        // 재고 상태 유추
+
         let stockStatus = 'In Stock';
         if (bodyText.includes('품절') || bodyText.includes('재고 없음')) {
           stockStatus = 'Out of Stock';
@@ -210,7 +206,6 @@ async function run() {
           stockStatus = 'Low Stock';
         }
 
-        // 최적 결제 혜택 추출
         const benefitElement = document.querySelector('.usPaymentDiscountSchemeInfo');
         const bestBenefit = benefitElement?.innerText?.trim() || null;
         
@@ -241,10 +236,8 @@ async function run() {
       }
 
       console.log(`✅ [${itemInfo.brand}] ${itemInfo.title}`);
-      console.log(`💰 가격: ${parseInt(itemInfo.price).toLocaleString()}원 (정가: ${parseInt(itemInfo.originalPrice).toLocaleString()}원)`);
-      console.log(`🏷️ 혜택: ${itemInfo.bestBenefit || '없음'} | 📦 상태: ${itemInfo.stockStatus}`);
+      const priceNum = parseInt(itemInfo.price);
       
-      // DB 로그 기록
       await prisma.systemLog.create({
         data: {
           type: 'INFO',
@@ -253,12 +246,11 @@ async function run() {
         }
       });
 
-      // 4. 메시지 큐(Redis)로 데이터 전송 (확장된 페이로드)
       const payload = {
         id,
         brand: itemInfo.brand,
         title: itemInfo.title,
-        price: parseInt(itemInfo.price),
+        price: priceNum,
         originalPrice: parseInt(itemInfo.originalPrice),
         imageUrl: itemInfo.imageUrl,
         stockStatus: itemInfo.stockStatus,
@@ -307,7 +299,6 @@ async function loginWithEverytime(page) {
     await loginBtn.waitFor({ state: 'visible', timeout: 5000 });
     await loginBtn.click();
     
-    // 에브리타임 SSO 페이지 로드 대기
     console.log("⏳ 에브리타임 인증 페이지 대기 중...");
     await page.waitForSelector('input[name="id"]', { timeout: 30000, state: 'visible' });
 
@@ -318,7 +309,6 @@ async function loginWithEverytime(page) {
     console.log("🚀 로그인 제출 중...");
     await page.click('input[type="submit"]');
     
-    // 리다이렉트 대기
     await page.waitForTimeout(5000);
     await page.waitForURL(url => url.href.includes('univstore.com'), { timeout: 60000 });
     console.log("🎉 자동 로그인 성공!");
