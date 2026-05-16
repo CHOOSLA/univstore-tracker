@@ -41,14 +41,20 @@ export default function MarketInsightView({
   totalDataPoints
 }: MarketInsightViewProps) {
   
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    console.log("🚀 MarketInsightView Mounted with:", { totalSavings, totalDataPoints });
-  }, [totalSavings, totalDataPoints]);
+    setMounted(true);
+    console.log("🚀 MarketInsightView Mounted");
+  }, []);
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Initializing Engine...</div>;
+  }
 
   const bestCategory = categoryEfficiency[0];
 
   return (
-    <div className="pb-20 bg-zinc-950">
+    <div className="pb-20 bg-zinc-950" suppressHydrationWarning>
       <main className="max-w-7xl mx-auto px-6 pt-12 space-y-10">
         
         {/* Page Header */}
@@ -75,10 +81,10 @@ export default function MarketInsightView({
                </div>
                <TrendingUp className="text-blue-500" size={32} />
              </div>
-             <div className="h-32 w-full mt-6">
+             <div className="h-[150px] w-full mt-6 relative">
                <ResponsiveContainer width="100%" height="100%">
                  <LineChart data={savingsHistory}>
-                   <Line type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={4} dot={false} />
+                   <Line type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={4} dot={false} isAnimationActive={false} />
                    <Tooltip 
                      contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                      formatter={(value: number) => [`₩${value.toLocaleString()}`, 'Savings']}
@@ -114,7 +120,7 @@ export default function MarketInsightView({
               <h3 className="text-xl font-bold text-white tracking-tight">Brand Dominance</h3>
               <Target className="text-zinc-700" />
             </div>
-            <div className="h-64 w-full">
+            <div className="h-[250px] w-full relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -123,6 +129,7 @@ export default function MarketInsightView({
                     outerRadius={100}
                     paddingAngle={8}
                     dataKey="value"
+                    isAnimationActive={false}
                   >
                     {brandDistribution.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
@@ -151,7 +158,7 @@ export default function MarketInsightView({
                 <h3 className="text-xl font-bold text-white tracking-tight">Brand Efficiency</h3>
                 <BarChart3 className="text-zinc-700" />
              </div>
-             <div className="h-[340px] w-full pt-4">
+             <div className="h-[300px] w-full pt-4 relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={categoryEfficiency}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
@@ -161,7 +168,7 @@ export default function MarketInsightView({
                       cursor={{ fill: 'rgba(255,255,255,0.02)' }}
                       contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' }}
                     />
-                    <Bar dataKey="discount" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={40} />
+                    <Bar dataKey="discount" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={40} isAnimationActive={false} />
                   </BarChart>
                 </ResponsiveContainer>
              </div>

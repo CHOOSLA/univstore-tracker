@@ -46,13 +46,20 @@ interface ProductDetailViewProps {
 }
 
 export default function ProductDetailView({ product, history }: ProductDetailViewProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Loading Product Intel...</div>;
+  }
+
   const currentPrice = history[0]?.price || 0;
   const originalPrice = product.originalPrice || currentPrice;
   const cardDiscount = product.bestBenefit?.match(/(\d+)만/)?.[1] ? parseInt(product.bestBenefit.match(/(\d+)만/)![1]) * 10000 : 0;
   const finalPrice = currentPrice - cardDiscount;
 
   // 통계 계산
-  const prices = history.map(h => h.price);
+  const prices = history.length > 0 ? history.map(h => h.price) : [0];
   const maxPrice = Math.max(...prices);
   const minPrice = Math.min(...prices);
   const avgPrice = Math.round(prices.reduce((a, b) => a + b, 0) / prices.length);
@@ -126,7 +133,7 @@ export default function ProductDetailView({ product, history }: ProductDetailVie
                       itemStyle={{ color: '#fff', fontWeight: 'bold' }}
                       formatter={(value: number) => [`₩${value.toLocaleString()}`, 'Price']}
                     />
-                    <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorPriceDetail)" animationDuration={2000} />
+                    <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorPriceDetail)" animationDuration={2000} isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -204,7 +211,7 @@ export default function ProductDetailView({ product, history }: ProductDetailVie
                 <div className="h-24 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={volatilityData}>
-                      <Bar dataKey="price" radius={[4, 4, 0, 0]}>
+                      <Bar dataKey="price" radius={[4, 4, 0, 0]} isAnimationActive={false}>
                         {volatilityData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={index === 1 ? '#ef4444' : '#27272a'} />
                         ))}
@@ -254,14 +261,6 @@ export default function ProductDetailView({ product, history }: ProductDetailVie
 }
 
 function StatItem({ label, value, color }: { label: string, value: string, color: string }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">{label}</p>
-      <p className={cn("text-lg font-black", color)}>{value}</p>
-    </div>
-  );
-}
-lor }: { label: string, value: string, color: string }) {
   return (
     <div className="space-y-1">
       <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">{label}</p>
