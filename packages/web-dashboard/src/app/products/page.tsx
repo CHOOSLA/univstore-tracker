@@ -30,27 +30,7 @@ const MOCK_PRODUCTS = Array.from({ length: 20 }).map((_, i) => ({
 
 export default function ProductsPage() {
   return (
-    <div className="min-h-screen pb-20 bg-zinc-950 text-zinc-50">
-      {/* Dynamic Nav */}
-      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">U</div>
-          <span className="text-xl font-bold tracking-tighter">UnivWatch.</span>
-        </Link>
-        <div className="hidden md:flex space-x-8 text-sm font-medium text-zinc-400">
-          <Link href="/" className="hover:text-white transition-colors">Dashboard</Link>
-          <Link href="/products" className="text-white">Products</Link>
-          <Link href="/alerts" className="hover:text-white transition-colors">Alerts</Link>
-          <Link href="/analytics" className="hover:text-white transition-colors">Analytics</Link>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-1 bg-zinc-900 rounded-lg p-1 border border-white/5">
-            <button className="p-1.5 rounded-md bg-zinc-800 text-white"><List size={14} /></button>
-            <button className="p-1.5 rounded-md text-zinc-500 hover:text-zinc-300"><LayoutGrid size={14} /></button>
-          </div>
-        </div>
-      </nav>
-
+    <div className="pb-20 bg-zinc-950 text-zinc-50">
       <main className="max-w-7xl mx-auto px-6 pt-12 space-y-8">
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-2">

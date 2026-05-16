@@ -73,25 +73,7 @@ const CATEGORY_STATS = [
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen pb-20">
-      {/* Navigation */}
-      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-8">
-        <Link href="/" className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">U</div>
-          <span className="text-xl font-bold tracking-tighter text-white">UnivWatch.</span>
-        </Link>
-        <div className="hidden md:flex space-x-8 text-sm font-medium text-zinc-400">
-          <Link href="/" className="text-white">Dashboard</Link>
-          <Link href="/products" className="hover:text-white transition-colors">Products</Link>
-          <Link href="/alerts" className="hover:text-white transition-colors">Alerts</Link>
-          <Link href="/analytics" className="hover:text-white transition-colors">Analytics</Link>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
-          <span className="text-xs font-mono text-emerald-500 uppercase tracking-widest">LIVE DATA</span>
-        </div>
-      </nav>
-
+    <div className="pb-20">
       <main className="max-w-7xl mx-auto px-6 space-y-12">
         {/* Hero Section */}
         <section className="space-y-4 text-center md:text-left">
