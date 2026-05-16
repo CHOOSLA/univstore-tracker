@@ -39,7 +39,7 @@ export default function TerminalView({ logs, queueSize, totalProducts, totalHist
   ];
 
   return (
-    <div className="pb-20 bg-zinc-950">
+    <div className="pb-20 bg-zinc-950" suppressHydrationWarning>
       <main className="max-w-7xl mx-auto px-6 pt-12 space-y-8">
         
         <section className="flex flex-col md:flex-row justify-between items-center gap-6">

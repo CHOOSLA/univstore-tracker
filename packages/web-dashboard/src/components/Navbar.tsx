@@ -18,7 +18,7 @@ export function Navbar() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-4">
+    <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-4" suppressHydrationWarning>
       <Link href="/" className="flex items-center space-x-2">
         <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-600/20">U</div>
         <span className="text-xl font-black tracking-tighter text-white">UnivWatch.</span>

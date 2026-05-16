@@ -6,9 +6,17 @@ import TerminalView from "@/components/terminal/TerminalView";
 export const dynamic = 'force-dynamic';
 
 export default async function TerminalPage() {
-  // 1. Redis 큐 사이즈 조회 (URL 객체를 사용해 url.parse 경고 방지)
+  // 1. Redis 큐 사이즈 조회 (객체 기반 연결로 url.parse 경고 원천 차단)
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-  const redis = new Redis(redisUrl);
+  const url = new URL(redisUrl);
+  
+  const redis = new Redis({
+    host: url.hostname,
+    port: parseInt(url.port),
+    password: url.password || undefined,
+    username: url.username || undefined,
+    db: parseInt(url.pathname.split('/')[1] || '0'),
+  });
   
   let queueSize = 0;
   try {
