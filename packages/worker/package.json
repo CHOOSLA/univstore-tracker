@@ -1,24 +1,15 @@
 {
-  "name": "univstore-tracker",
+  "name": "worker",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
-  "dependencies": {
-    "@prisma/client": "^5.22.0",
-    "axios": "^1.16.1",
-    "dotenv": "^17.4.2",
-    "fast-xml-parser": "^5.8.0",
-    "ioredis": "^5.10.1",
-    "playwright": "^1.60.0"
-  },
   "devDependencies": {
     "prisma": "^5.22.0"
   }

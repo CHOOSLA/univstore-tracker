@@ -6,7 +6,9 @@
   ],
   "scripts": {
     "crawler:dev": "npm run dev --workspace=packages/crawler",
+    "worker:dev": "node packages/worker/index.js",
     "db:up": "docker compose up -d",
-    "db:down": "docker compose down"
-  }
+    "db:down": "docker compose down",
+    "services:status": "docker compose ps"
+  },
 }
