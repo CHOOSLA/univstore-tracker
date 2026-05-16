@@ -11,12 +11,14 @@ import {
   Monitor, 
   Zap,
   ArrowDownRight,
-  ShieldCheck
+  ShieldCheck,
+  CreditCard,
+  Truck
 } from "lucide-react";
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
 
-// --- Mock Data (pizzint.watch 스타일의 고밀도 데이터) ---
+// --- Rich Mock Data (결제 혜택 및 재고 상태 포함) ---
 const MOCK_TOP_DROPS = [
   {
     id: "138746",
@@ -27,7 +29,10 @@ const MOCK_TOP_DROPS = [
     dropRate: 9.1,
     isATL: true,
     history: [949000, 949000, 920000, 910000, 890000, 863000],
-    category: "Tablet"
+    category: "Tablet",
+    bestBenefit: "KB Pay 6만원 할인",
+    stockStatus: "In Stock",
+    delivery: "무료 배송"
   },
   {
     id: "138929",
@@ -38,7 +43,10 @@ const MOCK_TOP_DROPS = [
     dropRate: 10.8,
     isATL: false,
     history: [1790000, 1790000, 1750000, 1700000, 1650000, 1596000],
-    category: "Laptop"
+    category: "Laptop",
+    bestBenefit: "토스페이 10만원 할인",
+    stockStatus: "Low Stock",
+    delivery: "당일 출고"
   },
   {
     id: "140221",
@@ -49,7 +57,10 @@ const MOCK_TOP_DROPS = [
     dropRate: 15.9,
     isATL: true,
     history: [1690000, 1650000, 1600000, 1550000, 1500000, 1420000],
-    category: "Smartphone"
+    category: "Smartphone",
+    bestBenefit: "카카오페이 5만원 할인",
+    stockStatus: "In Stock",
+    delivery: "무료 배송"
   }
 ];
 
@@ -83,69 +94,84 @@ export default function HomePage() {
 
       <main className="max-w-7xl mx-auto px-6 space-y-12">
         {/* Hero Section */}
-        <section className="space-y-4">
-          <h1 className="text-5xl font-black tracking-tight text-white leading-[1.1]">
-            Track the <span className="text-blue-500">Unbeatable</span> <br />
-            Student Privileges.
+        <section className="space-y-4 text-center md:text-left">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white leading-[1] md:leading-[1.1]">
+            Unbeatable <span className="text-blue-500 italic">Deals</span> <br />
+            For Students.
           </h1>
-          <p className="text-zinc-400 max-w-2xl text-lg">
-            학생복지스토어의 수천 개 품목을 실시간으로 추적합니다. <br />
-            역대 최저가(ATL)와 가격 급락 상품을 데이터로 증명합니다.
+          <p className="text-zinc-400 max-w-2xl text-lg md:text-xl">
+            단순한 가격 비교를 넘어 카드사 혜택, 재고 상태, <br className="hidden md:block" />
+            번들 할인까지 실시간으로 분석하여 최적의 구매 시점을 제안합니다.
           </p>
         </section>
 
         {/* Top Tier Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <MetricCard title="Today's Drops" value="128" sub="전일 대비 +12%" icon={TrendingDown} accent="text-red-500" />
-          <MetricCard title="ATL Hit" value="24" sub="역대 최저가 경신" icon={Award} accent="text-amber-500" />
-          <MetricCard title="Active Scrapers" value="8" sub="실시간 동작 중" icon={Zap} accent="text-blue-500" />
-          <MetricCard title="Last Pulse" value="1:42 AM" sub="동기화 완료" icon={Clock} accent="text-zinc-500" />
+          <MetricCard title="Price Drops" value="128" sub="Today's total" icon={TrendingDown} accent="text-red-500" />
+          <MetricCard title="All-Time Lows" value="24" sub="Records broken" icon={Award} accent="text-amber-500" />
+          <MetricCard title="Stock Alerts" value="15" sub="Low stock found" icon={Package} accent="text-blue-500" />
+          <MetricCard title="Next Sync" value="14:02" sub="Countdown" icon={Clock} accent="text-zinc-500" />
         </div>
 
         {/* Bento Grid: Featured Insight */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
           {/* Main List Area */}
           <div className="lg:col-span-8 space-y-6">
-            <div className="flex justify-between items-end">
+            <div className="flex justify-between items-end px-2">
               <h2 className="text-2xl font-bold text-white flex items-center">
-                <ArrowDownRight className="mr-2 text-red-500" />
-                Featured Price Drops
+                <Zap className="mr-2 text-yellow-400 fill-yellow-400" size={20} />
+                Hottest Student Discounts
               </h2>
-              <Link href="/products" className="text-sm font-medium text-zinc-500 hover:text-white flex items-center">
-                View all items <ChevronRight size={16} />
+              <Link href="/products" className="text-sm font-medium text-zinc-500 hover:text-white flex items-center transition-colors">
+                Explore all items <ChevronRight size={16} />
               </Link>
             </div>
 
-            <div className="space-y-3">
+            <div className="grid gap-3">
               {MOCK_TOP_DROPS.map((item) => (
-                <Link key={item.id} href={`/product/${item.id}`} className="glass glass-hover p-4 rounded-2xl flex items-center justify-between group cursor-pointer block">
-                  <div className="flex items-center space-x-5">
-                    <div className="relative w-16 h-16 bg-zinc-900 rounded-xl flex items-center justify-center border border-white/5 overflow-hidden">
-                      <div className="text-[10px] text-zinc-600 uppercase font-black tracking-tighter">PRODUCT</div>
+                <Link key={item.id} href={`/product/${item.id}`} className="glass glass-hover p-5 rounded-[32px] flex flex-col md:flex-row md:items-center justify-between group cursor-pointer border-white/[0.05]">
+                  <div className="flex items-center space-x-6">
+                    <div className="relative w-20 h-20 bg-zinc-900 rounded-2xl flex items-center justify-center border border-white/5 overflow-hidden group-hover:scale-105 transition-transform">
+                      <div className="text-[10px] text-zinc-700 uppercase font-black tracking-tighter">PREVIEW</div>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{item.brand}</span>
+                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
                         {item.isATL && (
-                          <span className="bg-amber-500/10 text-amber-500 text-[9px] font-black px-1.5 py-0.5 rounded border border-amber-500/20">ATL</span>
+                          <span className="bg-amber-500/10 text-amber-500 text-[9px] font-black px-2 py-0.5 rounded-full border border-amber-500/20 uppercase">All-Time Low</span>
                         )}
+                        <span className={cn(
+                          "text-[9px] font-black px-2 py-0.5 rounded-full border uppercase",
+                          item.stockStatus === "Low Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                        )}>
+                          {item.stockStatus}
+                        </span>
                       </div>
-                      <p className="text-white font-bold text-lg group-hover:text-blue-400 transition-colors">{item.name}</p>
-                      <div className="flex items-center space-x-3 mt-1">
-                        <span className="text-xs text-zinc-500 line-through">₩{item.oldPrice.toLocaleString()}</span>
-                        <span className="text-xs font-bold text-red-500">-{item.dropRate}%</span>
+                      <p className="text-white font-black text-xl group-hover:text-blue-400 transition-colors">{item.name}</p>
+                      <div className="flex items-center space-x-3 text-xs">
+                        <div className="flex items-center space-x-1 text-emerald-400 font-bold">
+                          <CreditCard size={12} />
+                          <span>{item.bestBenefit}</span>
+                        </div>
+                        <div className="flex items-center space-x-1 text-zinc-500">
+                          <Truck size={12} />
+                          <span>{item.delivery}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-8">
+                  <div className="flex items-center justify-between md:justify-end space-x-8 mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0 border-white/5">
                     <div className="hidden sm:block">
-                      <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest text-right mb-1 text-nowrap">7-Day Trend</p>
+                      <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest text-right mb-2">Trend Analysis</p>
                       <Sparkline data={item.history} color={item.dropRate > 10 ? "#ef4444" : "#3b82f6"} />
                     </div>
-                    <div className="text-right min-w-[100px]">
-                      <p className="text-xl font-black text-white">₩{item.currentPrice.toLocaleString()}</p>
-                      <p className="text-[10px] font-mono text-zinc-500 italic">ID: {item.id}</p>
+                    <div className="text-right">
+                      <div className="flex items-baseline justify-end space-x-2">
+                        <span className="text-xs text-zinc-500 line-through">₩{item.oldPrice.toLocaleString()}</span>
+                        <span className="text-red-500 font-black text-lg">-{item.dropRate}%</span>
+                      </div>
+                      <p className="text-3xl font-black text-white leading-none">₩{item.currentPrice.toLocaleString()}</p>
                     </div>
                   </div>
                 </Link>
@@ -155,38 +181,48 @@ export default function HomePage() {
 
           {/* Sidebar Insights */}
           <div className="lg:col-span-4 space-y-6 h-full">
-            <h2 className="text-2xl font-bold text-white">Brand Pulse</h2>
+            <h2 className="text-2xl font-bold text-white px-2">Market Pulse</h2>
             <div className="grid grid-cols-2 gap-4">
               {CATEGORY_STATS.map((cat, i) => (
-                <Link key={i} href={`/products?brand=${cat.label}`} className="glass glass-hover p-5 rounded-3xl flex flex-col justify-between aspect-square block">
-                  <div className={cn("p-3 w-fit rounded-2xl bg-zinc-950/50 border border-white/5", cat.color)}>
-                    <cat.icon size={20} />
+                <Link key={i} href={`/products?brand=${cat.label}`} className="glass glass-hover p-6 rounded-[32px] flex flex-col justify-between aspect-square group border-white/[0.05]">
+                  <div className={cn("p-4 w-fit rounded-2xl bg-zinc-950/50 border border-white/5 group-hover:scale-110 transition-transform", cat.color)}>
+                    <cat.icon size={24} />
                   </div>
                   <div className="mt-4">
-                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest">{cat.label}</p>
-                    <p className="text-2xl font-black text-white">{cat.count}</p>
-                    <p className="text-[10px] text-emerald-500 font-bold mt-1">Avg. {cat.avgDrop} Discount</p>
+                    <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em]">{cat.label}</p>
+                    <p className="text-3xl font-black text-white">{cat.count}</p>
+                    <p className="text-[10px] text-emerald-500 font-bold mt-1"> Avg. -{cat.avgDrop} Today</p>
                   </div>
                 </Link>
               ))}
             </div>
             
-            <div className="glass p-6 rounded-3xl space-y-4">
+            <div className="glass p-8 rounded-[40px] space-y-6 border-blue-500/20 bg-blue-500/[0.02]">
               <div className="flex items-center space-x-3">
-                <ShieldCheck className="text-blue-500" />
-                <h3 className="font-bold text-white text-lg">System Integrity</h3>
+                <ShieldCheck className="text-blue-500" size={28} />
+                <h3 className="font-black text-white text-xl tracking-tight">System Node</h3>
               </div>
-              <p className="text-xs text-zinc-500 leading-relaxed">
-                모든 가격은 학생 인증 계정을 통해 검증된 실시간 데이터입니다. 
-                중간 큐(Redis)를 거쳐 무결성이 보장됩니다.
+              <p className="text-sm text-zinc-500 leading-relaxed font-medium">
+                우분투 서버에서 24시간 동작하는 크롤러가 실시간으로 데이터를 검증하고 Redis 큐를 통해 무결성을 확보합니다.
               </p>
-              <div className="pt-2">
-                <div className="flex justify-between text-[10px] font-bold text-zinc-600 uppercase mb-2">
-                  <span>Queue Health</span>
-                  <span>Optimal</span>
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest">
+                    <span>Queue Congestion</span>
+                    <span className="text-blue-400">Optimal (12ms)</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
+                    <div className="h-full w-[15%] bg-blue-500 rounded-full" />
+                  </div>
                 </div>
-                <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
-                  <div className="h-full w-[85%] bg-blue-500 rounded-full" />
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest">
+                    <span>DB Index Health</span>
+                    <span className="text-emerald-400">98.2% Sync</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
+                    <div className="h-full w-[98%] bg-emerald-500 rounded-full" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -197,16 +233,16 @@ export default function HomePage() {
   );
 }
 
-function MetricCard({ title, value, sub, icon: Icon, accent }: { title: string, value: string, sub: string, icon: any, accent: string }) {
+function MetricCard({ title, value, sub, icon: Icon, accent }: any) {
   return (
-    <div className="glass p-6 rounded-3xl flex items-start justify-between">
+    <div className="glass p-7 rounded-[32px] flex items-start justify-between border-white/[0.03]">
       <div>
-        <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.15em] mb-3">{title}</p>
-        <p className="text-4xl font-black text-white">{value}</p>
-        <p className={cn("text-xs font-bold mt-2", accent)}>{sub}</p>
+        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em] mb-4">{title}</p>
+        <p className="text-5xl font-black text-white tabular-nums">{value}</p>
+        <p className={cn("text-xs font-bold mt-3", accent)}>{sub}</p>
       </div>
-      <div className="p-3 bg-zinc-950/50 rounded-2xl border border-white/5">
-        <Icon size={20} className={accent} />
+      <div className="p-4 bg-zinc-950/50 rounded-2xl border border-white/5">
+        <Icon size={24} className={accent} />
       </div>
     </div>
   );
