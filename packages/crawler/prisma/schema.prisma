@@ -40,6 +40,18 @@ model SystemLog {
   message   String
 }
 
+model DataIssue {
+  id        Int      @id @default(autoincrement())
+  productId String
+  type      String   // MISSING_IMAGE, MISSING_TITLE, ERROR
+  message   String
+  details   String?
+  timestamp DateTime @default(now())
+
+  @@index([productId])
+  @@index([type])
+}
+
 model Raffle {
   id        String   @id @default(uuid())
   title     String

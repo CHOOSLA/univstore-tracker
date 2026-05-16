@@ -267,17 +267,41 @@ async function run() {
         continue;
       }
 
+      // --- 데이터 품질 체크 (Data Quality Monitoring) ---
+      const issues = [];
+      if (!itemInfo.brand || itemInfo.title === '이름 없음') {
+        issues.push({ type: 'MISSING_TITLE', message: '브랜드 또는 상품명을 찾을 수 없음' });
+      }
+      if (!itemInfo.imageUrl) {
+        issues.push({ type: 'MISSING_IMAGE', message: '상품 이미지를 찾을 수 없음' });
+      }
+
+      if (issues.length > 0) {
+        console.log(`⚠️ [Data Issue] ID ${id}: ${issues.map(i => i.type).join(', ')}`);
+        for (const issue of issues) {
+          await prisma.dataIssue.create({
+            data: {
+              productId: id,
+              type: issue.type,
+              message: issue.message,
+              details: JSON.stringify(itemInfo)
+            }
+          }).catch(err => console.error("❌ DataIssue 저장 실패:", err.message));
+        }
+      }
+
       console.log(`✅ [${itemInfo.brand}] ${itemInfo.title}`);
       console.log(`🖼️ 이미지 수집 성공: ${itemInfo.imageUrl ? 'Yes' : 'No'}`);
       const priceNum = parseInt(itemInfo.price);
       
+      // 시스템 로그 기록 (안전하게)
       await prisma.systemLog.create({
         data: {
           type: 'INFO',
           service: 'Crawler',
           message: `상품 수집: [${itemInfo.brand}] ${itemInfo.title}`
         }
-      });
+      }).catch(err => console.error("❌ SystemLog 저장 실패:", err.message));
 
       const payload = {
         id,
@@ -291,8 +315,14 @@ async function run() {
         timestamp: new Date().toISOString()
       };
 
-      await redis.rpush('univstore:price_updates', JSON.stringify(payload));
-      console.log(`📦 Redis Queue에 적재 완료 (처리 대기 중)`);
+      // Redis 적재 (안전하게)
+      await redis.rpush('univstore:price_updates', JSON.stringify(payload))
+        .then(() => console.log(`📦 Redis Queue에 적재 완료 (처리 대기 중)`))
+        .catch(err => {
+          console.error("❌ Redis 적재 실패:", err.message);
+          // 실패 시 로컬 로그라도 남김
+          fs.appendFileSync('failed_payloads.log', JSON.stringify(payload) + '\n');
+        });
 
     } catch (err) {
       console.error(`❌ 상품 ${id} 수집 도중 에러 발생:`, err.message);

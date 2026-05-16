@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -37,6 +38,18 @@ model SystemLog {
   type      String
   service   String
   message   String
+}
+
+model DataIssue {
+  id        Int      @id @default(autoincrement())
+  productId String
+  type      String   // MISSING_IMAGE, MISSING_TITLE, ERROR
+  message   String
+  details   String?
+  timestamp DateTime @default(now())
+
+  @@index([productId])
+  @@index([type])
 }
 
 model Raffle {
