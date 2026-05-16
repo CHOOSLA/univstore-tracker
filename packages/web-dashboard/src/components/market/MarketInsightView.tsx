@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   BarChart, 
   Bar, 
@@ -21,7 +21,6 @@ import {
   ShieldCheck, 
   Target,
   BarChart3,
-  Flame,
   Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,6 +41,10 @@ export default function MarketInsightView({
   totalDataPoints
 }: MarketInsightViewProps) {
   
+  useEffect(() => {
+    console.log("🚀 MarketInsightView Mounted with:", { totalSavings, totalDataPoints });
+  }, [totalSavings, totalDataPoints]);
+
   const bestCategory = categoryEfficiency[0];
 
   return (
@@ -64,7 +67,7 @@ export default function MarketInsightView({
         {/* Top Indicators: Savings Index */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="col-span-1 md:col-span-2 glass p-10 rounded-[40px] border-blue-500/20 bg-blue-500/[0.02] flex flex-col justify-between min-h-[300px]">
-             <div className="flex justify-between items-start">
+             <div className="flex justify-between items-start text-nowrap">
                <div className="space-y-1">
                  <h3 className="text-xs font-black text-blue-400 uppercase tracking-widest">Savings Index</h3>
                  <p className="text-4xl font-black text-white">₩{totalSavings.toLocaleString()}+</p>
@@ -89,15 +92,15 @@ export default function MarketInsightView({
             <div className="space-y-1">
               <h3 className="text-xs font-black text-emerald-500 uppercase tracking-widest">Market Status</h3>
               <p className="text-4xl font-black text-white">{totalSavings > 0 ? "Active" : "Scanning"}</p>
-              <p className="text-sm text-zinc-500 italic mt-2">
+              <p className="text-sm text-zinc-500 italic mt-2 leading-relaxed">
                 {totalSavings > 0 
                   ? "실시간 데이터 수집을 통해 시장의 할인 기회를 포착하고 있습니다."
                   : "현재 데이터를 분석 중입니다. 잠시 후 더 정확한 지표가 제공됩니다."}
               </p>
             </div>
-            <div className="flex items-center space-x-2 text-blue-500 font-black text-sm">
+            <div className="flex items-center space-x-2 text-blue-500 font-black text-sm pt-4">
                <Info size={18} fill="currentColor" className="text-blue-500" />
-               <span>Monitoring {totalDataPoints} Data Points</span>
+               <span>{totalDataPoints} Data Points</span>
             </div>
           </div>
         </div>

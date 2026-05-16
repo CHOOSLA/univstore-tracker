@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   BarChart3, 
@@ -54,6 +54,13 @@ const BRAND_DISTRIBUTION = [
 ];
 
 export default function AnalyticsPage() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Initializing System Pulse...</div>;
+  }
+
   return (
     <div className="pb-20 bg-zinc-950 text-zinc-50">
       <main className="max-w-7xl mx-auto px-6 pt-12 space-y-10">

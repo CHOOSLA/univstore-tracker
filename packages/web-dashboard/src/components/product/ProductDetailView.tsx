@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { 
   AreaChart, 
@@ -254,6 +254,14 @@ export default function ProductDetailView({ product, history }: ProductDetailVie
 }
 
 function StatItem({ label, value, color }: { label: string, value: string, color: string }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">{label}</p>
+      <p className={cn("text-lg font-black", color)}>{value}</p>
+    </div>
+  );
+}
+lor }: { label: string, value: string, color: string }) {
   return (
     <div className="space-y-1">
       <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-tighter">{label}</p>
