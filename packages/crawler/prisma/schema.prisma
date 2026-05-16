@@ -48,6 +48,7 @@ model DataIssue {
   details   String?
   timestamp DateTime @default(now())
 
+  @@unique([productId, type])
   @@index([productId])
   @@index([type])
 }
