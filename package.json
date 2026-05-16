@@ -1,0 +1,12 @@
+{
+  "name": "univstore-tracker",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "crawler:dev": "npm run dev --workspace=packages/crawler",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down"
+  }
+}

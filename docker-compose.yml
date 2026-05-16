@@ -1,0 +1,10 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: univstore-db
+    environment:
+      POSTGRES_USER: univuser
+      POSTGRES_PASSWORD: univpassword
+      POSTGRES_DB: univstore
+    ports:
+      - "5432:5432"
