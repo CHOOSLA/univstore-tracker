@@ -12,5 +12,8 @@
   "type": "commonjs",
   "devDependencies": {
     "prisma": "^5.22.0"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.67.0"
   }
 }
