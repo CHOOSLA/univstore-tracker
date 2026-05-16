@@ -2,9 +2,21 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: univstore-db
+    restart: always
     environment:
       POSTGRES_USER: univuser
       POSTGRES_PASSWORD: univpassword
       POSTGRES_DB: univstore
     ports:
       - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: univstore-queue
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis_data:/data
