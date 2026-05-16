@@ -17,92 +17,82 @@ import {
 } from "lucide-react";
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
+import { prisma } from "@/lib/prisma";
 
-// --- Rich Mock Data (결제 혜택 및 재고 상태 포함) ---
-const MOCK_TOP_DROPS = [
-  {
-    id: "138746",
-    brand: "Apple",
-    name: "iPad Air 11 (M4 모델) Wi‑Fi 128GB",
-    currentPrice: 863000,
-    oldPrice: 949000,
-    dropRate: 9.1,
-    isATL: true,
-    history: [949000, 949000, 920000, 910000, 890000, 863000],
-    category: "Tablet",
-    bestBenefit: "KB Pay 6만원 할인",
-    stockStatus: "In Stock",
-    delivery: "무료 배송"
-  },
-  {
-    id: "138929",
-    brand: "Apple",
-    name: "MacBook Air 13 M3 16GB 512GB",
-    currentPrice: 1596000,
-    oldPrice: 1790000,
-    dropRate: 10.8,
-    isATL: false,
-    history: [1790000, 1790000, 1750000, 1700000, 1650000, 1596000],
-    category: "Laptop",
-    bestBenefit: "토스페이 10만원 할인",
-    stockStatus: "Low Stock",
-    delivery: "당일 출고"
-  },
-  {
-    id: "140221",
-    brand: "Samsung",
-    name: "Galaxy S24 Ultra 256GB Titanium Gray",
-    currentPrice: 1420000,
-    oldPrice: 1690000,
-    dropRate: 15.9,
-    isATL: true,
-    history: [1690000, 1650000, 1600000, 1550000, 1500000, 1420000],
-    category: "Smartphone",
-    bestBenefit: "카카오페이 5만원 할인",
-    stockStatus: "In Stock",
-    delivery: "무료 배송"
-  }
-];
+export const dynamic = 'force-dynamic'; // 실시간 데이터 반영을 위해 다이내믹 렌더링 강제
 
-const CATEGORY_STATS = [
-  { label: "Apple", count: 420, avgDrop: "12%", icon: Laptop, color: "text-zinc-50" },
-  { label: "Samsung", count: 310, avgDrop: "15%", icon: Smartphone, color: "text-blue-400" },
-  { label: "LG", count: 180, avgDrop: "8%", icon: Monitor, color: "text-red-500" },
-  { label: "Others", count: 330, avgDrop: "5%", icon: Package, color: "text-zinc-500" },
-];
+export default async function HomePage() {
+  // 1. 기초 지표 쿼리 (실제 데이터)
+  const totalProductsCount = await prisma.product.count();
+  
+  // 2. 오늘의 가격 하락 상품 (최근 24시간 내 기록 비교)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // 최근 업데이트된 상품 5개 가져오기 (가장 최근 이력 포함)
+  const featuredProducts = await prisma.product.findMany({
+    take: 5,
+    orderBy: { updatedAt: 'desc' },
+    include: {
+      priceHistory: {
+        orderBy: { timestamp: 'desc' },
+        take: 7
+      }
+    }
+  });
 
-export default function HomePage() {
+  // 3. 브랜드별 통계 계산
+  const brandGroups = await prisma.product.groupBy({
+    by: ['brand'],
+    _count: { id: true },
+  });
+
+  const categoryStats = brandGroups.map(group => ({
+    label: group.brand || 'Etc',
+    count: group._count.id,
+    avgDrop: " 분석 중",
+    icon: group.brand === 'Apple' ? Laptop : Smartphone,
+    color: group.brand === 'Apple' ? "text-zinc-50" : "text-blue-400"
+  })).slice(0, 4);
+
+  // 상단 매트릭 카드 데이터 매핑
+  const metrics = [
+    { title: "추적 상품", value: totalProductsCount.toLocaleString(), sub: "Total Items", icon: Package, accent: "text-blue-500" },
+    { title: "오늘의 수집", value: featuredProducts.length, sub: "Recently Updated", icon: TrendingDown, accent: "text-red-500" },
+    { title: "브랜드 수", value: brandGroups.length, sub: "Active Brands", icon: Zap, accent: "text-amber-500" },
+    { title: "서버 상태", value: "ONLINE", sub: "Sync Active", icon: Clock, accent: "text-emerald-500" },
+  ];
+
   return (
-    <div className="pb-20">
+    <div className="min-h-screen pb-20">
       <main className="max-w-7xl mx-auto px-6 space-y-12">
         {/* Hero Section */}
-        <section className="space-y-4 text-center md:text-left">
+        <section className="space-y-4 text-center md:text-left pt-8">
           <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white leading-[1] md:leading-[1.1]">
-            Unbeatable <span className="text-blue-500 italic">Deals</span> <br />
-            For Students.
+            Real-Time <span className="text-blue-500 italic">Insights</span> <br />
+            From UnivStore.
           </h1>
           <p className="text-zinc-400 max-w-2xl text-lg md:text-xl">
-            단순한 가격 비교를 넘어 카드사 혜택, 재고 상태, <br className="hidden md:block" />
-            번들 할인까지 실시간으로 분석하여 최적의 구매 시점을 제안합니다.
+            수집된 실제 데이터를 바탕으로 실시간 가격 변동을 분석합니다. <br className="hidden md:block" />
+            이제 가짜가 아닌 진짜 학생 복지 혜택을 확인하세요.
           </p>
         </section>
 
         {/* Top Tier Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <MetricCard title="Price Drops" value="128" sub="Today's total" icon={TrendingDown} accent="text-red-500" />
-          <MetricCard title="All-Time Lows" value="24" sub="Records broken" icon={Award} accent="text-amber-500" />
-          <MetricCard title="Stock Alerts" value="15" sub="Low stock found" icon={Package} accent="text-blue-500" />
-          <MetricCard title="Next Sync" value="14:02" sub="Countdown" icon={Clock} accent="text-zinc-500" />
+          {metrics.map((m, i) => (
+            <MetricCard key={i} title={m.title} value={String(m.value)} sub={m.sub} icon={m.icon} accent={m.accent} />
+          ))}
         </div>
 
-        {/* Bento Grid: Featured Insight */}
+        {/* Bento Grid: Real Data Insight */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
           {/* Main List Area */}
           <div className="lg:col-span-8 space-y-6">
             <div className="flex justify-between items-end px-2">
               <h2 className="text-2xl font-bold text-white flex items-center">
                 <Zap className="mr-2 text-yellow-400 fill-yellow-400" size={20} />
-                Hottest Student Discounts
+                Recent Market Updates
               </h2>
               <Link href="/products" className="text-sm font-medium text-zinc-500 hover:text-white flex items-center transition-colors">
                 Explore all items <ChevronRight size={16} />
@@ -110,62 +100,71 @@ export default function HomePage() {
             </div>
 
             <div className="grid gap-3">
-              {MOCK_TOP_DROPS.map((item) => (
-                <Link key={item.id} href={`/product/${item.id}`} className="glass glass-hover p-5 rounded-[32px] flex flex-col md:flex-row md:items-center justify-between group cursor-pointer border-white/[0.05]">
-                  <div className="flex items-center space-x-6">
-                    <div className="relative w-20 h-20 bg-zinc-900 rounded-2xl flex items-center justify-center border border-white/5 overflow-hidden group-hover:scale-105 transition-transform">
-                      <div className="text-[10px] text-zinc-700 uppercase font-black tracking-tighter">PREVIEW</div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
-                        {item.isATL && (
-                          <span className="bg-amber-500/10 text-amber-500 text-[9px] font-black px-2 py-0.5 rounded-full border border-amber-500/20 uppercase">All-Time Low</span>
-                        )}
-                        <span className={cn(
-                          "text-[9px] font-black px-2 py-0.5 rounded-full border uppercase",
-                          item.stockStatus === "Low Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                        )}>
-                          {item.stockStatus}
-                        </span>
-                      </div>
-                      <p className="text-white font-black text-xl group-hover:text-blue-400 transition-colors">{item.name}</p>
-                      <div className="flex items-center space-x-3 text-xs">
-                        <div className="flex items-center space-x-1 text-emerald-400 font-bold">
-                          <CreditCard size={12} />
-                          <span>{item.bestBenefit}</span>
-                        </div>
-                        <div className="flex items-center space-x-1 text-zinc-500">
-                          <Truck size={12} />
-                          <span>{item.delivery}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+              {featuredProducts.length > 0 ? featuredProducts.map((item) => {
+                const currentPrice = item.priceHistory[0]?.price || 0;
+                const oldPrice = item.originalPrice || currentPrice;
+                const dropRate = oldPrice > 0 ? (((oldPrice - currentPrice) / oldPrice) * 100).toFixed(1) : "0";
+                const historyData = item.priceHistory.map(h => h.price).reverse();
 
-                  <div className="flex items-center justify-between md:justify-end space-x-8 mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0 border-white/5">
-                    <div className="hidden sm:block">
-                      <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest text-right mb-2">Trend Analysis</p>
-                      <Sparkline data={item.history} color={item.dropRate > 10 ? "#ef4444" : "#3b82f6"} />
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-baseline justify-end space-x-2">
-                        <span className="text-xs text-zinc-500 line-through">₩{item.oldPrice.toLocaleString()}</span>
-                        <span className="text-red-500 font-black text-lg">-{item.dropRate}%</span>
+                return (
+                  <Link key={item.id} href={`/product/${item.id}`} className="glass glass-hover p-5 rounded-[32px] flex flex-col md:flex-row md:items-center justify-between group cursor-pointer border-white/[0.05]">
+                    <div className="flex items-center space-x-6">
+                      <div className="relative w-20 h-20 bg-zinc-900 rounded-2xl flex items-center justify-center border border-white/5 overflow-hidden group-hover:scale-105 transition-transform">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="text-[10px] text-zinc-700 uppercase font-black tracking-tighter text-center px-1">NO IMAGE</div>
+                        )}
                       </div>
-                      <p className="text-3xl font-black text-white leading-none">₩{item.currentPrice.toLocaleString()}</p>
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</span>
+                          <span className={cn(
+                            "text-[9px] font-black px-2 py-0.5 rounded-full border uppercase",
+                            item.stockStatus === "Low Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                          )}>
+                            {item.stockStatus || 'Checking'}
+                          </span>
+                        </div>
+                        <p className="text-white font-black text-xl group-hover:text-blue-400 transition-colors line-clamp-1">{item.title}</p>
+                        <div className="flex items-center space-x-3 text-xs">
+                          <div className="flex items-center space-x-1 text-emerald-400 font-bold">
+                            <CreditCard size={12} />
+                            <span>{item.bestBenefit || '기본 혜택 적용'}</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+
+                    <div className="flex items-center justify-between md:justify-end space-x-8 mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0 border-white/5">
+                      <div className="hidden sm:block">
+                        <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest text-right mb-2">Trend</p>
+                        <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color={parseFloat(dropRate) > 10 ? "#ef4444" : "#3b82f6"} />
+                      </div>
+                      <div className="text-right min-w-[120px]">
+                        <div className="flex items-baseline justify-end space-x-2">
+                          <span className="text-xs text-zinc-500 line-through">₩{oldPrice.toLocaleString()}</span>
+                          <span className="text-red-500 font-black text-lg">-{dropRate}%</span>
+                        </div>
+                        <p className="text-3xl font-black text-white leading-none">₩{currentPrice.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              }) : (
+                <div className="glass p-20 rounded-[40px] flex flex-col items-center justify-center space-y-4 border-dashed border-zinc-800">
+                  <Package size={48} className="text-zinc-800" />
+                  <p className="text-zinc-500 font-bold uppercase tracking-widest">수집된 데이터가 아직 없습니다. 크롤러를 실행해 주세요.</p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Sidebar Insights */}
+          {/* Sidebar Insights (Real Stats) */}
           <div className="lg:col-span-4 space-y-6 h-full">
-            <h2 className="text-2xl font-bold text-white px-2">Market Pulse</h2>
+            <h2 className="text-2xl font-bold text-white px-2">Brand Pulse</h2>
             <div className="grid grid-cols-2 gap-4">
-              {CATEGORY_STATS.map((cat, i) => (
+              {categoryStats.length > 0 ? categoryStats.map((cat, i) => (
                 <Link key={i} href={`/products?brand=${cat.label}`} className="glass glass-hover p-6 rounded-[32px] flex flex-col justify-between aspect-square group border-white/[0.05]">
                   <div className={cn("p-4 w-fit rounded-2xl bg-zinc-950/50 border border-white/5 group-hover:scale-110 transition-transform", cat.color)}>
                     <cat.icon size={24} />
@@ -173,10 +172,14 @@ export default function HomePage() {
                   <div className="mt-4">
                     <p className="text-zinc-500 text-[10px] font-black uppercase tracking-[0.2em]">{cat.label}</p>
                     <p className="text-3xl font-black text-white">{cat.count}</p>
-                    <p className="text-[10px] text-emerald-500 font-bold mt-1"> Avg. -{cat.avgDrop} Today</p>
+                    <p className="text-[10px] text-emerald-500 font-bold mt-1">Items Tracked</p>
                   </div>
                 </Link>
-              ))}
+              )) : (
+                <div className="col-span-2 glass aspect-video flex items-center justify-center text-zinc-700 font-black uppercase text-xs tracking-widest border-dashed border-zinc-800">
+                  Waiting for Data...
+                </div>
+              )}
             </div>
             
             <div className="glass p-8 rounded-[40px] space-y-6 border-blue-500/20 bg-blue-500/[0.02]">
@@ -190,20 +193,11 @@ export default function HomePage() {
               <div className="space-y-4 pt-2">
                 <div className="space-y-2">
                   <div className="flex justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest">
-                    <span>Queue Congestion</span>
-                    <span className="text-blue-400">Optimal (12ms)</span>
+                    <span>Active Storage</span>
+                    <span className="text-blue-400">PostgreSQL</span>
                   </div>
                   <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
-                    <div className="h-full w-[15%] bg-blue-500 rounded-full" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest">
-                    <span>DB Index Health</span>
-                    <span className="text-emerald-400">98.2% Sync</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
-                    <div className="h-full w-[98%] bg-emerald-500 rounded-full" />
+                    <div className="h-full w-[100%] bg-blue-500 rounded-full" />
                   </div>
                 </div>
               </div>
