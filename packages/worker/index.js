@@ -27,9 +27,9 @@ async function processQueue() {
       if (!data) continue;
 
       const payload = JSON.parse(data[1]);
-      const { id, title, price, imageUrl, timestamp } = payload;
+      const { id, brand, title, price, originalPrice, imageUrl, stockStatus, bestBenefit, timestamp } = payload;
 
-      console.log(`\n[${new Date().toLocaleTimeString()}] 📦 새 데이터 수신: [${id}] ${title}`);
+      console.log(`\n[${new Date().toLocaleTimeString()}] 📦 새 데이터 수신: [${brand || 'Brand'}] ${title}`);
 
       // 1. 이전 최신 가격 조회 (비교용)
       const lastRecord = await prisma.priceHistory.findFirst({
@@ -43,17 +43,25 @@ async function processQueue() {
         console.log(`ℹ️ 이 상품의 첫 번째 수집 기록입니다. (비교 대상 없음)`);
       }
 
-      // 2. 상품 정보 업데이트 (이미지 URL 추가)
+      // 2. 상품 정보 업데이트 (Deep Data 필드 반영)
       await prisma.product.upsert({
         where: { id: id },
         update: { 
+          brand: brand,
           title: title,
-          imageUrl: imageUrl 
+          originalPrice: originalPrice,
+          imageUrl: imageUrl,
+          stockStatus: stockStatus,
+          bestBenefit: bestBenefit
         },
         create: { 
           id: id, 
+          brand: brand,
           title: title,
-          imageUrl: imageUrl
+          originalPrice: originalPrice,
+          imageUrl: imageUrl,
+          stockStatus: stockStatus,
+          bestBenefit: bestBenefit
         }
       });
 
