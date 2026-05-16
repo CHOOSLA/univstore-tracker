@@ -1,0 +1,9 @@
+node_modules
+postgres_data
+redis_data
+user_data
+.git
+.next
+*.png
+price_history.json
+auth.json
