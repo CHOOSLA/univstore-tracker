@@ -1,73 +1,213 @@
-import { prisma } from "@/lib/prisma";
-import { TrendingDown, Award, Package, Clock } from "lucide-react";
+import React from 'react';
+import { 
+  TrendingDown, 
+  Award, 
+  Package, 
+  Clock, 
+  ChevronRight, 
+  Smartphone, 
+  Laptop, 
+  Monitor, 
+  Zap,
+  ArrowDownRight,
+  ShieldCheck
+} from "lucide-react";
+import { Sparkline } from "@/components/Sparkline";
+import { cn } from "@/lib/utils";
 
-export default async function HomePage() {
-  // 실제 데이터는 나중에 Phase 5.3에서 연결하겠습니다.
-  const stats = [
-    { title: "오늘의 급락", value: "12건", icon: TrendingDown, color: "text-red-400" },
-    { title: "역대 최저가", value: "5건", icon: Award, color: "text-amber-400" },
-    { title: "추적 상품", value: "1,240개", icon: Package, color: "text-blue-400" },
-    { title: "마지막 업데이트", value: "방금 전", icon: Clock, color: "text-emerald-400" },
-  ];
+// --- Mock Data (pizzint.watch 스타일의 고밀도 데이터) ---
+const MOCK_TOP_DROPS = [
+  {
+    id: "138746",
+    brand: "Apple",
+    name: "iPad Air 11 (M4 모델) Wi‑Fi 128GB",
+    currentPrice: 863000,
+    oldPrice: 949000,
+    dropRate: 9.1,
+    isATL: true,
+    history: [949000, 949000, 920000, 910000, 890000, 863000],
+    category: "Tablet"
+  },
+  {
+    id: "138929",
+    brand: "Apple",
+    name: "MacBook Air 13 M3 16GB 512GB",
+    currentPrice: 1596000,
+    oldPrice: 1790000,
+    dropRate: 10.8,
+    isATL: false,
+    history: [1790000, 1790000, 1750000, 1700000, 1650000, 1596000],
+    category: "Laptop"
+  },
+  {
+    id: "140221",
+    brand: "Samsung",
+    name: "Galaxy S24 Ultra 256GB Titanium Gray",
+    currentPrice: 1420000,
+    oldPrice: 1690000,
+    dropRate: 15.9,
+    isATL: true,
+    history: [1690000, 1650000, 1600000, 1550000, 1500000, 1420000],
+    category: "Smartphone"
+  }
+];
 
+const CATEGORY_STATS = [
+  { label: "Apple", count: 420, avgDrop: "12%", icon: Laptop, color: "text-zinc-50" },
+  { label: "Samsung", count: 310, avgDrop: "15%", icon: Smartphone, color: "text-blue-400" },
+  { label: "LG", count: 180, avgDrop: "8%", icon: Monitor, color: "text-red-500" },
+  { label: "Others", count: 330, avgDrop: "5%", icon: Package, color: "text-zinc-500" },
+];
+
+export default function HomePage() {
   return (
-    <main className="p-6 max-w-7xl mx-auto space-y-8">
-      {/* Header */}
-      <header className="flex flex-col space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">UnivWatch</h1>
-        <p className="text-zinc-400">학생복지스토어 실시간 가격 분석 대시보드</p>
-      </header>
+    <div className="min-h-screen pb-20">
+      {/* Navigation (Simplified) */}
+      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-8">
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">U</div>
+          <span className="text-xl font-bold tracking-tighter">UnivWatch.</span>
+        </div>
+        <div className="hidden md:flex space-x-8 text-sm font-medium text-zinc-400">
+          <a href="#" className="text-white">Dashboard</a>
+          <a href="#" className="hover:text-white transition-colors">Products</a>
+          <a href="#" className="hover:text-white transition-colors">Alerts</a>
+          <a href="#" className="hover:text-white transition-colors">Analytics</a>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse" />
+          <span className="text-xs font-mono text-emerald-500 uppercase tracking-widest">LIVE DATA</span>
+        </div>
+      </nav>
 
-      {/* Stats Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat, i) => (
-          <div key={i} className="bg-zinc-900/50 border border-zinc-800 p-6 rounded-2xl flex items-center space-x-4">
-            <div className={`p-3 rounded-xl bg-zinc-950 ${stat.color}`}>
-              <stat.icon size={24} />
-            </div>
-            <div>
-              <p className="text-sm text-zinc-500 font-medium">{stat.title}</p>
-              <p className="text-2xl font-bold">{stat.value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+      <main className="max-w-7xl mx-auto px-6 space-y-12">
+        {/* Hero Section */}
+        <section className="space-y-4">
+          <h1 className="text-5xl font-black tracking-tight text-white leading-[1.1]">
+            Track the <span className="text-blue-500">Unbeatable</span> <br />
+            Student Privileges.
+          </h1>
+          <p className="text-zinc-400 max-w-2xl text-lg">
+            학생복지스토어의 수천 개 품목을 실시간으로 추적합니다. <br />
+            역대 최저가(ATL)와 가격 급락 상품을 데이터로 증명합니다.
+          </p>
+        </section>
 
-      {/* Main Bento Grid Area */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Large Card: Today's Top Drops */}
-        <div className="md:col-span-2 bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 min-h-[400px]">
-          <h2 className="text-2xl font-bold mb-6 flex items-center">
-            🔥 실시간 가격 급락 상품
-          </h2>
-          <div className="space-y-4">
-            {/* Mock Rows */}
-            {[1, 2, 3].map((_, i) => (
-              <div key={i} className="flex items-center justify-between p-4 bg-zinc-950/50 rounded-xl border border-zinc-800/50">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-zinc-800 rounded-lg flex items-center justify-center text-xs">IMG</div>
-                  <div>
-                    <p className="font-bold">Apple iPad Air 11 (M4)</p>
-                    <p className="text-xs text-zinc-500 italic">ID: 138746</p>
+        {/* Top Tier Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <MetricCard title="Today's Drops" value="128" sub="전일 대비 +12%" icon={TrendingDown} accent="text-red-500" />
+          <MetricCard title="ATL Hit" value="24" sub="역대 최저가 경신" icon={Award} accent="text-amber-500" />
+          <MetricCard title="Active Scrapers" value="8" sub="실시간 동작 중" icon={Zap} accent="text-blue-500" />
+          <MetricCard title="Last Pulse" value="1:42 AM" sub="동기화 완료" icon={Clock} accent="text-zinc-500" />
+        </div>
+
+        {/* Bento Grid: Featured Insight */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+          {/* Main List Area */}
+          <div className="lg:col-span-8 space-y-6">
+            <div className="flex justify-between items-end">
+              <h2 className="text-2xl font-bold text-white flex items-center">
+                <ArrowDownRight className="mr-2 text-red-500" />
+                Featured Price Drops
+              </h2>
+              <button className="text-sm font-medium text-zinc-500 hover:text-white flex items-center">
+                View all items <ChevronRight size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {MOCK_TOP_DROPS.map((item) => (
+                <div key={item.id} className="glass glass-hover p-4 rounded-2xl flex items-center justify-between group cursor-pointer">
+                  <div className="flex items-center space-x-5">
+                    <div className="relative w-16 h-16 bg-zinc-900 rounded-xl flex items-center justify-center border border-white/5 overflow-hidden">
+                      <div className="text-[10px] text-zinc-600 uppercase font-black tracking-tighter">PRODUCT</div>
+                      {/* 실제 이미지는 여기에 <img> 태그로 */}
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{item.brand}</span>
+                        {item.isATL && (
+                          <span className="bg-amber-500/10 text-amber-500 text-[9px] font-black px-1.5 py-0.5 rounded border border-amber-500/20">ATL</span>
+                        )}
+                      </div>
+                      <p className="text-white font-bold text-lg group-hover:text-blue-400 transition-colors">{item.name}</p>
+                      <div className="flex items-center space-x-3 mt-1">
+                        <span className="text-xs text-zinc-500 line-through">₩{item.oldPrice.toLocaleString()}</span>
+                        <span className="text-xs font-bold text-red-500">-{item.dropRate}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-8">
+                    <div className="hidden sm:block">
+                      <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest text-right mb-1 text-nowrap">7-Day Trend</p>
+                      <Sparkline data={item.history} color={item.dropRate > 10 ? "#ef4444" : "#3b82f6"} />
+                    </div>
+                    <div className="text-right min-w-[100px]">
+                      <p className="text-xl font-black text-white">₩{item.currentPrice.toLocaleString()}</p>
+                      <p className="text-[10px] font-mono text-zinc-500 italic">ID: {item.id}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-red-400">-12%</p>
-                  <p className="text-sm font-semibold">863,000원</p>
+              ))}
+            </div>
+          </div>
+
+          {/* Sidebar Insights */}
+          <div className="lg:col-span-4 space-y-6 h-full">
+            <h2 className="text-2xl font-bold text-white">Brand Pulse</h2>
+            <div className="grid grid-cols-2 gap-4">
+              {CATEGORY_STATS.map((cat, i) => (
+                <div key={i} className="glass p-5 rounded-3xl flex flex-col justify-between aspect-square">
+                  <div className={cn("p-3 w-fit rounded-2xl bg-zinc-950/50 border border-white/5", cat.color)}>
+                    <cat.icon size={20} />
+                  </div>
+                  <div className="mt-4">
+                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest">{cat.label}</p>
+                    <p className="text-2xl font-black text-white">{cat.count}</p>
+                    <p className="text-[10px] text-emerald-500 font-bold mt-1">Avg. {cat.avgDrop} Discount</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="glass p-6 rounded-3xl space-y-4">
+              <div className="flex items-center space-x-3">
+                <ShieldCheck className="text-blue-500" />
+                <h3 className="font-bold text-white text-lg">System Integrity</h3>
+              </div>
+              <p className="text-xs text-zinc-500 leading-relaxed">
+                모든 가격은 학생 인증 계정을 통해 검증된 실시간 데이터입니다. 
+                중간 큐(Redis)를 거쳐 무결성이 보장됩니다.
+              </p>
+              <div className="pt-2">
+                <div className="flex justify-between text-[10px] font-bold text-zinc-600 uppercase mb-2">
+                  <span>Queue Health</span>
+                  <span>Optimal</span>
+                </div>
+                <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full w-[85%] bg-blue-500 rounded-full" />
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
+      </main>
+    </div>
+  );
+}
 
-        {/* Smaller Card: All Time Lows */}
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8">
-          <h2 className="text-2xl font-bold mb-6">🏆 역대 최저가</h2>
-          <div className="space-y-4 text-sm text-zinc-400">
-            데이터가 쌓이면 여기에 가장 저렴한 상품들이 표시됩니다.
-          </div>
-        </div>
+function MetricCard({ title, value, sub, icon: Icon, accent }: { title: string, value: string, sub: string, icon: any, accent: string }) {
+  return (
+    <div className="glass p-6 rounded-3xl flex items-start justify-between">
+      <div>
+        <p className="text-[11px] font-bold text-zinc-500 uppercase tracking-[0.15em] mb-3">{title}</p>
+        <p className="text-4xl font-black text-white">{value}</p>
+        <p className={cn("text-xs font-bold mt-2", accent)}>{sub}</p>
       </div>
-    </main>
+      <div className="p-3 bg-zinc-950/50 rounded-2xl border border-white/5">
+        <Icon size={20} className={accent} />
+      </div>
+    </div>
   );
 }
