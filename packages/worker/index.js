@@ -81,13 +81,46 @@ async function processQueue() {
   }
 }
 
+// 프로세스 종료 관리 변수
+let isShuttingDown = false;
+
 // 프로세스 종료 시 자원 해제
-process.on('SIGINT', async () => {
-  console.log("\n👋 Worker 종료 중...");
-  await prisma.$disconnect();
-  await redis.quit();
-  process.exit(0);
-});
+const gracefulShutdown = async (signal) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  
+  console.log(`\n👋 [${signal}] Worker 종료 중... (안전하게 연결을 닫는 중)`);
+  
+  try {
+    // 1. 강제 종료 타이머 (3초 후에도 안 꺼지면 강제 종료)
+    const forceExitTimeout = setTimeout(() => {
+      console.error("⚠️ 클린업 시간이 너무 깁니다. 강제 종료합니다.");
+      process.exit(1);
+    }, 3000);
+
+    // 2. Redis 연결 강제 차단 (blpop 대기를 끊어줍니다)
+    if (redis) {
+      await redis.disconnect();
+      console.log("🔌 Redis 연결 해제 완료");
+    }
+
+    // 3. Prisma 연결 종료
+    if (prisma) {
+      await prisma.$disconnect();
+      console.log("🗄️ DB 연결 해제 완료");
+    }
+
+    clearTimeout(forceExitTimeout);
+    console.log("✨ Worker가 성공적으로 종료되었습니다.");
+    process.exit(0);
+  } catch (err) {
+    console.error("❌ 종료 도중 에러 발생:", err);
+    process.exit(1);
+  }
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 processQueue().catch(err => {
   console.error("🔥 워커 치명적 에러:", err);
