@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { BarChart3, PieChart, Activity, Zap, Cpu, Database } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function AnalyticsPage() {
   return (
