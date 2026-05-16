@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Link from 'next/link';
 import { 
   AreaChart, 
   Area, 
@@ -10,6 +11,7 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
+import { cn } from "@/lib/utils";
 
 const MOCK_DETAIL_HISTORY = [
   { date: '2026-05-10', price: 949000 },
@@ -24,7 +26,22 @@ const MOCK_DETAIL_HISTORY = [
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
   return (
     <div className="min-h-screen pb-20">
-      <main className="max-w-7xl mx-auto px-6 pt-12 space-y-12">
+      {/* Universal Navigation */}
+      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-8">
+        <Link href="/" className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white">U</div>
+          <span className="text-xl font-bold tracking-tighter text-white">UnivWatch.</span>
+        </Link>
+        <div className="hidden md:flex space-x-8 text-sm font-medium text-zinc-400">
+          <Link href="/" className="hover:text-white transition-colors">Dashboard</Link>
+          <Link href="/products" className="hover:text-white transition-colors">Products</Link>
+          <Link href="/alerts" className="hover:text-white transition-colors">Alerts</Link>
+          <Link href="/analytics" className="hover:text-white transition-colors">Analytics</Link>
+        </div>
+        <div className="w-20" />
+      </nav>
+
+      <main className="max-w-7xl mx-auto px-6 pt-4 space-y-12">
         {/* Product Hero */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="aspect-square bg-zinc-900 rounded-[40px] border border-white/5 flex items-center justify-center text-zinc-700 font-black text-4xl">
