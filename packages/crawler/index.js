@@ -81,7 +81,7 @@ async function discoverSpecials(page) {
       });
 
       // 2. 특가(Flash Sale) 탐색 - .usShortcut 클래스 위주
-      const ignoreKeywords = ['혜택/이벤트', '로그인', '더보기', '회원가입', '장바구니', '마이페이지', '일기', '로조'];
+      const ignoreKeywords = ['혜택/이벤트', '로그인', '더보기', '회원가입', '장바구니', '마이페이지', '일기', '로조', '확인하기', '구매하기'];
       const dealLinks = Array.from(document.querySelectorAll('.usShortcut, a')).filter(a => {
         const text = a.innerText.trim();
         const isSpecial = text.includes('특가') || text.includes('SALE');
@@ -179,6 +179,9 @@ async function run() {
     try {
       await page.goto(`https://www.univstore.com/item/${id}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
       
+      // 이미지가 로드될 때까지 최대 5초 대기
+      await page.waitForSelector('.usItemAreaTop img, .usItemImageArea img', { timeout: 5000 }).catch(() => {});
+      
       const itemInfo = await page.evaluate(() => {
         const bodyText = document.body.innerText;
         if (bodyText.includes('존재하지 않는 상품') || bodyText.includes('판매가 중단')) {
@@ -191,25 +194,40 @@ async function run() {
         const studentPriceText = document.querySelector('.usItemCardInfoPrice2')?.innerText?.trim() || 
                                 document.querySelector('.usItemSumValue')?.innerText?.trim() || '0';
         
-        const selectors = [
-          '.usItemImageSwiperSlide img',
-          '.usItemImageArea img',
-          '.usItemThumbnail img',
-          '.usItemAreaTop img'
+        // 상품 이미지 URL 추출 (Contextual Extraction)
+        const productContainers = [
+          '.usItemImageArea',
+          '.usItemAreaTop',
+          '.usItemThumbnail',
+          '.usItemCardThumbnail'
         ];
         
         let imageUrl = null;
-        for (const selector of selectors) {
-          const img = document.querySelector(selector);
-          if (img && img.src && !img.src.includes('icon') && !img.src.includes('arrow') && img.src.includes('http')) {
-            imageUrl = img.src;
+        for (const container of productContainers) {
+          const imgs = Array.from(document.querySelectorAll(`${container} img`));
+          const validImg = imgs.find(img => {
+            const src = img.src.toLowerCase();
+            const isGarbage = src.includes('icon') || src.includes('logo') || src.includes('arrow') || src.includes('btn_') || src.includes('guide') || src.includes('banner');
+            return src.includes('http') && !isGarbage;
+          });
+          
+          if (validImg) {
+            imageUrl = validImg.src;
             break;
           }
         }
         
         if (!imageUrl) {
-          const goodsImg = Array.from(document.querySelectorAll('img')).find(img => img.src.includes('/goods/'));
-          imageUrl = goodsImg?.src || null;
+          const probableImg = Array.from(document.querySelectorAll('img')).find(img => {
+            const src = img.src.toLowerCase();
+            const isProductPattern = 
+              src.includes('thumbnail') || src.includes('pdp_image') || src.includes('/goods/') || 
+              src.includes('item_') || src.includes('itemgroup') || (src.includes('_mb') && !src.includes('icon'));
+            
+            const isGarbage = src.includes('icon') || src.includes('logo') || src.includes('arrow') || src.includes('btn_');
+            return isProductPattern && !isGarbage;
+          });
+          imageUrl = probableImg?.src || null;
         }
 
         let stockStatus = 'In Stock';
@@ -249,6 +267,7 @@ async function run() {
       }
 
       console.log(`✅ [${itemInfo.brand}] ${itemInfo.title}`);
+      console.log(`🖼️ 이미지 수집 성공: ${itemInfo.imageUrl ? 'Yes' : 'No'}`);
       const priceNum = parseInt(itemInfo.price);
       
       await prisma.systemLog.create({

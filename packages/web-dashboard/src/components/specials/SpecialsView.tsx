@@ -39,7 +39,7 @@ interface SpecialsViewProps {
 
 export default function SpecialsView({ raffles, flashSales }: SpecialsViewProps) {
   return (
-    <div className="pb-20 bg-zinc-950">
+    <div className="pb-20 bg-zinc-950" suppressHydrationWarning>
       <main className="max-w-7xl mx-auto px-6 pt-12 space-y-12">
         
         {/* Page Header */}
