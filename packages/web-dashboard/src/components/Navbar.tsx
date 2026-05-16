@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from "@/lib/utils";
@@ -16,6 +16,11 @@ const NAV_ITEMS = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-4" suppressHydrationWarning>
@@ -25,7 +30,7 @@ export function Navbar() {
       </Link>
       
       <div className="hidden md:flex items-center space-x-1 bg-zinc-900/50 p-1 rounded-xl border border-white/5">
-        {NAV_ITEMS.map((item) => {
+        {mounted && NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
           return (
             <Link 
@@ -45,10 +50,12 @@ export function Navbar() {
       </div>
 
       <div className="flex items-center space-x-4">
-        <div className="px-3 py-1.5 bg-zinc-950 border border-white/5 rounded-full flex items-center space-x-2">
-          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">System Online</span>
-        </div>
+        {mounted && (
+          <div className="px-3 py-1.5 bg-zinc-950 border border-white/5 rounded-full flex items-center space-x-2">
+            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">System Online</span>
+          </div>
+        )}
       </div>
     </nav>
   );
