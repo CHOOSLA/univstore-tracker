@@ -8,3 +8,4 @@ price_history.json
 postgres_data/
 dist/
 build/
+redis_data/
