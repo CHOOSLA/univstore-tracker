@@ -7,6 +7,9 @@ const path = require('path');
 const prisma = new PrismaClient();
 const USER_DATA_DIR = path.join(__dirname, 'user_data');
 
+// 랜덤 지연 함수 (Jitter) - 사이트의 자동화 감지를 피하기 위함
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 // 탐색할 카테고리 리스트 (예: Apple, 삼성전자 등)
 const CATEGORY_URLS = [
   'https://www.univstore.com/item/list?category=102000000000000000000000000000000000000', // Apple
@@ -14,7 +17,7 @@ const CATEGORY_URLS = [
 ];
 
 async function run() {
-  // 브라우저 실행
+  // 브라우저 실행 설정 (우분투 서버 환경을 위해 headless: true가 기본)
   const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -50,15 +53,25 @@ async function run() {
     
     ids.forEach(id => discoveredIds.add(id));
     console.log(`✅ 현재 페이지에서 ${ids.length}개의 상품 발견 (누적: ${discoveredIds.size}개)`);
+    
+    // 카테고리 이동 시에도 잠깐의 휴식
+    await sleep(2000);
   }
 
   const finalItemIds = Array.from(discoveredIds);
-  console.log(`\n🚀 총 ${finalItemIds.length}개의 상품에 대해 가격 수집을 시작합니다.`);
+  const totalItems = finalItemIds.length;
+  console.log(`\n🚀 총 ${totalItems}개의 상품에 대해 가격 수집을 시작합니다.`);
 
   // 3. 상품 정보 및 가격 수집
-  for (const id of finalItemIds) {
-    // ... (기존 수집 로직)
-    console.log(`\n[${new Date().toLocaleTimeString()}] 🔍 상품 ID ${id} 조회 중...`);
+  for (let i = 0; i < totalItems; i++) {
+    const id = finalItemIds[i];
+    const progress = `${i + 1}/${totalItems}`;
+    
+    // 사람처럼 보이게 하기 위한 랜덤 지연 (2~5초)
+    const jitter = Math.floor(Math.random() * 3000) + 2000;
+    console.log(`\n[${progress}] ⏳ ${jitter/1000}초 대기 후 상품 ID ${id} 조회...`);
+    await sleep(jitter);
+
     try {
       await page.goto(`https://www.univstore.com/item/${id}`, { waitUntil: 'networkidle' });
       
