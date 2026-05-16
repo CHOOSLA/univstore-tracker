@@ -83,6 +83,15 @@ async function processQueue() {
 
         console.log(`🔔 가격 하락 감지! (${lastRecord.price.toLocaleString()}원 -> ${price.toLocaleString()}원)`);
 
+        // DB 로그 기록 (가격 하락)
+        await prisma.systemLog.create({
+          data: {
+            type: 'ALERT',
+            service: 'Worker',
+            message: `가격 하락 감지: [${brand}] ${title} (-${dropPercent}%)`
+          }
+        });
+
         if (bot && chatId) {
           const message = `🚨 *가격 하락 알림!*\n\n` +
                           `📦 *상품명*: ${title}\n` +
@@ -94,7 +103,6 @@ async function processQueue() {
           console.log(`✉️ 텔레그램 알림 전송 완료`);
         }
       }
-
     } catch (err) {
       console.error("❌ Worker 처리 도중 에러 발생:", err.message);
       await new Promise(r => setTimeout(r, 2000));

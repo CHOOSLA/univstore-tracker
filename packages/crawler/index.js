@@ -26,16 +26,32 @@ async function discoverAllProductIds() {
     const parser = new XMLParser();
     const jsonObj = parser.parse(response.data);
     
-    // <loc> 태그에서 /item/{id} 형식의 URL들을 찾아 ID만 추출합니다.
     const urls = jsonObj.urlset.url.map(u => u.loc);
     const ids = urls
       .map(url => url.match(/\/item\/(\d+)/)?.[1])
       .filter(id => !!id);
       
     console.log(`✅ 총 ${ids.length}개의 상품 ID를 확보했습니다.`);
+    
+    // DB 로그 기록
+    await prisma.systemLog.create({
+      data: {
+        type: 'SUCCESS',
+        service: 'Crawler',
+        message: `사이트맵 분석 완료. 상품 ${ids.length}개 발견.`
+      }
+    });
+
     return ids;
   } catch (err) {
     console.error("❌ 사이트맵 수집 실패:", err.message);
+    await prisma.systemLog.create({
+      data: {
+        type: 'WARNING',
+        service: 'Crawler',
+        message: `사이트맵 수집 실패: ${err.message}`
+      }
+    });
     return [];
   }
 }
@@ -161,6 +177,15 @@ async function run() {
       console.log(`💰 가격: ${parseInt(itemInfo.price).toLocaleString()}원 (정가: ${parseInt(itemInfo.originalPrice).toLocaleString()}원)`);
       console.log(`🏷️ 혜택: ${itemInfo.bestBenefit || '없음'} | 📦 상태: ${itemInfo.stockStatus}`);
       
+      // DB 로그 기록
+      await prisma.systemLog.create({
+        data: {
+          type: 'INFO',
+          service: 'Crawler',
+          message: `상품 수집: [${itemInfo.brand}] ${itemInfo.title}`
+        }
+      });
+
       // 4. 메시지 큐(Redis)로 데이터 전송 (확장된 페이로드)
       const payload = {
         id,

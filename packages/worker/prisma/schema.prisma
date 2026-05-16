@@ -30,3 +30,11 @@ model PriceHistory {
 
   @@index([productId, timestamp])
 }
+
+model SystemLog {
+  id        Int      @id @default(autoincrement())
+  time      DateTime @default(now())
+  type      String   // INFO, SUCCESS, WARNING, ALERT
+  service   String   // Crawler, Worker, System
+  message   String
+}
