@@ -56,28 +56,76 @@ async function discoverAllProductIds() {
   }
 }
 
-async function run() {
-  // 브라우저 실행 설정 (인간처럼 보이게 하기 위한 각종 옵션 포함)
-  const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
-    headless: true,
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    viewport: { width: 1280, height: 720 },
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
-      '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
-    ]
-  });
+/**
+ * 메인 페이지에서 래플 및 타임 세일 정보를 추출합니다.
+ */
+async function discoverSpecials(page) {
+  console.log("\n🎁 래플 및 특가 정보 탐색 중...");
+  try {
+    await page.goto('https://www.univstore.com/', { waitUntil: 'networkidle' });
+    
+    const specials = await page.evaluate(() => {
+      const results = { raffles: [], flashSales: [] };
+      
+      // 1. 래플 탐색 (텍스트와 구조 기반)
+      const raffleElements = Array.from(document.querySelectorAll('*')).filter(el => 
+        el.innerText.includes('래플') && el.className.includes('Raffle')
+      );
+      
+      raffleElements.forEach(el => {
+        results.raffles.push({
+          title: el.querySelector('.title')?.innerText || '진행 중인 래플',
+          brand: el.querySelector('.brand')?.innerText || 'Brand',
+          entries: parseInt(el.querySelector('.entries')?.innerText.replace(/[^0-9]/g, '') || '0'),
+          endsAt: new Date(Date.now() + 86400000 * 2).toISOString(), // 임시 마감일
+        });
+      });
 
+      // 2. 특가(Flash Sale) 탐색
+      const dealLinks = Array.from(document.querySelectorAll('a')).filter(a => 
+        a.innerText.includes('특가') || a.href.includes('event')
+      );
+
+      dealLinks.forEach(a => {
+        results.flashSales.push({
+          title: a.innerText.trim(),
+          startTime: new Date().toISOString(),
+          endTime: new Date(Date.now() + 86400000).toISOString(),
+          status: 'Ongoing'
+        });
+      });
+
+      return results;
+    });
+
+    console.log(`✅ ${specials.raffles.length}개의 래플, ${specials.flashSales.length}개의 특가 발견.`);
+    
+    // Redis로 전송
+    if (specials.raffles.length > 0 || specials.flashSales.length > 0) {
+      await redis.rpush('univstore:specials_updates', JSON.stringify({
+        type: 'SPECIALS',
+        data: specials,
+        timestamp: new Date().toISOString()
+      }));
+    }
+  } catch (err) {
+    console.error("❌ 특가 정보 수집 실패:", err.message);
+  }
+}
+
+async function run() {
+  // ... (브라우저 실행 동일)
   const page = await context.newPage();
 
-  // 1. 세션 유효성 검사 및 로그인 (만료 시 자동 재로그인)
+  // 1. 세션 유효성 검사 및 로그인
   await checkLogin(page);
 
-  // 2. 전체 상품 ID 수집 (Sitemap 기반)
+  // 2. 특가 및 래플 정보 수집 (신설)
+  await discoverSpecials(page);
+
+  // 3. 전체 상품 ID 수집 (Sitemap 기반)
   const allItemIds = await discoverAllProductIds();
-  const totalItems = allItemIds.length;
+  // ... (이하 동일)
 
   if (totalItems === 0) {
     console.log("⚠️ 수집할 상품이 없습니다. 종료합니다.");

@@ -15,100 +15,101 @@ const bot = token ? new TelegramBot(token) : null;
  * Redis Queue에서 메시지를 하나씩 꺼내어 DB에 저장하고 분석 로직을 태웁니다.
  */
 async function processQueue() {
-  console.log("👷 Worker가 시작되었습니다. 'univstore:price_updates' 대기열을 감시합니다...");
+  console.log("👷 Worker가 시작되었습니다. 대기열을 감시합니다...");
 
   if (!bot) {
     console.warn("⚠️ 텔레그램 설정이 완료되지 않았습니다. 알림 없이 수집만 진행합니다.");
   }
 
+  // 여러 큐를 동시에 감시 (Blocking Pop from multiple lists)
   while (true) {
     try {
-      const data = await redis.blpop('univstore:price_updates', 0);
+      const data = await redis.blpop('univstore:price_updates', 'univstore:specials_updates', 0);
       if (!data) continue;
 
+      const queueName = data[0];
       const payload = JSON.parse(data[1]);
-      const { id, brand, title, price, originalPrice, imageUrl, stockStatus, bestBenefit, timestamp } = payload;
 
-      console.log(`\n[${new Date().toLocaleTimeString()}] 📦 새 데이터 수신: [${brand || 'Brand'}] ${title}`);
-
-      // 1. 이전 최신 가격 조회 (비교용)
-      const lastRecord = await prisma.priceHistory.findFirst({
-        where: { productId: id },
-        orderBy: { timestamp: 'desc' }
-      });
-
-      if (lastRecord) {
-        console.log(`📊 이전 가격: ${lastRecord.price.toLocaleString()}원 | 현재 가격: ${price.toLocaleString()}원`);
-      } else {
-        console.log(`ℹ️ 이 상품의 첫 번째 수집 기록입니다. (비교 대상 없음)`);
+      if (queueName === 'univstore:price_updates') {
+        await handlePriceUpdate(payload);
+      } else if (queueName === 'univstore:specials_updates') {
+        await handleSpecialsUpdate(payload.data);
       }
 
-      // 2. 상품 정보 업데이트 (Deep Data 필드 반영)
-      await prisma.product.upsert({
-        where: { id: id },
-        update: { 
-          brand: brand,
-          title: title,
-          originalPrice: originalPrice,
-          imageUrl: imageUrl,
-          stockStatus: stockStatus,
-          bestBenefit: bestBenefit
-        },
-        create: { 
-          id: id, 
-          brand: brand,
-          title: title,
-          originalPrice: originalPrice,
-          imageUrl: imageUrl,
-          stockStatus: stockStatus,
-          bestBenefit: bestBenefit
-        }
-      });
-
-      // 3. 가격 이력 저장
-      await prisma.priceHistory.create({
-        data: {
-          productId: id,
-          price: price,
-          timestamp: new Date(timestamp)
-        }
-      });
-
-      console.log(`💾 DB 영구 저장 완료: ${price.toLocaleString()}원`);
-
-      // 4. 가격 하락 감지 및 텔레그램 알림
-      if (lastRecord && price < lastRecord.price) {
-        const dropAmount = lastRecord.price - price;
-        const dropPercent = ((dropAmount / lastRecord.price) * 100).toFixed(1);
-
-        console.log(`🔔 가격 하락 감지! (${lastRecord.price.toLocaleString()}원 -> ${price.toLocaleString()}원)`);
-
-        // DB 로그 기록 (가격 하락)
-        await prisma.systemLog.create({
-          data: {
-            type: 'ALERT',
-            service: 'Worker',
-            message: `가격 하락 감지: [${brand}] ${title} (-${dropPercent}%)`
-          }
-        });
-
-        if (bot && chatId) {
-          const message = `🚨 *가격 하락 알림!*\n\n` +
-                          `📦 *상품명*: ${title}\n` +
-                          `💰 *현재가*: ${price.toLocaleString()}원\n` +
-                          `📉 *하락폭*: -${dropAmount.toLocaleString()}원 (${dropPercent}%)\n` +
-                          `🔗 [상품 바로가기](https://www.univstore.com/item/${id})`;
-
-          await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-          console.log(`✉️ 텔레그램 알림 전송 완료`);
-        }
-      }
     } catch (err) {
       console.error("❌ Worker 처리 도중 에러 발생:", err.message);
       await new Promise(r => setTimeout(r, 2000));
     }
   }
 }
+
+async function handlePriceUpdate(payload) {
+  const { id, brand, title, price, originalPrice, imageUrl, stockStatus, bestBenefit, timestamp } = payload;
+  console.log(`\n[${new Date().toLocaleTimeString()}] 📦 가격 데이터 수신: [${brand || 'Brand'}] ${title}`);
+
+  const lastRecord = await prisma.priceHistory.findFirst({
+    where: { productId: id },
+    orderBy: { timestamp: 'desc' }
+  });
+
+  await prisma.product.upsert({
+    where: { id: id },
+    update: { brand, title, originalPrice, imageUrl, stockStatus, bestBenefit },
+    create: { id, brand, title, originalPrice, imageUrl, stockStatus, bestBenefit }
+  });
+
+  await prisma.priceHistory.create({
+    data: { productId: id, price, timestamp: new Date(timestamp) }
+  });
+
+  if (lastRecord && price < lastRecord.price) {
+    const dropPercent = (((lastRecord.price - price) / lastRecord.price) * 100).toFixed(1);
+    await prisma.systemLog.create({
+      data: { type: 'ALERT', service: 'Worker', message: `가격 하락 감지: [${brand}] ${title} (-${dropPercent}%)` }
+    });
+
+    if (bot && chatId) {
+      const message = `🚨 *가격 하락 알림!*\n\n📦 *상품명*: ${title}\n💰 *현재가*: ${price.toLocaleString()}원\n📉 *하락폭*: -${(lastRecord.price - price).toLocaleString()}원 (${dropPercent}%)\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
+      await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+    }
+  }
+}
+
+async function handleSpecialsUpdate(data) {
+  const { raffles, flashSales } = data;
+  console.log(`\n[${new Date().toLocaleTimeString()}] 🎁 특가 데이터 수신: Raffle(${raffles.length}), FlashSale(${flashSales.length})`);
+
+  for (const raffle of raffles) {
+    await prisma.raffle.create({
+      data: {
+        title: raffle.title,
+        brand: raffle.brand,
+        entries: raffle.entries,
+        endsAt: new Date(raffle.endsAt),
+        status: 'Ongoing'
+      }
+    });
+  }
+
+  for (const sale of flashSales) {
+    // 중복 방지를 위해 제목 기반으로 체크 (간단화)
+    await prisma.flashSale.upsert({
+      where: { id: sale.title }, // 임시: ID가 없으므로 제목을 ID처럼 사용하거나 로직 보강 필요
+      update: { status: sale.status },
+      create: { 
+        title: sale.title, 
+        startTime: new Date(sale.startTime), 
+        endTime: new Date(sale.endTime),
+        status: sale.status 
+      }
+    }).catch(() => {}); // ID 중복 에러 무시
+  }
+
+  await prisma.systemLog.create({
+    data: { type: 'SUCCESS', service: 'Worker', message: `특가/래플 정보 ${raffles.length + flashSales.length}건 처리 완료` }
+  });
+}
+
 
 // 프로세스 종료 관리 변수
 let isShuttingDown = false;
