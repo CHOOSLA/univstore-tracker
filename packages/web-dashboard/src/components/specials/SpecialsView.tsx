@@ -95,9 +95,15 @@ export default function SpecialsView({ raffles, flashSales }: SpecialsViewProps)
                   </div>
                 </div>
               )) : (
-                <div className="col-span-2 glass p-20 rounded-[32px] flex flex-col items-center justify-center space-y-4 border-dashed border-zinc-800 opacity-50">
-                   <Star className="text-zinc-800" size={48} />
-                   <p className="text-xs font-black text-zinc-600 uppercase tracking-widest">진행 중인 래플이 없습니다.</p>
+                <div className="col-span-2 glass p-16 rounded-[40px] flex flex-col items-center justify-center space-y-6 border-dashed border-zinc-800 bg-zinc-900/20">
+                   <div className="w-20 h-20 bg-zinc-950 rounded-3xl flex items-center justify-center border border-white/5 relative">
+                      <Star className="text-zinc-800" size={40} />
+                      <div className="absolute inset-0 bg-blue-500/5 blur-2xl rounded-full" />
+                   </div>
+                   <div className="text-center space-y-2">
+                      <h3 className="text-xl font-bold text-zinc-400">No Active Raffles</h3>
+                      <p className="text-sm text-zinc-600 max-w-xs mx-auto">현재 진행 중인 래플 이벤트가 없습니다. 새로운 래플이 감지되면 시스템이 자동으로 분석을 시작합니다.</p>
+                   </div>
                 </div>
               )}
               <div className="glass p-6 rounded-[32px] border-dashed border-zinc-800 flex flex-col items-center justify-center space-y-3 opacity-50">

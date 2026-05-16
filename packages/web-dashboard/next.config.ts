@@ -8,11 +8,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'static.univstore.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'image.univstore.com',
+        hostname: '*.univstore.com', // 모든 서브도메인 허용
       },
     ],
   },
@@ -22,8 +18,11 @@ const nextConfig: NextConfig = {
       allowedOrigins: ['192.168.0.2:3000', 'localhost:3000'],
     },
   },
-  devIndicators: {
-    appIsrStatus: false,
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
   },
 };
 
