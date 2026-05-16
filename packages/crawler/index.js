@@ -15,33 +15,31 @@ const USER_DATA_DIR = path.join(__dirname, 'user_data');
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * 사이트맵을 분석하여 현재 사이트에 존재하는 모든 상품 ID를 추출합니다.
+ * 사이트맵을 분석하여 현재 사이트에 존재하는 모든 상품 ID를 추출합니다. (브라우저 기반 우회)
  */
-async function discoverAllProductIds() {
+async function discoverAllProductIds(page) {
   console.log("🔍 사이트맵(item.xml) 분석하여 전체 상품 ID 수집 중...");
   try {
     const sitemapUrl = 'https://www.univstore.com/sitemap/item.xml';
-    const response = await axios.get(sitemapUrl);
-    
-    const parser = new XMLParser();
-    const jsonObj = parser.parse(response.data);
-    
-    const urls = jsonObj.urlset.url.map(u => u.loc);
-    const ids = urls
-      .map(url => url.match(/\/item\/(\d+)/)?.[1])
-      .filter(id => !!id);
-      
-    console.log(`✅ 총 ${ids.length}개의 상품 ID를 확보했습니다.`);
-    
-    await prisma.systemLog.create({
-      data: {
-        type: 'SUCCESS',
-        service: 'Crawler',
-        message: `사이트맵 분석 완료. 상품 ${ids.length}개 발견.`
-      }
-    });
+    // 타임아웃을 넉넉하게 잡고 networkidle까지 기다림
+    await page.goto(sitemapUrl, { waitUntil: 'networkidle', timeout: 90000 });
 
-    return ids;
+    // page.content()는 브라우저가 해석한 태그(html/body 등)가 포함될 수 있음
+    // 실제 XML 원본을 가져오기 위해 정규식으로 <urlset> 구간만 추출하거나 textContent를 활용
+    const rawContent = await page.content();
+    
+    // <urlset> 태그가 포함되어 있는지 확인
+    if (!rawContent.includes('<urlset')) {
+      console.log("⚠️ raw content에 <urlset>이 없습니다. textContent 시도...");
+      const textData = await page.evaluate(() => document.documentElement.textContent);
+      return parseXmlAndExtractIds(textData);
+    }
+
+    // rawContent에서 XML 선언부부터 끝까지 추출
+    const xmlMatch = rawContent.match(/<\?xml[\s\S]*<\/urlset>/i) || rawContent.match(/<urlset[\s\S]*<\/urlset>/i);
+    const xmlData = xmlMatch ? xmlMatch[0] : rawContent;
+
+    return parseXmlAndExtractIds(xmlData);
   } catch (err) {
     console.error("❌ 사이트맵 수집 실패:", err.message);
     await prisma.systemLog.create({
@@ -50,7 +48,41 @@ async function discoverAllProductIds() {
         service: 'Crawler',
         message: `사이트맵 수집 실패: ${err.message}`
       }
+    }).catch(() => {});
+    return [];
+  }
+}
+
+function parseXmlAndExtractIds(xmlString) {
+  try {
+    const parser = new XMLParser({
+      ignoreAttributes: false,
+      alwaysCreateTextNode: false
     });
+    const jsonObj = parser.parse(xmlString);
+    
+    if (!jsonObj.urlset || !jsonObj.urlset.url) {
+      console.log("⚠️ 사이트맵 파싱 결과 URL 데이터가 없습니다. (객체 구조 확인 필요)");
+      // 디버깅을 위해 구조 일부 출력
+      console.log("Structure keys:", Object.keys(jsonObj));
+      return [];
+    }
+
+    const urlArray = Array.isArray(jsonObj.urlset.url) 
+      ? jsonObj.urlset.url 
+      : [jsonObj.urlset.url];
+
+    const ids = urlArray
+      .map(u => {
+        const loc = typeof u.loc === 'string' ? u.loc : (u.loc?.['#text'] || '');
+        return loc.match(/\/item\/(\d+)/)?.[1];
+      })
+      .filter(id => !!id);
+      
+    console.log(`✅ 총 ${ids.length}개의 상품 ID를 확보했습니다.`);
+    return ids;
+  } catch (err) {
+    console.error("❌ XML 파싱 에러:", err.message);
     return [];
   }
 }
@@ -61,12 +93,15 @@ async function discoverAllProductIds() {
 async function discoverSpecials(page) {
   console.log("\n🎁 래플 및 특가 정보 탐색 중...");
   try {
-    await page.goto('https://www.univstore.com/', { waitUntil: 'networkidle' });
+    await page.goto('https://www.univstore.com/', { waitUntil: 'networkidle', timeout: 60000 });
+    
+    // SPA 로딩을 위해 잠시 대기
+    await page.waitForTimeout(3000);
     
     const specials = await page.evaluate(() => {
       const results = { raffles: [], flashSales: [] };
       
-      // 1. 래플 탐색 (주소에 raffle이 포함된 링크 위주)
+      // 1. 래플 탐색
       const raffleLinks = Array.from(document.querySelectorAll('a')).filter(a => 
         a.href.includes('/raffle') || (a.innerText.includes('래플') && a.innerText.length < 20)
       );
@@ -80,18 +115,16 @@ async function discoverSpecials(page) {
         });
       });
 
-      // 2. 특가(Flash Sale) 탐색 - .usShortcut 클래스 또는 명확한 특가 키워드
+      // 2. 특가(Flash Sale) 탐색
       const ignoreKeywords = ['혜택/이벤트', '로그인', '더보기', '회원가입', '장바구니', '마이페이지', '일기', '로조', '확인하기', '구매하기', '공지사항', '쿠폰'];
       const dealLinks = Array.from(document.querySelectorAll('.usShortcut, .usMainBanner a, a')).filter(a => {
         const text = a.innerText.trim().replace(/\s+/g, ' ');
         const isSpecial = text.includes('특가') || text.includes('SALE') || text.includes('할인');
-        // 텍스트 길이가 2자에서 15자 사이인 것만 취합 (진짜 제목일 확률 높음)
         const isIdealLength = text.length >= 2 && text.length <= 15;
         const isMenu = ignoreKeywords.some(k => text.includes(k));
         return isSpecial && isIdealLength && !isMenu;
       });
 
-      // 중복 제거 (제목 기준)
       const uniqueDeals = new Map();
       dealLinks.forEach(a => {
         const title = a.innerText.trim();
@@ -145,12 +178,14 @@ async function run() {
   await discoverSpecials(page);
 
   // 3. 전체 상품 ID 수집 (Sitemap 기반)
-  const allItemIds = await discoverAllProductIds();
+  const allItemIds = await discoverAllProductIds(page);
   const totalItems = allItemIds.length;
 
   if (totalItems === 0) {
     console.log("⚠️ 수집할 상품이 없습니다. 종료합니다.");
     await context.close();
+    await prisma.$disconnect();
+    await redis.quit();
     return;
   }
 
@@ -279,8 +314,19 @@ async function run() {
       if (issues.length > 0) {
         console.log(`⚠️ [Data Issue] ID ${id}: ${issues.map(i => i.type).join(', ')}`);
         for (const issue of issues) {
-          await prisma.dataIssue.create({
-            data: {
+          await prisma.dataIssue.upsert({
+            where: {
+              productId_type: {
+                productId: id,
+                type: issue.type
+              }
+            },
+            update: {
+              message: issue.message,
+              details: JSON.stringify(itemInfo),
+              timestamp: new Date()
+            },
+            create: {
               productId: id,
               type: issue.type,
               message: issue.message,
@@ -320,7 +366,6 @@ async function run() {
         .then(() => console.log(`📦 Redis Queue에 적재 완료 (처리 대기 중)`))
         .catch(err => {
           console.error("❌ Redis 적재 실패:", err.message);
-          // 실패 시 로컬 로그라도 남김
           fs.appendFileSync('failed_payloads.log', JSON.stringify(payload) + '\n');
         });
 
@@ -331,6 +376,28 @@ async function run() {
   }
 
   console.log(`\n✨ 모든 상품에 대한 수집 및 큐 전송이 완료되었습니다.`);
+  
+  // --- 데이터 정리 작업 (Auto Cleanup) ---
+  console.log("🧹 오래된 데이터 이슈 정리 중...");
+  try {
+    const issueCount = await prisma.dataIssue.count();
+    if (issueCount > 1000) {
+      const oldestToKeep = await prisma.dataIssue.findMany({
+        orderBy: { timestamp: 'desc' },
+        skip: 1000,
+        take: 1,
+      });
+      if (oldestToKeep.length > 0) {
+        await prisma.dataIssue.deleteMany({
+          where: { timestamp: { lte: oldestToKeep[0].timestamp } }
+        });
+        console.log(`✅ 1,000건 이상의 오래된 이슈를 정리했습니다.`);
+      }
+    }
+  } catch (err) {
+    console.error("❌ 데이터 정리 실패:", err.message);
+  }
+
   await context.close();
   await prisma.$disconnect();
   await redis.quit();
