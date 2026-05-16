@@ -110,11 +110,17 @@ async function run() {
         const price = document.querySelector('.usItemCardInfoPrice2')?.innerText?.trim() || 
                       document.querySelector('.usItemSumValue')?.innerText?.trim() || '0';
         
+        // 상품 이미지 URL 추출 (.usItemImageArea 내의 img 태그 탐색)
+        const imageElement = document.querySelector('.usItemImageArea img') || 
+                             document.querySelector('.usItemAreaTop img');
+        const imageUrl = imageElement?.src || null;
+        
         const isLoggedIn = !bodyText.includes('학생인증 후 가격 확인');
 
         return {
           title: brand ? `[${brand}] ${name}` : name,
           price: price.replace(/[^0-9]/g, ''),
+          imageUrl,
           isLoggedIn
         };
       });
@@ -132,14 +138,15 @@ async function run() {
       }
 
       console.log(`✅ 상품명: ${itemInfo.title}`);
+      console.log(`🖼️ 이미지: ${itemInfo.imageUrl ? '수집 성공' : '없음'}`);
       const priceNum = parseInt(itemInfo.price);
       
-      // 4. 메시지 큐(Redis)로 데이터 전송 (직접 DB 저장 대신)
-      // 이제 수집만 하고 처리는 워커에게 맡깁니다.
+      // 4. 메시지 큐(Redis)로 데이터 전송
       const payload = {
         id,
         title: itemInfo.title,
         price: priceNum,
+        imageUrl: itemInfo.imageUrl,
         timestamp: new Date().toISOString()
       };
 

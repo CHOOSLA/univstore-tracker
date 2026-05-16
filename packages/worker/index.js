@@ -27,7 +27,7 @@ async function processQueue() {
       if (!data) continue;
 
       const payload = JSON.parse(data[1]);
-      const { id, title, price, timestamp } = payload;
+      const { id, title, price, imageUrl, timestamp } = payload;
 
       console.log(`\n[${new Date().toLocaleTimeString()}] 📦 새 데이터 수신: [${id}] ${title}`);
 
@@ -43,11 +43,18 @@ async function processQueue() {
         console.log(`ℹ️ 이 상품의 첫 번째 수집 기록입니다. (비교 대상 없음)`);
       }
 
-      // 2. 상품 정보 업데이트 (Upsert)
+      // 2. 상품 정보 업데이트 (이미지 URL 추가)
       await prisma.product.upsert({
         where: { id: id },
-        update: { title: title },
-        create: { id: id, title: title }
+        update: { 
+          title: title,
+          imageUrl: imageUrl 
+        },
+        create: { 
+          id: id, 
+          title: title,
+          imageUrl: imageUrl
+        }
       });
 
       // 3. 가격 이력 저장
