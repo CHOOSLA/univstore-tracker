@@ -44,7 +44,7 @@ async function processQueue() {
 }
 
 async function handlePriceUpdate(payload) {
-  const { id, brand, title, price, originalPrice, imageUrl, stockStatus, bestBenefit, timestamp } = payload;
+  const { id, brand, title, price, originalPrice, imageUrl, stockStatus, bestBenefit, category, subCategory, timestamp } = payload;
   
   // 가격 유효성 검사 (0원 또는 NaN 방어)
   if (!price || isNaN(price) || price <= 0) {
@@ -64,8 +64,8 @@ async function handlePriceUpdate(payload) {
     await prisma.$transaction([
       prisma.product.upsert({
         where: { id: id },
-        update: { brand, title, originalPrice, imageUrl, stockStatus, bestBenefit },
-        create: { id, brand, title, originalPrice, imageUrl, stockStatus, bestBenefit }
+        update: { brand, title, originalPrice, imageUrl, stockStatus, bestBenefit, category, subCategory },
+        create: { id, brand, title, originalPrice, imageUrl, stockStatus, bestBenefit, category, subCategory }
       }),
       prisma.priceHistory.create({
         data: { productId: id, price, timestamp: new Date(timestamp) }
