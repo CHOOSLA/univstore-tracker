@@ -44,17 +44,27 @@ export default async function MarketPage() {
   // 여기서는 브랜드별 평균 할인율로 대체 (현재 카테고리 수집이 미비함)
   const brandDiscounts = brandGroups.map(group => {
     const brandProducts = productsWithPrices.filter(p => p.brand === group.brand);
-    const avgDiscount = brandProducts.reduce((acc, p) => {
-      const current = p.priceHistory[0]?.price || 0;
-      const rate = p.originalPrice ? ((p.originalPrice - current) / p.originalPrice) * 100 : 0;
-      return acc + rate;
-    }, 0) / (brandProducts.length || 1);
+    
+    // 유효한 할인 데이터만 필터링 (할인가가 정가보다 낮은 정상적인 케이스만)
+    const validDiscounts = brandProducts
+      .map(p => {
+        const current = p.priceHistory[0]?.price || 0;
+        if (!p.originalPrice || p.originalPrice <= 0 || current <= 0 || current >= p.originalPrice) {
+          return 0;
+        }
+        return ((p.originalPrice - current) / p.originalPrice) * 100;
+      })
+      .filter(rate => rate > 0);
+
+    const avgDiscount = validDiscounts.length > 0 
+      ? validDiscounts.reduce((acc, rate) => acc + rate, 0) / validDiscounts.length
+      : 0;
 
     return {
       category: group.brand || 'Etc',
       discount: Math.round(avgDiscount)
     };
-  }).sort((a, b) => b.discount - a.discount);
+  }).filter(b => b.discount > 0).sort((a, b) => b.discount - a.discount);
 
   // 4. 주차별 절약 추이 (Savings History - Mock for now as we just reset)
   const savingsHistory = [
