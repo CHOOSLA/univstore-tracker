@@ -8,6 +8,25 @@ const fs = require('fs');
 const path = require('path');
 
 const prisma = new PrismaClient();
+
+// --- [DB 재연결 헬퍼 함수] ---
+async function withPrismaRetry(fn, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const isConnectionError = err.message.includes('closed') || err.message.includes('connection');
+      if (isConnectionError && i < retries - 1) {
+        console.log(`⚠️ DB 연결 유실 감지 (시도 ${i + 1}/${retries}). 5초 후 재시도...`);
+        await prisma.$disconnect().catch(() => {});
+        await sleep(5000);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 const USER_DATA_DIR = path.join(__dirname, 'user_data');
 
@@ -21,13 +40,24 @@ async function discoverAllProductIds(page) {
   console.log("🔍 사이트맵(item.xml) 분석하여 전체 상품 ID 수집 중...");
   try {
     const sitemapUrl = 'https://www.univstore.com/sitemap/item.xml';
-    await page.goto(sitemapUrl, { waitUntil: 'networkidle', timeout: 90000 });
+    
+    // 1. 사이트맵 로딩 대기 강화
+    await page.goto(sitemapUrl, { waitUntil: 'networkidle', timeout: 120000 });
+    
+    // XML 태그가 실제로 나타날 때까지 기다림
+    await page.waitForFunction(() => {
+      const content = document.body.innerText || document.documentElement.textContent;
+      return content.includes('<urlset') && content.includes('</urlset>');
+    }, { timeout: 30000 }).catch(err => {
+      console.log("⚠️ 사이트맵 특정 태그 대기 타임아웃, 현재 상태로 진행합니다.");
+    });
 
     const rawContent = await page.content();
     
     if (!rawContent.includes('<urlset')) {
       console.log("⚠️ raw content에 <urlset>이 없습니다. textContent 시도...");
       const textData = await page.evaluate(() => document.documentElement.textContent);
+      if (!textData.includes('<urlset')) throw new Error("사이트맵 데이터를 찾을 수 없습니다.");
       return parseXmlAndExtractIds(textData);
     }
 
@@ -175,9 +205,9 @@ async function run() {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        const existingHistory = await prisma.priceHistory.findFirst({
+        const existingHistory = await withPrismaRetry(() => prisma.priceHistory.findFirst({
           where: { productId: id, timestamp: { gte: today } }
-        });
+        }));
 
         if (existingHistory) return;
 
@@ -260,11 +290,11 @@ async function run() {
 
         if (issues.length > 0) {
           for (const issue of issues) {
-            await prisma.dataIssue.upsert({
+            await withPrismaRetry(() => prisma.dataIssue.upsert({
               where: { productId_type: { productId: id, type: issue.type } },
               update: { message: issue.message, details: JSON.stringify(itemInfo), timestamp: new Date() },
               create: { productId: id, type: issue.type, message: issue.message, details: JSON.stringify(itemInfo) }
-            }).catch(() => {});
+            })).catch(() => {});
           }
           if (issues.some(i => i.type === 'INVALID_PRICE')) return;
         }
@@ -282,7 +312,7 @@ async function run() {
       } catch (err) {
         console.error(`❌ 상품 ${id} 에러:`, err.message);
       } finally {
-        await batchPage.close();
+        await batchPage.close().catch(() => {});
       }
     }));
   }
