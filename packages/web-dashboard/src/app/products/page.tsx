@@ -14,19 +14,32 @@ import {
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
+import SearchBar from "@/components/products/SearchBar";
+import { Suspense } from 'react';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ brand?: string }>;
+  searchParams: Promise<{ brand?: string; q?: string }>;
 }) {
-  const { brand: brandFilter } = await searchParams;
+  const { brand: brandFilter, q: searchQuery } = await searchParams;
 
   // 1. 실제 데이터베이스 쿼리
   const products = await prisma.product.findMany({
-    where: brandFilter ? { brand: brandFilter } : {},
+    where: {
+      AND: [
+        brandFilter ? { brand: brandFilter } : {},
+        searchQuery ? {
+          OR: [
+            { title: { contains: searchQuery, mode: 'insensitive' } },
+            { brand: { contains: searchQuery, mode: 'insensitive' } },
+            { id: { contains: searchQuery } },
+          ]
+        } : {}
+      ]
+    },
     include: {
       priceHistory: {
         orderBy: { timestamp: 'desc' },
@@ -44,36 +57,31 @@ export default async function ProductsPage({
           <div className="space-y-2">
             <h1 className="text-5xl font-black tracking-tighter">Explorer</h1>
             <p className="text-zinc-500 text-lg">
-              {brandFilter ? `${brandFilter} 제품 분석 결과` : "실시간 학생 할인가 및 카드사 혜택 데이터 센터"}
+              {searchQuery ? `"${searchQuery}" 검색 결과` : (brandFilter ? `${brandFilter} 제품 분석 결과` : "실시간 학생 할인가 및 카드사 혜택 데이터 센터")}
             </p>
           </div>
           <div className="flex items-center space-x-3">
              <div className="bg-emerald-500/10 text-emerald-500 text-[10px] font-black px-3 py-1.5 rounded-full border border-emerald-500/20 uppercase tracking-widest">
-               {products.length} Items Listed
+               {products.length} Items Found
              </div>
           </div>
         </header>
 
         {/* Toolbar */}
         <div className="flex flex-col md:flex-row gap-3 bg-zinc-900/30 p-2 rounded-[28px] border border-white/5 backdrop-blur-md">
-          <div className="relative flex-1">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search by brand, name, or product ID..." 
-              className="w-full bg-transparent border-none rounded-2xl py-4 pl-14 pr-4 text-sm focus:outline-none placeholder:text-zinc-600 font-medium"
-            />
-          </div>
+          <Suspense fallback={<div className="flex-1 h-12 bg-zinc-900/50 animate-pulse rounded-2xl" />}>
+            <SearchBar />
+          </Suspense>
           <div className="flex items-center space-x-2">
             <Link href="/products" className={cn(
               "px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border border-white/10",
               !brandFilter ? "bg-white text-black" : "bg-zinc-900/80 text-zinc-500 hover:bg-zinc-800"
             )}>All</Link>
-            <Link href="/products?brand=Apple" className={cn(
+            <Link href={searchQuery ? `/products?brand=Apple&q=${searchQuery}` : "/products?brand=Apple"} className={cn(
               "px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border border-white/10",
               brandFilter === 'Apple' ? "bg-white text-black" : "bg-zinc-900/80 text-zinc-500 hover:bg-zinc-800"
             )}>Apple</Link>
-            <Link href="/products?brand=Samsung" className={cn(
+            <Link href={searchQuery ? `/products?brand=Samsung&q=${searchQuery}` : "/products?brand=Samsung"} className={cn(
               "px-6 py-4 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border border-white/10",
               brandFilter === 'Samsung' ? "bg-white text-black" : "bg-zinc-900/80 text-zinc-500 hover:bg-zinc-800"
             )}>Samsung</Link>
