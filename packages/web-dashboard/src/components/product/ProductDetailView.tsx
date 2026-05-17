@@ -55,7 +55,12 @@ interface ProductDetailViewProps {
 
 export default function ProductDetailView({ product, history, benefitRules }: ProductDetailViewProps) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  
+  useEffect(() => {
+    setMounted(true);
+    // 페이지 진입 시 스크롤을 최상단으로 강제 이동
+    window.scrollTo(0, 0);
+  }, []);
 
   if (!mounted) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Loading Product Intel...</div>;
@@ -102,18 +107,13 @@ export default function ProductDetailView({ product, history, benefitRules }: Pr
 
   return (
     <div className="min-h-screen pb-20 bg-zinc-950">
-      <nav className="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4 flex justify-between items-center mb-8">
-        <Link href="/products" className="flex items-center space-x-2 text-zinc-400 hover:text-white transition-colors group">
-          <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="text-sm font-bold">Back to Explorer</span>
-        </Link>
-        <div className="flex items-center space-x-4">
-          <div className="h-2 w-2 bg-blue-500 rounded-full animate-pulse" />
-          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest leading-none mt-0.5">TRACKING ACTIVE</span>
+      <main className="max-w-7xl mx-auto px-6 pt-4 space-y-8">
+        <div className="mb-4">
+          <Link href="/products" className="flex items-center space-x-3 text-zinc-400 hover:text-white transition-all group w-fit bg-zinc-900/50 px-5 py-3 rounded-2xl border border-white/5 hover:border-white/10 hover:bg-zinc-900">
+            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+            <span className="text-sm font-black uppercase tracking-widest">Back to Explorer</span>
+          </Link>
         </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-6 space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Left: Product Visuals & Main Info */}

@@ -9,3 +9,4 @@ postgres_data/
 dist/
 build/
 redis_data/
+*.traineddata
