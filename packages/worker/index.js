@@ -45,33 +45,46 @@ async function processQueue() {
 
 async function handlePriceUpdate(payload) {
   const { id, brand, title, price, originalPrice, imageUrl, stockStatus, bestBenefit, timestamp } = payload;
+  
+  // 가격 유효성 검사 (0원 또는 NaN 방어)
+  if (!price || isNaN(price) || price <= 0) {
+    console.log(`\n[${new Date().toLocaleTimeString()}] ⚠️ 유효하지 않은 가격 데이터 무시: [ID ${id}] ${title} (Price: ${price})`);
+    return;
+  }
+
   console.log(`\n[${new Date().toLocaleTimeString()}] 📦 가격 데이터 수신: [${brand || 'Brand'}] ${title}`);
 
-  const lastRecord = await prisma.priceHistory.findFirst({
-    where: { productId: id },
-    orderBy: { timestamp: 'desc' }
-  });
-
-  await prisma.product.upsert({
-    where: { id: id },
-    update: { brand, title, originalPrice, imageUrl, stockStatus, bestBenefit },
-    create: { id, brand, title, originalPrice, imageUrl, stockStatus, bestBenefit }
-  });
-
-  await prisma.priceHistory.create({
-    data: { productId: id, price, timestamp: new Date(timestamp) }
-  });
-
-  if (lastRecord && price < lastRecord.price) {
-    const dropPercent = (((lastRecord.price - price) / lastRecord.price) * 100).toFixed(1);
-    await prisma.systemLog.create({
-      data: { type: 'ALERT', service: 'Worker', message: `가격 하락 감지: [${brand}] ${title} (-${dropPercent}%)` }
+  try {
+    const lastRecord = await prisma.priceHistory.findFirst({
+      where: { productId: id },
+      orderBy: { timestamp: 'desc' }
     });
 
-    if (bot && chatId) {
-      const message = `🚨 *가격 하락 알림!*\n\n📦 *상품명*: ${title}\n💰 *현재가*: ${price.toLocaleString()}원\n📉 *하락폭*: -${(lastRecord.price - price).toLocaleString()}원 (${dropPercent}%)\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
-      await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+    // 트랜잭션으로 상품 정보와 히스토리를 묶어서 처리
+    await prisma.$transaction([
+      prisma.product.upsert({
+        where: { id: id },
+        update: { brand, title, originalPrice, imageUrl, stockStatus, bestBenefit },
+        create: { id, brand, title, originalPrice, imageUrl, stockStatus, bestBenefit }
+      }),
+      prisma.priceHistory.create({
+        data: { productId: id, price, timestamp: new Date(timestamp) }
+      })
+    ]);
+
+    if (lastRecord && price < lastRecord.price) {
+      const dropPercent = (((lastRecord.price - price) / lastRecord.price) * 100).toFixed(1);
+      await prisma.systemLog.create({
+        data: { type: 'ALERT', service: 'Worker', message: `가격 하락 감지: [${brand}] ${title} (-${dropPercent}%)` }
+      });
+
+      if (bot && chatId) {
+        const message = `🚨 *가격 하락 알림!*\n\n📦 *상품명*: ${title}\n💰 *현재가*: ${price.toLocaleString()}원\n📉 *하락폭*: -${(lastRecord.price - price).toLocaleString()}원 (${dropPercent}%)\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
+        await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+      }
     }
+  } catch (err) {
+    console.error(`❌ 상품 ${id} 처리 실패:`, err.message);
   }
 }
 
