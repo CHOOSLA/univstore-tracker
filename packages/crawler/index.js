@@ -213,10 +213,11 @@ async function run() {
     await sleep(jitter);
 
     try {
-      await page.goto(`https://www.univstore.com/item/${id}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.goto(`https://www.univstore.com/item/${id}`, { waitUntil: 'networkidle', timeout: 30000 });
       
-      // 이미지가 로드될 때까지 최대 5초 대기
-      await page.waitForSelector('.usItemAreaTop img, .usItemImageArea img', { timeout: 5000 }).catch(() => {});
+      // 상품명 엘리먼트가 나타날 때까지 최대 5초 대기
+      const titleSelector = '.usItemCardInfoName';
+      await page.waitForSelector(titleSelector, { timeout: 5000 }).catch(() => {});
       
       const itemInfo = await page.evaluate(() => {
         const bodyText = document.body.innerText;
@@ -226,57 +227,66 @@ async function run() {
 
         const brand = document.querySelector('.usItemCardInfoBrandName')?.innerText?.trim() || '';
         const name = document.querySelector('.usItemCardInfoName')?.innerText?.trim() || '이름 없음';
+        
+        // 로그인 체크 강화
+        const isLoggedIn = !document.body.innerHTML.includes('학생인증 후 가격 확인') && !document.body.innerHTML.includes('로그인이 필요합니다');
+
         const originalPriceText = document.querySelector('.usItemCardInfoPrice1')?.innerText?.trim() || '0';
         const studentPriceText = document.querySelector('.usItemCardInfoPrice2')?.innerText?.trim() || 
                                 document.querySelector('.usItemSumValue')?.innerText?.trim() || '0';
         
-        // 상품 이미지 URL 추출 (Contextual Extraction)
-        const productContainers = [
-          '.usItemImageArea',
-          '.usItemAreaTop',
-          '.usItemThumbnail',
-          '.usItemCardThumbnail'
-        ];
-        
+        // --- [이미지 추출 로직 고도화] ---
         let imageUrl = null;
-        for (const container of productContainers) {
-          const imgs = Array.from(document.querySelectorAll(`${container} img`));
-          const validImg = imgs.find(img => {
-            const src = img.src.toLowerCase();
-            const isGarbage = src.includes('icon') || src.includes('logo') || src.includes('arrow') || src.includes('btn_') || src.includes('guide') || src.includes('banner');
-            return src.includes('http') && !isGarbage;
-          });
-          
-          if (validImg) {
-            imageUrl = validImg.src;
-            break;
+        const allImages = Array.from(document.querySelectorAll('img'));
+        
+        // 1순위: 특정 상품 컨테이너 내의 이미지
+        const productContainers = ['.usItemImageArea', '.usItemAreaTop', '.usItemThumbnail'];
+        for (const sel of productContainers) {
+          const container = document.querySelector(sel);
+          if (container) {
+            const img = container.querySelector('img');
+            if (img && img.src.includes('http')) {
+              imageUrl = img.src;
+              break;
+            }
           }
         }
         
+        // 2순위: 1순위 실패 시, 페이지 내 가장 큰 정방향 이미지(상품 이미지일 확률 높음) 찾기
         if (!imageUrl) {
-          const probableImg = Array.from(document.querySelectorAll('img')).find(img => {
+          const candidate = allImages
+            .filter(img => {
+              const src = img.src.toLowerCase();
+              const isIcon = src.includes('icon') || src.includes('logo') || src.includes('arrow') || src.includes('btn_') || src.includes('banner');
+              return src.includes('http') && !isIcon;
+            })
+            .sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight))[0];
+          
+          if (candidate && candidate.naturalWidth > 200) {
+            imageUrl = candidate.src;
+          }
+        }
+        
+        // 3순위: 파일명 패턴 매칭
+        if (!imageUrl) {
+          const patternImg = allImages.find(img => {
             const src = img.src.toLowerCase();
-            const isProductPattern = 
-              src.includes('thumbnail') || src.includes('pdp_image') || src.includes('/goods/') || 
-              src.includes('item_') || src.includes('itemgroup') || (src.includes('_mb') && !src.includes('icon'));
-            
-            const isGarbage = src.includes('icon') || src.includes('logo') || src.includes('arrow') || src.includes('btn_');
-            return isProductPattern && !isGarbage;
+            return (src.includes('thumbnail') || src.includes('goods') || src.includes('item')) && !src.includes('icon');
           });
-          imageUrl = probableImg?.src || null;
+          imageUrl = patternImg?.src || null;
         }
 
+        // 재고 상태 추출
         let stockStatus = 'In Stock';
-        if (bodyText.includes('품절') || bodyText.includes('재고 없음')) {
+        const statusArea = document.querySelector('.usItemAreaTop')?.innerText || '';
+        const buyArea = document.querySelector('.usItemSumArea')?.innerText || '';
+        const combinedStatus = (statusArea + ' ' + buyArea).replace(/\s+/g, ' ');
+
+        if (combinedStatus.includes('품절') || combinedStatus.includes('재고 없음') || combinedStatus.includes('판매중지')) {
           stockStatus = 'Out of Stock';
-        } else if (bodyText.includes('남은 수량') || bodyText.includes('품절 임박')) {
+        } else if (combinedStatus.includes('남은 수량') || combinedStatus.includes('품절 임박')) {
           stockStatus = 'Low Stock';
         }
-
-        const benefitElement = document.querySelector('.usPaymentDiscountSchemeInfo');
-        const bestBenefit = benefitElement?.innerText?.trim() || null;
-        
-        const isLoggedIn = !bodyText.includes('학생인증 후 가격 확인');
 
         return {
           brand,
@@ -285,7 +295,6 @@ async function run() {
           price: studentPriceText.replace(/[^0-9]/g, ''),
           imageUrl,
           stockStatus,
-          bestBenefit,
           isLoggedIn
         };
       });
