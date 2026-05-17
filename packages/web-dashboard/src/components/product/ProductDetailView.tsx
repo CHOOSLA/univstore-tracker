@@ -32,6 +32,13 @@ interface PriceHistoryEntry {
   price: number;
 }
 
+interface BenefitRuleProp {
+  pattern: string;
+  rate: number;
+  maxLimit: number;
+  label: string;
+}
+
 interface ProductDetailViewProps {
   product: {
     id: string;
@@ -43,9 +50,10 @@ interface ProductDetailViewProps {
     bestBenefit: string | null;
   };
   history: PriceHistoryEntry[];
+  benefitRules: BenefitRuleProp[];
 }
 
-export default function ProductDetailView({ product, history }: ProductDetailViewProps) {
+export default function ProductDetailView({ product, history, benefitRules }: ProductDetailViewProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -55,8 +63,30 @@ export default function ProductDetailView({ product, history }: ProductDetailVie
 
   const currentPrice = history[0]?.price || 0;
   const originalPrice = product.originalPrice || currentPrice;
-  const cardDiscount = product.bestBenefit?.match(/(\d+)만/)?.[1] ? parseInt(product.bestBenefit.match(/(\d+)만/)![1]) * 10000 : 0;
+  
+  // --- [전문 혜택 엔진 (Benefit Engine) - DB 연동형] ---
+  const calculateDynamicDiscount = (price: number, benefit: string | null) => {
+    if (!benefit || !benefitRules) return 0;
+    
+    // 1. 해당되는 정책 찾기 (DB에서 가져온 패턴 적용)
+    const policy = benefitRules.find(p => new RegExp(p.pattern).test(benefit));
+    if (!policy) return 0;
+
+    // 2. 최대 한도 추출 (정책에 명시되지 않은 경우(0) 문구에서 직접 추출)
+    let maxLimit = policy.maxLimit;
+    if (maxLimit === 0) {
+      const match = benefit.match(/(\d+)만/);
+      maxLimit = match ? parseInt(match[1]) * 10000 : 0;
+    }
+
+    // 3. 계산
+    const calculated = Math.floor(price * policy.rate);
+    return Math.min(calculated, maxLimit);
+  };
+
+  const cardDiscount = calculateDynamicDiscount(currentPrice, product.bestBenefit);
   const finalPrice = currentPrice - cardDiscount;
+  const activePolicy = product.bestBenefit ? benefitRules.find(p => new RegExp(p.pattern).test(product.bestBenefit!)) : null;
 
   // 통계 계산
   const prices = history.length > 0 ? history.map(h => h.price) : [0];

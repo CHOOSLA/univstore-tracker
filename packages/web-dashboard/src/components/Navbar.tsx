@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { name: 'Specials', href: '/specials' },
   { name: 'Terminal', href: '/terminal' },
   { name: 'Alerts', href: '/alerts' },
+  { name: 'Settings', href: '/settings/benefits' },
 ];
 
 export function Navbar() {
