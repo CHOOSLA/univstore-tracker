@@ -30,10 +30,21 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     price: h.price
   }));
 
+  const benefitRules = await prisma.benefitRule.findMany({
+    where: { isActive: true },
+    orderBy: { priority: 'desc' }
+  });
+
   return (
     <ProductDetailView 
       product={product} 
       history={formattedHistory} 
+      benefitRules={benefitRules.map(r => ({
+        pattern: r.pattern,
+        rate: r.rate,
+        maxLimit: r.maxLimit,
+        label: r.label
+      }))}
     />
   );
 }
