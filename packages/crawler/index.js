@@ -142,11 +142,19 @@ async function run() {
     try {
       const today = new Date(); today.setHours(0, 0, 0, 0);
       
-      // 1. 현재 상품의 DB 상태 확인 (복구 필요 여부 및 오늘 수집 여부)
+      // 1. 현재 상품의 DB 상태 확인 (필요한 필드만 선택하여 최적화)
       const productStatus = await withPrismaRetry(() => prisma.product.findUnique({
         where: { id },
-        include: { 
-          priceHistory: { where: { timestamp: { gte: today } }, take: 1 } 
+        select: {
+          title: true,
+          imageUrl: true,
+          category: true,
+          brand: true,
+          priceHistory: { 
+            where: { timestamp: { gte: today } }, 
+            take: 1,
+            select: { price: true }
+          }
         }
       }));
 
