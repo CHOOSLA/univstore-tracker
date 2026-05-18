@@ -190,7 +190,7 @@ async function run() {
         break; 
       }
 
-      const itemInfo = await page.evaluate(async (id, recovery) => {
+      const itemInfo = await page.evaluate(async ({ id, recovery }) => {
         const body = document.body.innerText;
         const html = document.body.innerHTML;
         if (body.includes('존재하지 않는 상품') || body.includes('판매가 중단')) return { error: 'Not available' };
@@ -262,7 +262,7 @@ async function run() {
           category: apiData?.item_category_name || null,
           subCategory: apiData?.brand_item_category_name || null
         };
-      }, id, isRecoveryMode);
+      }, { id, recovery: isRecoveryMode });
 
       if (!itemInfo.isLoggedIn) {
         console.log("🔑 세션 만료. 재로그인 중...");
