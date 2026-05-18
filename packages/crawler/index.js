@@ -108,23 +108,25 @@ async function discoverSpecials(page) {
 }
 
 async function run() {
-  const context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+  // 초기 스캔용 임시 브라우저
+  const initContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     viewport: { width: 1280, height: 720 },
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
   });
 
-  const page = await context.newPage();
-  await checkLogin(page);
-  await discoverSpecials(page);
+  const initPage = await initContext.newPage();
+  await checkLogin(initPage);
+  await discoverSpecials(initPage);
 
-  const allItemIds = await discoverAllProductIds(page);
+  const allItemIds = await discoverAllProductIds(initPage);
   const totalItems = allItemIds.length;
+
+  await initContext.close(); // 초기 스캔 종료 후 닫기
 
   if (totalItems === 0) {
     console.log("⚠️ 수집할 상품이 없습니다.");
-    await context.close();
     return;
   }
 
@@ -135,9 +137,36 @@ async function run() {
 
   console.log(`\n🕵️ 순차적 스텔스 모드 기동 (Index: ${startIndex}/${totalItems})`);
 
+  let context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+    headless: true,
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    viewport: { width: 1280, height: 720 },
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+  });
+
+  let page = await context.newPage();
+  await checkLogin(page);
+  
+  let processedCount = 0;
+
   for (let i = startIndex; i < totalItems; i++) {
     const id = allItemIds[i];
     const progress = `${i + 1}/${totalItems}`;
+
+    // --- [브라우저 리소스 관리: 500개마다 세션 리프레시] ---
+    if (processedCount > 0 && processedCount % 500 === 0) {
+      console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
+      await context.close();
+      await sleep(5000);
+      context = await chromium.launchPersistentContext(USER_DATA_DIR, {
+        headless: true,
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        viewport: { width: 1280, height: 720 },
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+      });
+      page = await context.newPage();
+      await checkLogin(page);
+    }
 
     try {
       const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -326,6 +355,7 @@ async function run() {
 
       await redis.set(PROGRESS_KEY, i + 1);
       await redis.expire(PROGRESS_KEY, 86400);
+      processedCount++;
 
     } catch (err) {
       console.error(`❌ [${progress}] ID ${id} 에러:`, err.message);
