@@ -172,9 +172,14 @@ async function run() {
       await sleep(jitter + randomWait);
 
       const res = await page.goto(`https://www.univstore.com/item/${id}`, { 
-        waitUntil: isRecoveryMode ? 'networkidle' : 'domcontentloaded', 
+        waitUntil: 'domcontentloaded', // 기본은 domcontentloaded로 통일 (속도 향상)
         timeout: 30000 
       });
+
+      // 복구 모드일 때만 이미지가 뜰 때까지 '타겟 대기' (networkidle 대신 사용)
+      if (isRecoveryMode) {
+        await page.waitForSelector('.usItemImageArea img', { timeout: 5000 }).catch(() => {});
+      }
 
       const bodyText = await page.evaluate(() => document.body.innerText);
       const pageTitle = await page.title();
