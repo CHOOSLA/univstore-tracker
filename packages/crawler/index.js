@@ -166,9 +166,10 @@ async function run() {
         console.log(`\n🔍 [${progress}] 데이터 유실 발견 (ID: ${id}) - 정밀 복구 모드 가동`);
       }
 
-      // 사람 같은 랜덤 지연
-      const jitter = isRecoveryMode ? 4000 : 2000; 
-      await sleep(Math.floor(Math.random() * 2000) + jitter);
+      // --- [지터 및 대기 전략 타이트닝] ---
+      const jitter = isRecoveryMode ? 2500 : 1200; 
+      const randomWait = Math.floor(Math.random() * (isRecoveryMode ? 1500 : 800));
+      await sleep(jitter + randomWait);
 
       const res = await page.goto(`https://www.univstore.com/item/${id}`, { 
         waitUntil: isRecoveryMode ? 'networkidle' : 'domcontentloaded', 
