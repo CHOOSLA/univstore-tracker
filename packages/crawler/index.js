@@ -150,8 +150,11 @@ async function run() {
         }
       }));
 
-      // 오늘 이미 가격 수집이 끝났고, 기본 정보(이름, 이미지)도 완벽하면 패스
-      const hasBasicInfo = productStatus && productStatus.title !== '이름 없음' && productStatus.imageUrl;
+      // 오늘 이미 가격 수집이 끝났고, 기본 정보(이름, 이미지, 카테고리)도 완벽하면 패스
+      const hasBasicInfo = productStatus && 
+                           productStatus.title !== '이름 없음' && 
+                           productStatus.imageUrl && 
+                           productStatus.category; // 카테고리(태그) 유무까지 완벽히 체크
       const hasTodayPrice = productStatus && productStatus.priceHistory.length > 0;
 
       if (hasBasicInfo && hasTodayPrice) {
