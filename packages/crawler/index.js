@@ -224,10 +224,26 @@ async function run() {
       const bodyText = await page.evaluate(() => document.body.innerText);
       const pageTitle = await page.title();
 
-      // 🚨 차단 감지
-      if (res.status() === 405 || pageTitle.includes('Verification') || bodyText.includes('confirm you are human')) {
-        console.error(`\n🔥 [STOP] 캡차 차단 감지! (ID: ${id})`);
-        break; 
+      // 🚨 차단 감지 (403, 405, 429 등)
+      const status = res.status();
+      if (status === 403 || status === 405 || status === 429 || pageTitle.includes('Verification') || bodyText.includes('confirm you are human')) {
+        const cooldownMins = 30;
+        console.error(`\n🔥 [BLOCK DETECTED] 서버 차단 징후 감지 (Status: ${status}, ID: ${id})`);
+        console.log(`⏳ ${cooldownMins}분 동안 수집을 일시 중지하고 대기합니다...`);
+        
+        await withPrismaRetry(() => prisma.systemLog.create({
+          data: {
+            type: 'WARNING',
+            service: 'Crawler',
+            message: `차단 감지(Status ${status}). ${cooldownMins}분 대기 모드 진입. (ID: ${id})`
+          }
+        })).catch(() => {});
+
+        await sleep(cooldownMins * 60 * 1000); // 30분 대기
+        
+        // 대기 후 브라우저를 다시 껐다 켜서 깨끗한 상태로 시작
+        processedCount = 500; // 다음 루프에서 재시작 트리거
+        i--; continue; // 현재 아이템 재시도
       }
 
       const itemInfo = await page.evaluate(async ({ id, recovery }) => {
