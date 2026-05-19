@@ -45,17 +45,20 @@ export default async function ProductsPage({
   };
 
   // 2. 데이터베이스 쿼리 실행
-  const productsRaw = await prisma.product.findMany({
-    where: whereClause as any,
-    include: {
-      priceHistory: {
-        orderBy: { timestamp: 'desc' },
-        take: 14,
+  const [productsRaw, totalCount] = await Promise.all([
+    prisma.product.findMany({
+      where: whereClause as any,
+      include: {
+        priceHistory: {
+          orderBy: { timestamp: 'desc' },
+          take: 14,
+        },
       },
-    },
-    orderBy: sortOption === 'latest' ? { updatedAt: 'desc' } : undefined,
-    take: 100, // 정렬을 위해 넉넉하게 가져옴
-  });
+      orderBy: sortOption === 'latest' ? { updatedAt: 'desc' } : undefined,
+      take: 100, // 정렬을 위해 넉넉하게 가져옴
+    }),
+    prisma.product.count({ where: whereClause as any })
+  ]);
 
   // 3. 메모리 상에서의 고급 정렬 (할인율, 가격 등)
   let productsSorted = [...productsRaw];
@@ -113,7 +116,7 @@ export default async function ProductsPage({
           </div>
           <div className="flex items-center space-x-3">
              <div className="bg-emerald-500/10 text-emerald-500 text-[10px] font-black px-4 py-2 rounded-full border border-emerald-500/20 uppercase tracking-widest">
-               {productsSorted.length} Intel Points Found
+               {totalCount.toLocaleString()} Intel Points Found
              </div>
           </div>
         </header>
