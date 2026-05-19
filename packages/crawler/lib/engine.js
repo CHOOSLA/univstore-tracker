@@ -59,6 +59,21 @@ async function withPrismaRetry(fn, retries = 3) {
   }
 }
 
+async function checkLogin(page) {
+  await page.goto('https://www.univstore.com/user/login');
+  if (await page.isVisible('input[name="userid"]')) {
+    console.log("🔑 로그인 필요 감지. 세션 갱신을 시작합니다...");
+    await page.click('.usEverytimeLoginTitle');
+    await page.fill('input[name="id"]', process.env.EVERYTIME_ID);
+    await page.fill('input[name="password"]', process.env.EVERYTIME_PW);
+    await page.click('input[type="submit"]');
+    await page.waitForURL(url => url.href.includes('univstore.com'), { timeout: 60000 });
+    console.log("🎉 로그인 성공!");
+  } else {
+    console.log("✅ 이미 로그인된 세션입니다.");
+  }
+}
+
 module.exports = {
   prisma,
   redis,
@@ -66,6 +81,7 @@ module.exports = {
   Pipeline,
   BlockDetectedError,
   withPrismaRetry,
+  checkLogin,
   sleep: (ms) => new Promise(r => setTimeout(r, ms)),
   USER_DATA_DIR: path.join(__dirname, '../user_data')
 };
