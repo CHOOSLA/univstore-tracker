@@ -462,7 +462,7 @@ async function run() {
 
     } catch (err) {
       if (err instanceof BlockDetectedError) {
-        const cooldownMins = 30;
+        const cooldownMins = 10; // 30분에서 10분으로 대기 시간 최적화
         console.error(`\n🔥 [CRITICAL] ${err.message}. ${cooldownMins}분 대기 모드 진입...`);
         
         await browserContext.close();
