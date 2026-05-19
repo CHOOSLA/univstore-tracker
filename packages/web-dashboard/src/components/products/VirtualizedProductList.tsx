@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { CreditCard, Truck, Zap, Loader2 } from "lucide-react";
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
-import { useVirtualizer } from '@tanstack/react-virtual';
 
 interface Product {
   id: string;
@@ -25,13 +24,20 @@ interface VirtualizedProductListProps {
   searchParams: { q?: string; brand?: string; category?: string; sort?: string };
 }
 
+/**
+ * 1차적으로 무한 스크롤(Infinite Scroll)만 구현하여 안정성을 확보합니다.
+ * 가상화(Virtualization)는 안정적인 데이터 흐름 확인 후 2차로 적용합니다.
+ */
 export default function VirtualizedProductList({ initialItems, initialCursor, searchParams }: VirtualizedProductListProps) {
   const [items, setItems] = useState<Product[]>(initialItems);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(!!initialCursor);
+  const [mounted, setMounted] = useState(false);
 
-  const parentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // 무한 스크롤 데이터 로딩
   const fetchMore = useCallback(async () => {
@@ -61,18 +67,11 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
     }
   }, [cursor, isLoading, hasMore, searchParams]);
 
-  // Virtualizer 설정
-  const rowVirtualizer = useVirtualizer({
-    count: items.length,
-    getScrollElement: () => typeof window !== 'undefined' ? window : null, // 윈도우 스크롤 사용
-    estimateSize: () => 120, // 행 높이 예상값
-    overscan: 10,
-  });
-
-  // 하단 도달 감지
+  // 하단 도달 감지 (Scroll Listener)
   useEffect(() => {
     const handleScroll = () => {
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 1000) {
+      if (typeof window === 'undefined') return;
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 800) {
         fetchMore();
       }
     };
@@ -86,6 +85,8 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
     setCursor(initialCursor);
     setHasMore(!!initialCursor);
   }, [initialItems, initialCursor]);
+
+  if (!mounted) return null;
 
   return (
     <div className="glass rounded-[40px] overflow-hidden border-white/[0.03]">
@@ -175,13 +176,13 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
       </table>
 
       {isLoading && (
-        <div className="py-10 flex justify-center">
+        <div className="py-10 flex justify-center bg-zinc-900/50">
           <Loader2 className="text-blue-500 animate-spin" size={32} />
         </div>
       )}
       
       {!hasMore && items.length > 0 && (
-        <div className="py-10 text-center text-zinc-600 font-black uppercase text-[10px] tracking-[0.3em]">
+        <div className="py-10 text-center text-zinc-600 font-black uppercase text-[10px] tracking-[0.3em] bg-zinc-900/50 border-t border-white/5">
           End of Market Data
         </div>
       )}
