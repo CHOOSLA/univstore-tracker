@@ -2,7 +2,7 @@ require('dotenv').config();
 const { chromium } = require('playwright');
 const { 
   prisma, redis, CrawlerContext, Pipeline, BlockDetectedError, 
-  withPrismaRetry, sleep, USER_DATA_DIR 
+  withPrismaRetry, sleep, USER_DATA_DIR, checkLogin 
 } = require('./lib/engine');
 const { 
   DBStateFilter, NavigationFilter, ExtractionFilter, 
@@ -49,18 +49,6 @@ async function discoverSpecials(page) {
   } catch (err) {}
 }
 
-async function checkLogin(page) {
-  await page.goto('https://www.univstore.com/user/login');
-  if (await page.isVisible('input[name="userid"]')) {
-    await page.click('.usEverytimeLoginTitle');
-    await page.fill('input[name="id"]', process.env.EVERYTIME_ID);
-    await page.fill('input[name="password"]', process.env.EVERYTIME_PW);
-    await page.click('input[type="submit"]');
-    await page.waitForURL(url => url.href.includes('univstore.com'), { timeout: 60000 });
-    console.log("🎉 로그인 성공!");
-  }
-}
-
 async function run() {
   const initContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
@@ -79,6 +67,8 @@ async function run() {
   const allItemIds = [...priorityIds, ...rawItemIds.filter(id => !priorityIds.includes(id))];
   const totalItems = allItemIds.length;
   await initContext.close();
+
+  console.log(`📊 총 ${totalItems}개의 상품 수집 공정 시작`);
 
   const pipeline = new Pipeline([
     new DBStateFilter(),
@@ -104,7 +94,8 @@ async function run() {
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
   });
 
-  for (let i = startIndex; i < totalItems; i += BATCH_SIZE) {
+  let i = startIndex;
+  while (i < totalItems) {
     const batchIds = allItemIds.slice(i, i + BATCH_SIZE);
     try {
       await Promise.all(batchIds.map(async (id, idx) => {
@@ -112,19 +103,38 @@ async function run() {
         const ctx = new CrawlerContext(id, i + idx, totalItems, batchPage, browserContext, USER_DATA_DIR);
         try { await pipeline.execute(ctx); } finally { await batchPage.close(); }
       }));
-      await redis.set(PROGRESS_KEY, i + BATCH_SIZE);
-      await prisma.crawlerStatus.update({ where: { id: 'singleton' }, data: { currentIndex: i + BATCH_SIZE, lastHeartbeat: new Date() } }).catch(() => {});
+      
+      i += batchIds.length;
+      await redis.set(PROGRESS_KEY, i);
+      await prisma.crawlerStatus.update({ 
+        where: { id: 'singleton' }, 
+        data: { currentIndex: i, lastHeartbeat: new Date() } 
+      }).catch(() => {});
+      
     } catch (err) {
+      if (err.message === "Session Expired") {
+        console.error("🔄 세션 만료 감지. 재로그인을 시도합니다...");
+        const loginPage = await browserContext.newPage();
+        await checkLogin(loginPage);
+        await loginPage.close();
+        continue; // 인덱스 증가 없이 재시도
+      }
+
       if (err instanceof BlockDetectedError) {
         console.error(`🔥 Blocked: ${err.message}. Waiting 5 mins...`);
         await browserContext.close();
         await sleep(300000);
-        browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, { headless: true });
-        i -= BATCH_SIZE;
-        continue;
+        browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, { 
+          headless: true,
+          args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
+        });
+        continue; // 인덱스 증가 없이 재시도
       }
-      console.error("❌ Batch Error:", err.message);
-      await sleep(5000);
+
+      console.error(`❌ Batch Error (Index ${i}):`, err.message);
+      // 치명적이지 않은 에러는 해당 배지를 건너뜀 (무한 루프 방지)
+      i += batchIds.length;
+      await sleep(2000);
     }
   }
 
