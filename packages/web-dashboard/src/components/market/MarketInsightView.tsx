@@ -12,15 +12,10 @@ import {
   PieChart,
   Pie,
   Cell,
-  BarChart,
-  Bar,
   RadarChart,
   PolarGrid,
   PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-  LineChart,
-  Line
+  Radar
 } from 'recharts';
 import { 
   TrendingUp, 
@@ -28,13 +23,9 @@ import {
   ShieldCheck, 
   Target,
   BarChart3,
-  Info,
-  Zap,
   Activity,
-  Layers,
   ArrowUpRight,
-  Sparkles,
-  ChevronRight
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReportDownloader from "./ReportDownloader";
@@ -45,6 +36,7 @@ interface MarketInsightViewProps {
   categoryEfficiency: { category: string, discount: number }[];
   savingsHistory: { week: string, amount: number }[];
   totalDataPoints: number;
+  totalBrands: number;
 }
 
 export default function MarketInsightView({
@@ -52,7 +44,8 @@ export default function MarketInsightView({
   brandDistribution,
   categoryEfficiency,
   savingsHistory,
-  totalDataPoints
+  totalDataPoints,
+  totalBrands
 }: MarketInsightViewProps) {
   
   const [mounted, setMounted] = useState(false);
@@ -64,8 +57,7 @@ export default function MarketInsightView({
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Initializing Insight Engine...</div>;
   }
 
-  // Radar chart 데이터 변환 (상위 5개 브랜드 효율)
-  const radarData = categoryEfficiency.slice(0, 5).map(item => ({
+  const radarData = categoryEfficiency.map(item => ({
     subject: item.category,
     A: item.discount,
     fullMark: 100
@@ -77,7 +69,6 @@ export default function MarketInsightView({
     <div className="pb-20 bg-zinc-950" suppressHydrationWarning>
       <main className="max-w-7xl mx-auto px-6 pt-12 space-y-12">
         
-        {/* --- [Page Header] --- */}
         <section className="space-y-4">
           <div className="flex items-center space-x-3 text-blue-500">
             <Globe size={24} />
@@ -85,13 +76,11 @@ export default function MarketInsightView({
           </div>
           <h1 className="text-6xl font-black tracking-tighter text-white">Brand Pulse.</h1>
           <p className="text-zinc-500 text-xl max-w-3xl">
-            수집된 실시간 데이터를 통해 시장의 할인 효율과 브랜드 점유율을 정밀 분석합니다.
+            수집된 {totalDataPoints.toLocaleString()}개의 데이터를 분석하여 최적의 구매 시점을 제안합니다.
           </p>
         </section>
 
-        {/* --- [Top Row: The Hero Bento Cards] --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* 1. Savings Index (Hero) */}
           <div className="col-span-1 md:col-span-2 glass p-10 rounded-[40px] border-blue-500/20 bg-blue-500/[0.02] flex flex-col justify-between min-h-[320px] relative overflow-hidden group">
              <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform duration-700">
                 <TrendingUp size={160} strokeWidth={1} className="text-blue-500" />
@@ -119,7 +108,6 @@ export default function MarketInsightView({
              </div>
           </div>
           
-          {/* 2. Market Status (Hero) */}
           <div className="glass p-10 rounded-[40px] flex flex-col justify-between group hover:border-emerald-500/20 transition-all">
             <div className="space-y-1">
               <h3 className="text-xs font-black text-emerald-500 uppercase tracking-widest">Market Status</h3>
@@ -142,48 +130,49 @@ export default function MarketInsightView({
           </div>
         </div>
 
-        {/* --- [Middle Row: Depth Analysis] --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* 3. Brand Dominance (Inventory Mix) */}
+          {/* Inventory Mix 개편: Top 5 + Others */}
           <div className="lg:col-span-5 glass p-10 rounded-[40px] space-y-8 border-white/[0.03]">
             <div className="flex justify-between items-center px-2">
               <div className="space-y-1">
                 <h3 className="text-xl font-bold text-white tracking-tight">Inventory Mix</h3>
-                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Brand Distribution</p>
+                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Concentration: Top 5 vs Others</p>
               </div>
               <Target className="text-zinc-700" />
             </div>
             <div className="h-[240px] w-full relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={brandDistribution} innerRadius={70} outerRadius={100} paddingAngle={8} dataKey="value" isAnimationActive={false}>
+                  <Pie data={brandDistribution} innerRadius={75} outerRadius={100} paddingAngle={4} dataKey="value" isAnimationActive={false}>
                     {brandDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
                   </Pie>
                   <Tooltip contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                 <p className="text-[10px] font-black text-zinc-500 uppercase">Top 1</p>
-                 <p className="text-lg font-black text-white">{brandDistribution[0]?.name}</p>
+                 <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Total</p>
+                 <p className="text-2xl font-black text-white">{totalBrands}</p>
+                 <p className="text-[8px] font-bold text-zinc-700 uppercase">Brands</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-6 px-2">
-               {brandDistribution.slice(0, 4).map((brand) => (
+            <div className="grid grid-cols-2 gap-x-8 gap-y-4 px-2">
+               {brandDistribution.map((brand) => (
                  <div key={brand.name} className="space-y-2">
-                   <div className="flex items-center space-x-2">
-                     <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brand.color }} />
-                     <span className="text-[11px] font-bold text-zinc-400">{brand.name}</span>
+                   <div className="flex items-center justify-between">
+                     <div className="flex items-center space-x-2">
+                       <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brand.color }} />
+                       <span className="text-[11px] font-bold text-zinc-400 truncate max-w-[80px]">{brand.name}</span>
+                     </div>
+                     <span className="text-[10px] font-black text-white">{Math.round((brand.value / totalDataPoints) * 100)}%</span>
                    </div>
                    <div className="h-1 w-full bg-zinc-950 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{ width: `${(brand.value / totalDataPoints) * 100}%`, backgroundColor: brand.color }} />
+                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${(brand.value / totalDataPoints) * 100}%`, backgroundColor: brand.color }} />
                    </div>
                  </div>
                ))}
             </div>
           </div>
 
-          {/* 4. Brand Efficiency (Advanced Visualization) */}
           <div className="lg:col-span-7 glass p-10 rounded-[40px] space-y-8 border-white/[0.03] flex flex-col justify-between">
              <div className="flex justify-between items-center px-2">
                 <div className="space-y-1">
@@ -204,7 +193,7 @@ export default function MarketInsightView({
                    </ResponsiveContainer>
                 </div>
                 <div className="space-y-6">
-                   {categoryEfficiency.slice(0, 5).map((item, idx) => (
+                   {categoryEfficiency.map((item, idx) => (
                      <div key={item.category} className="flex items-end justify-between border-b border-white/5 pb-2">
                         <div className="space-y-1">
                            <span className="text-[9px] font-black text-zinc-700 uppercase">Rank 0{idx+1}</span>
@@ -226,10 +215,8 @@ export default function MarketInsightView({
                </p>
              </div>
           </div>
-
         </div>
 
-        {/* --- [Bottom Row: Infrastructure & Actions] --- */}
         <div className="glass p-10 rounded-[50px] border-emerald-500/20 bg-emerald-500/[0.01] flex flex-col md:flex-row items-center justify-between gap-8">
            <div className="flex items-center space-x-8">
               <div className="p-5 bg-zinc-950 rounded-3xl border border-white/5 shadow-2xl">

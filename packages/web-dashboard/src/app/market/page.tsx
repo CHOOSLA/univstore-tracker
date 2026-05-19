@@ -5,24 +5,32 @@ import MarketInsightView from "@/components/market/MarketInsightView";
 export const dynamic = 'force-dynamic';
 
 export default async function MarketPage() {
-  // 1. 브랜드별 상품 수 (Brand Dominance) - DB 그룹화
+  // 1. 브랜드별 상품 수 (Brand Dominance) - Top 5 + Others 그룹화
   const brandGroups = await prisma.product.groupBy({
     by: ['brand'],
     _count: { id: true },
+    orderBy: { _count: { id: 'desc' } }
   });
 
-  const colors = ['#fafafa', '#3b82f6', '#ef4444', '#a855f7', '#27272a'];
-  const brandDistribution = brandGroups.map((group, i) => ({
-    name: group.brand || 'Etc',
-    value: group._count.id,
-    color: colors[i % colors.length]
-  })).sort((a, b) => b.value - a.value);
+  const totalBrands = brandGroups.length;
+  const top5 = brandGroups.slice(0, 5);
+  const others = brandGroups.slice(5);
+  const othersCount = others.reduce((acc, curr) => acc + curr._count.id, 0);
+
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#27272a'];
+  const brandDistribution = [
+    ...top5.map((group, i) => ({
+      name: group.brand || 'Etc',
+      value: group._count.id,
+      color: colors[i]
+    })),
+    { name: 'Others', value: othersCount, color: colors[5] }
+  ];
 
   // 2. 전체 데이터 포인트 수
   const totalDataPoints = await prisma.product.count();
 
-  // 3. 누적 절약 금액 (Savings Index) - 3만개를 다 가져오지 않고 쿼리로 처리
-  // (Prisma의 한계로 인해 raw query 사용이 더 효율적일 수 있으나, 일단 상품 정보를 최소화하여 가져옴)
+  // 3. 누적 절약 금액 (Savings Index)
   const productsRaw = await prisma.product.findMany({
     where: {
       originalPrice: { gt: 0 },
@@ -48,8 +56,8 @@ export default async function MarketPage() {
     }
   });
 
-  // 4. 브랜드별 평균 할인율 (Efficiency) - 메모리 최적화 필터링
-  const brandDiscounts = brandGroups.map(group => {
+  // 4. 브랜드별 평균 할인율 (Efficiency)
+  const brandDiscounts = top5.map(group => {
     const brandProducts = productsRaw.filter(p => p.brand === group.brand);
     const validDiscounts = brandProducts
       .map(p => {
@@ -69,25 +77,7 @@ export default async function MarketPage() {
     };
   }).filter(b => b.discount > 0).sort((a, b) => b.discount - a.discount);
 
-  // 5. 현재 구매 적기 상품 (Top Value Deals) - 상위 10개만 추출
-  const topValueDeals = productsRaw
-    .map(p => {
-      const current = p.priceHistory[0]?.price || 0;
-      const discountRate = p.originalPrice ? ((p.originalPrice - current) / p.originalPrice) * 100 : 0;
-      return {
-        id: p.id,
-        title: p.title,
-        brand: p.brand,
-        currentPrice: current,
-        originalPrice: p.originalPrice || 0,
-        discountRate: Math.round(discountRate)
-      };
-    })
-    .filter(d => d.discountRate > 0)
-    .sort((a, b) => b.discountRate - a.discountRate)
-    .slice(0, 10);
-
-  // 6. 주차별 절약 추이 (Savings History)
+  // 5. 주차별 절약 추이
   const savingsHistory = [
     { week: 'W1', amount: totalSavings * 0.4 },
     { week: 'W2', amount: totalSavings * 0.6 },
@@ -104,7 +94,7 @@ export default async function MarketPage() {
       categoryEfficiency={brandDiscounts}
       savingsHistory={savingsHistory}
       totalDataPoints={totalDataPoints}
-      topValueDeals={topValueDeals}
+      totalBrands={totalBrands}
     />
   );
 }
