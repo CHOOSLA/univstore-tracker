@@ -16,12 +16,13 @@ import {
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
+import { getStorageMetrics } from "./terminal/actions";
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   // 1. 데이터 병렬 쿼리
-  const [totalProductsCount, brandGroups, dailyPicks, featuredProducts] = await Promise.all([
+  const [totalProductsCount, brandGroups, dailyPicks, featuredProducts, storage, dbStats] = await Promise.all([
     prisma.product.count(),
     prisma.product.groupBy({ by: ['brand'], _count: { id: true } }),
     prisma.dailyPick.findMany({
@@ -36,7 +37,7 @@ export default async function HomePage() {
         }
       },
       orderBy: { createdAt: 'desc' },
-      take: 4 // 상단 메트릭 공간을 채우기 위해 4개만 우선 노출
+      take: 4
     }),
     prisma.product.findMany({
       take: 5,
@@ -47,7 +48,9 @@ export default async function HomePage() {
           take: 7
         }
       }
-    })
+    }),
+    getStorageMetrics(),
+    prisma.$queryRaw`SELECT pg_size_pretty(pg_database_size('univstore')) as size`.catch(() => [{ size: '0 MB' }])
   ]);
 
   const categoryStats = brandGroups.map(group => ({
@@ -57,63 +60,81 @@ export default async function HomePage() {
     color: group.brand === 'Apple' ? "text-zinc-50" : "text-blue-400"
   })).sort((a, b) => b.count - a.count).slice(0, 4);
 
+  // 상단 유지할 매트릭
+  const metrics = [
+    { title: "브랜드 수", value: brandGroups.length, sub: "Active Brands", icon: Zap, accent: "text-amber-500" },
+    { title: "서버 상태", value: "ONLINE", sub: "Sync Active", icon: Clock, accent: "text-emerald-500" },
+  ];
+
   return (
     <div className="min-h-screen pb-20 bg-zinc-950">
       <main className="max-w-7xl mx-auto px-6 space-y-12">
-        {/* --- [Hero Section: Restored Original Text] --- */}
+        
+        {/* --- [Hero Section: Restored Original] --- */}
         <section className="space-y-4 text-center md:text-left pt-12">
           <h1 className="text-5xl md:text-8xl font-black tracking-tight text-white leading-[1] md:leading-[1.1]">
             Real-Time <span className="text-blue-500 italic">Insights</span> <br />
             From UnivStore.
           </h1>
-          <p className="text-zinc-400 max-w-2xl text-lg md:text-xl font-medium">
+          <p className="text-zinc-400 max-w-2xl text-lg md:text-xl">
             수집된 실제 데이터를 바탕으로 실시간 가격 변동을 분석합니다. <br className="hidden md:block" />
             이제 가짜가 아닌 진짜 학생 복지 혜택을 확인하세요.
           </p>
         </section>
 
-        {/* --- [UnivWatch PICK: Replacing old Metric Cards] --- */}
-        <section className="space-y-6">
-           <div className="flex items-center space-x-2 text-blue-500 px-2">
-              <Sparkles size={18} fill="currentColor" />
-              <span className="text-[10px] font-black uppercase tracking-[0.4em]">EveryUniv 추천 PICK</span>
+        {/* --- [Top Row: EVERYUNIV 추천 PICK + 기존 Metrics] --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+           {/* EVERYUNIV 추천 PICK (왼쪽 8칸 차지) */}
+           <div className="lg:col-span-8 space-y-6">
+              <div className="flex items-center space-x-2 text-blue-500 px-2">
+                 <Sparkles size={18} fill="currentColor" />
+                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">EVERYUNIV 추천 PICK</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 {dailyPicks.map((pick) => {
+                   const item = pick.product;
+                   const currentPrice = item.priceHistory[0]?.price || 0;
+                   const historyData = item.priceHistory.map(h => h.price).reverse();
+                   return (
+                     <Link key={item.id} href={`/product/${item.id}`} className="glass p-5 rounded-[32px] flex items-center space-x-5 group glass-hover border-white/[0.03]">
+                        <div className="w-16 h-16 bg-zinc-950 rounded-2xl border border-white/5 overflow-hidden shrink-0">
+                           {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[8px] text-zinc-800 font-black">NO IMG</div>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                           <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">{item.brand}</p>
+                           <p className="text-sm font-bold text-white truncate group-hover:text-blue-400 transition-colors">{item.title}</p>
+                           <p className="text-base font-black text-white mt-1">₩{currentPrice.toLocaleString()}</p>
+                        </div>
+                        <div className="w-20 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
+                           <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color="#3b82f6" height={30} />
+                        </div>
+                     </Link>
+                   );
+                 })}
+              </div>
            </div>
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {dailyPicks.length > 0 ? dailyPicks.map((pick) => {
-                const item = pick.product;
-                const currentPrice = item.priceHistory[0]?.price || 0;
-                const historyData = item.priceHistory.map(h => h.price).reverse();
-                
-                return (
-                  <Link key={item.id} href={`/product/${item.id}`} className="glass p-6 rounded-[32px] flex flex-col justify-between space-y-4 group glass-hover border-white/[0.03]">
-                    <div className="flex justify-between items-start">
-                       <div className="w-14 h-14 bg-zinc-950 rounded-2xl border border-white/5 overflow-hidden group-hover:scale-105 transition-transform duration-500 shrink-0">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[8px] text-zinc-800 font-black">NO IMG</div>
-                          )}
-                       </div>
-                       <div className="text-right">
-                          <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
-                          <p className="text-sm font-black text-white mt-1">₩{currentPrice.toLocaleString()}</p>
-                       </div>
-                    </div>
-                    <p className="text-xs font-bold text-white line-clamp-1 group-hover:text-blue-400 transition-colors">{item.title}</p>
-                    <div className="h-8 w-full opacity-60">
-                       <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color="#3b82f6" height={30} />
-                    </div>
-                  </Link>
-                );
-              }) : (
-                <div className="col-span-full py-10 text-center text-zinc-700 font-black uppercase text-xs tracking-widest italic">Syncing Recommendations...</div>
-              )}
-           </div>
-        </section>
 
-        {/* --- [Main Layout: Recent Updates + Brand Pulse] --- */}
+           {/* 기존 Metrics (오른쪽 4칸 차지) */}
+           <div className="lg:col-span-4 grid grid-cols-1 gap-4 pt-10">
+              {metrics.map((m, i) => (
+                <div key={i} className="glass p-8 rounded-[40px] flex items-start justify-between border-white/[0.03] group hover:border-white/10 transition-all">
+                  <div>
+                    <p className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-4">{m.title}</p>
+                    <p className="text-4xl font-black text-white tabular-nums tracking-tighter">{m.value}</p>
+                    <p className={cn("text-[10px] font-bold mt-4 uppercase tracking-widest opacity-80", m.accent)}>{m.sub}</p>
+                  </div>
+                  <div className={cn("p-4 bg-zinc-950/50 rounded-2xl border border-white/5 group-hover:scale-110 transition-transform", m.accent)}>
+                    <m.icon size={24} />
+                  </div>
+                </div>
+              ))}
+           </div>
+        </div>
+
+        {/* --- [Main Grid: Recent Updates + Brand Pulse] --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
-          {/* Main Content (Restored Recent Updates) */}
+          
+          {/* Recent Market Updates (8) */}
           <div className="lg:col-span-8 space-y-6">
             <div className="flex justify-between items-end px-2">
               <h2 className="text-2xl font-black text-white tracking-tight flex items-center">
@@ -126,7 +147,7 @@ export default async function HomePage() {
             </div>
 
             <div className="grid gap-3">
-              {featuredProducts.length > 0 ? featuredProducts.map((item) => {
+              {featuredProducts.map((item) => {
                 const currentPrice = item.priceHistory[0]?.price || 0;
                 const oldPrice = item.originalPrice || currentPrice;
                 const dropRate = oldPrice > 0 ? (((oldPrice - currentPrice) / oldPrice) * 100).toFixed(1) : "0";
@@ -136,28 +157,17 @@ export default async function HomePage() {
                   <Link key={item.id} href={`/product/${item.id}`} className="glass glass-hover p-5 rounded-[32px] flex flex-col md:flex-row md:items-center justify-between group cursor-pointer border-white/[0.05]">
                     <div className="flex items-center space-x-6">
                       <div className="relative w-20 h-20 bg-zinc-900 rounded-2xl flex items-center justify-center border border-white/5 overflow-hidden group-hover:scale-105 transition-transform">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="text-[10px] text-zinc-700 uppercase font-black tracking-tighter text-center px-1">NO IMAGE</div>
-                        )}
+                        {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <div className="text-[10px] text-zinc-700 uppercase font-black tracking-tighter px-1 text-center">NO IMAGE</div>}
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center space-x-2">
-                          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</span>
-                          <span className={cn(
-                            "text-[9px] font-black px-2 py-0.5 rounded-full border uppercase",
-                            item.stockStatus === "Low Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                          )}>
-                            {item.stockStatus || 'Active'}
-                          </span>
+                          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 uppercase">Active</span>
                         </div>
                         <p className="text-white font-black text-xl group-hover:text-blue-400 transition-colors line-clamp-1">{item.title}</p>
-                        <div className="flex items-center space-x-3 text-xs">
-                          <div className="flex items-center space-x-1 text-emerald-400 font-bold">
-                            <CreditCard size={12} />
-                            <span>{item.bestBenefit || '기본 혜택 적용'}</span>
-                          </div>
+                        <div className="flex items-center space-x-1 text-xs text-emerald-400 font-bold">
+                           <CreditCard size={12} />
+                           <span>{item.bestBenefit || '기본 혜택 적용'}</span>
                         </div>
                       </div>
                     </div>
@@ -177,16 +187,12 @@ export default async function HomePage() {
                     </div>
                   </Link>
                 );
-              }) : (
-                <div className="glass p-20 rounded-[40px] flex flex-col items-center justify-center space-y-4 border-dashed border-zinc-800 italic text-zinc-700 uppercase text-xs font-black">
-                  Awaiting Telemetry...
-                </div>
-              )}
+              })}
             </div>
           </div>
 
-          {/* Sidebar Insights (Brand Pulse) */}
-          <div className="lg:col-span-4 space-y-6 h-full">
+          {/* Sidebar Insights (4) */}
+          <div className="lg:col-span-4 space-y-6">
             <h2 className="text-2xl font-black text-white px-2 tracking-tight">Brand Pulse</h2>
             <div className="grid grid-cols-2 gap-4">
               {categoryStats.map((cat, i) => (
@@ -203,22 +209,28 @@ export default async function HomePage() {
               ))}
             </div>
             
+            {/* --- [System Node: Restored Storage Gauge] --- */}
             <div className="glass p-8 rounded-[40px] space-y-6 border-blue-500/20 bg-blue-500/[0.02]">
               <div className="flex items-center space-x-3">
                 <ShieldCheck className="text-blue-500" size={28} />
                 <h3 className="font-black text-white text-xl tracking-tight">System Node</h3>
               </div>
               <p className="text-xs text-zinc-500 leading-relaxed font-medium">
-                우분투 서버에서 24시간 작동하는 크롤러가 실시간으로 데이터를 검증하고 Redis 큐를 통해 무결성을 확보합니다.
+                서버의 가용 자원을 실시간으로 모니터링하며 최적화된 수집 성능을 유지합니다.
               </p>
               <div className="space-y-4 pt-2 border-t border-white/5">
-                <div className="flex justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest">
-                  <span>Total Monitored</span>
-                  <span className="text-white">{totalProductsCount.toLocaleString()}</span>
+                <div className="space-y-2">
+                   <div className="flex justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest">
+                      <span>Disk Storage ({storage.diskUsed})</span>
+                      <span className="text-blue-400">{storage.diskPercent}%</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-zinc-900 rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${storage.diskPercent}%` }} />
+                   </div>
                 </div>
-                <div className="flex justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest">
-                  <span>Storage</span>
-                  <span className="text-blue-400">PostgreSQL</span>
+                <div className="flex justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest pt-2">
+                  <span>Database Size</span>
+                  <span className="text-white">{(dbStats as any)[0]?.size}</span>
                 </div>
               </div>
             </div>
