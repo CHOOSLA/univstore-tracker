@@ -84,10 +84,9 @@ class DBStateFilter {
 
 class NavigationFilter {
   async process(ctx) {
-    // 병렬 처리 시에는 지터를 조금 더 여유 있게 (과거 블락 안 먹던 수치 기반)
-    // 미세 최적화: 베이스 지터를 살짝 낮추고 범위를 조정하여 자연스러운 리듬 유지
-    const baseJitter = ctx.isRecoveryMode ? 1800 : 800;
-    const randomWait = Math.floor(Math.random() * (ctx.isRecoveryMode ? 2700 : 2200)); 
+    // [안정성 최우선] 차단 방지를 위해 검증된 1초~4초 대기 전략 적용
+    const baseJitter = 1000;
+    const randomWait = Math.floor(Math.random() * 3000); 
     await sleep(baseJitter + randomWait);
 
     const res = await ctx.page.goto(`https://www.univstore.com/item/${ctx.id}`, { 
