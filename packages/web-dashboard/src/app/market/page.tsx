@@ -76,6 +76,24 @@ export default async function MarketPage() {
     { week: 'W6', amount: totalSavings },
   ];
 
+  // 5. 현재 구매 적기 상품 (Top Value Deals)
+  const topValueDeals = productsWithPrices
+    .map(p => {
+      const current = p.priceHistory[0]?.price || 0;
+      const discountRate = p.originalPrice ? ((p.originalPrice - current) / p.originalPrice) * 100 : 0;
+      return {
+        id: p.id,
+        title: p.title,
+        brand: p.brand,
+        currentPrice: current,
+        originalPrice: p.originalPrice || 0,
+        discountRate: Math.round(discountRate)
+      };
+    })
+    .filter(d => d.discountRate > 0)
+    .sort((a, b) => b.discountRate - a.discountRate)
+    .slice(0, 10);
+
   return (
     <MarketInsightView 
       totalSavings={totalSavings}
@@ -83,6 +101,7 @@ export default async function MarketPage() {
       categoryEfficiency={brandDiscounts}
       savingsHistory={savingsHistory}
       totalDataPoints={productsWithPrices.length}
+      topValueDeals={topValueDeals}
     />
   );
 }

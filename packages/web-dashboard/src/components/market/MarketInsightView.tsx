@@ -31,6 +31,14 @@ interface MarketInsightViewProps {
   categoryEfficiency: { category: string, discount: number }[];
   savingsHistory: { week: string, amount: number }[];
   totalDataPoints: number;
+  topValueDeals: {
+    id: string;
+    title: string;
+    brand: string | null;
+    currentPrice: number;
+    originalPrice: number;
+    discountRate: number;
+  }[];
 }
 
 export default function MarketInsightView({
@@ -38,7 +46,8 @@ export default function MarketInsightView({
   brandDistribution,
   categoryEfficiency,
   savingsHistory,
-  totalDataPoints
+  totalDataPoints,
+  topValueDeals
 }: MarketInsightViewProps) {
   
   const [mounted, setMounted] = useState(false);
@@ -194,10 +203,40 @@ export default function MarketInsightView({
                 <p className="text-sm text-zinc-500">본 분석 리포트는 실시간으로 수집된 {totalDataPoints.toLocaleString()}개의 상품 데이터를 기반으로 생성되었습니다.</p>
               </div>
            </div>
-           <button className="px-8 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all">
+           <button className="px-8 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all hidden md:block">
              Download Report
            </button>
         </div>
+
+        {/* --- [Top Value Deals Section] --- */}
+        <section className="space-y-6">
+           <div className="flex items-center space-x-3 text-amber-500 px-2">
+              <Zap size={20} fill="currentColor" />
+              <h3 className="text-xl font-bold text-white tracking-tight">Top Value Opportunities</h3>
+           </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {topValueDeals.map((deal) => (
+                <Link 
+                  key={deal.id} 
+                  href={`/product/${deal.id}`}
+                  className="glass p-6 rounded-3xl border-white/[0.03] hover:border-amber-500/30 transition-all flex items-center justify-between group"
+                >
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">{deal.brand}</p>
+                    <p className="text-sm font-bold text-white line-clamp-1 group-hover:text-amber-400 transition-colors">{deal.title}</p>
+                    <div className="flex items-center space-x-2 text-[10px] font-bold text-zinc-500">
+                      <span className="line-through opacity-40">₩{deal.originalPrice.toLocaleString()}</span>
+                      <span className="text-zinc-300">₩{deal.currentPrice.toLocaleString()}</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-black text-white tracking-tighter">-{deal.discountRate}%</p>
+                    <p className="text-[8px] font-black text-zinc-600 uppercase tracking-widest">Efficiency</p>
+                  </div>
+                </Link>
+              ))}
+           </div>
+        </section>
 
       </main>
     </div>
