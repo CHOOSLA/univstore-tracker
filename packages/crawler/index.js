@@ -416,6 +416,13 @@ async function run() {
   const PROGRESS_KEY = `univstore:progress:${new Date().toISOString().split('T')[0]}`;
   let startIndex = parseInt(await redis.get(PROGRESS_KEY) || '0');
   
+  // 크롤러 상태 초기화 (텔레메트리 시작)
+  await withPrismaRetry(() => prisma.crawlerStatus.upsert({
+    where: { id: 'singleton' },
+    update: { totalItems, currentIndex: startIndex, lastStatus: 'RUNNING', lastHeartbeat: new Date() },
+    create: { id: 'singleton', totalItems, currentIndex: startIndex, lastStatus: 'RUNNING' }
+  })).catch(err => console.error("❌ CrawlerStatus 초기화 실패:", err.message));
+  
   let browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -456,13 +463,25 @@ async function run() {
       }));
 
       processedCount += batchIds.length;
-      await redis.set(PROGRESS_KEY, i + batchIds.length);
+      const nextIndex = i + batchIds.length;
+      await redis.set(PROGRESS_KEY, nextIndex);
+      
+      // 텔레메트리 업데이트 (진행률 및 하트비트)
+      await prisma.crawlerStatus.update({
+        where: { id: 'singleton' },
+        data: { currentIndex: nextIndex, lastHeartbeat: new Date(), lastStatus: 'RUNNING' }
+      }).catch(() => {});
 
     } catch (err) {
       if (err instanceof BlockDetectedError) {
         const cooldownMins = 5; // 10분에서 5분으로 대기 시간 추가 단축
         console.error(`\n🔥 [CRITICAL] ${err.message}. ${cooldownMins}분 대기 모드 진입...`);
         
+        await prisma.crawlerStatus.update({
+          where: { id: 'singleton' },
+          data: { lastStatus: 'BLOCKED', lastHeartbeat: new Date() }
+        }).catch(() => {});
+
         await browserContext.close();
         await sleep(cooldownMins * 60 * 1000);
         
@@ -483,6 +502,11 @@ async function run() {
   }
 
   console.log("\n✨ 파이프라인 전 공정 완료.");
+  await prisma.crawlerStatus.update({
+    where: { id: 'singleton' },
+    data: { lastStatus: 'COMPLETED', lastHeartbeat: new Date() }
+  }).catch(() => {});
+
   await browserContext.close();
   await prisma.$disconnect();
   await redis.quit();
