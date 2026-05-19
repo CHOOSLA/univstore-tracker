@@ -14,7 +14,12 @@ async function discoverAllProductIds(page) {
   console.log("🔍 사이트맵(item.xml) 분석하여 전체 상품 ID 수집 중...");
   try {
     const sitemapUrl = 'https://www.univstore.com/sitemap/item.xml';
-    await page.goto(sitemapUrl, { waitUntil: 'networkidle', timeout: 90000 });
+    const response = await page.goto(sitemapUrl, { waitUntil: 'networkidle', timeout: 90000 });
+    
+    if (response.status() === 403 || response.status() === 429 || response.status() === 405) {
+      throw new BlockDetectedError(`사이트맵 접근 차단됨 (HTTP ${response.status()})`, response.status());
+    }
+
     const rawContent = await page.content();
     const xmlMatch = rawContent.match(/<\?xml[\s\S]*<\/urlset>/i) || rawContent.match(/<urlset[\s\S]*<\/urlset>/i);
     const xmlData = xmlMatch ? xmlMatch[0] : rawContent;
@@ -25,6 +30,7 @@ async function discoverAllProductIds(page) {
     const urlArray = Array.isArray(jsonObj.urlset.url) ? jsonObj.urlset.url : [jsonObj.urlset.url];
     return urlArray.map(u => (typeof u.loc === 'string' ? u.loc : u.loc?.['#text']).match(/\/item\/(\d+)/)?.[1]).filter(id => !!id);
   } catch (err) {
+    if (err instanceof BlockDetectedError) throw err;
     console.error("❌ 사이트맵 수집 실패:", err.message);
     return [];
   }
@@ -33,7 +39,12 @@ async function discoverAllProductIds(page) {
 async function discoverSpecials(page) {
   console.log("\n🎁 래플 및 특가 정보 탐색 중...");
   try {
-    await page.goto('https://www.univstore.com/', { waitUntil: 'networkidle', timeout: 60000 });
+    const response = await page.goto('https://www.univstore.com/', { waitUntil: 'networkidle', timeout: 60000 });
+    
+    if (response.status() === 403 || response.status() === 429 || response.status() === 405) {
+      throw new BlockDetectedError(`메인 페이지 접근 차단됨 (HTTP ${response.status()})`, response.status());
+    }
+
     await page.waitForTimeout(3000);
     const specials = await page.evaluate(() => {
       const results = { raffles: [], flashSales: [] };
@@ -46,27 +57,47 @@ async function discoverSpecials(page) {
     if (specials.raffles.length > 0 || specials.flashSales.length > 0) {
       await redis.rpush('univstore:specials_updates', JSON.stringify({ type: 'SPECIALS', data: specials, timestamp: new Date().toISOString() }));
     }
-  } catch (err) {}
+  } catch (err) {
+    if (err instanceof BlockDetectedError) throw err;
+  }
 }
 
 async function run() {
-  const initContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
+  const BATCH_SIZE = 3;
+  const PROGRESS_KEY = `univstore:progress:${new Date().toISOString().split('T')[0]}`;
+  let startIndex = parseInt(await redis.get(PROGRESS_KEY) || '0');
+
+  let initContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
   });
 
-  const initPage = await initContext.newPage();
-  await checkLogin(initPage);
-  await discoverSpecials(initPage);
-  const rawItemIds = await discoverAllProductIds(initPage);
-  
-  // 우선순위 큐 적용
-  const dailyPicks = await prisma.dailyPick.findMany({ select: { productId: true } });
-  const priorityIds = dailyPicks.map(p => p.productId);
-  const allItemIds = [...priorityIds, ...rawItemIds.filter(id => !priorityIds.includes(id))];
-  const totalItems = allItemIds.length;
-  await initContext.close();
+  let allItemIds = [];
+  let totalItems = 0;
+
+  try {
+    const initPage = await initContext.newPage();
+    await checkLogin(initPage);
+    await discoverSpecials(initPage);
+    const rawItemIds = await discoverAllProductIds(initPage);
+    
+    const dailyPicks = await prisma.dailyPick.findMany({ select: { productId: true } });
+    const priorityIds = dailyPicks.map(p => p.productId);
+    allItemIds = [...priorityIds, ...rawItemIds.filter(id => !priorityIds.includes(id))];
+    totalItems = allItemIds.length;
+    await initContext.close();
+  } catch (err) {
+    if (err instanceof BlockDetectedError) {
+      console.error(`🔥 초기화 단계 차단 감지: ${err.message}. 10분 대기...`);
+      await initContext.close();
+      await sleep(600000);
+      process.exit(1); // PM2가 나중에 다시 시도하도록
+    }
+    console.error("❌ 초기화 에러:", err.message);
+    await initContext.close();
+    process.exit(1);
+  }
 
   console.log(`📊 총 ${totalItems}개의 상품 수집 공정 시작`);
 
@@ -78,10 +109,6 @@ async function run() {
     new ValidationFilter(),
     new StorageFilter()
   ]);
-
-  const BATCH_SIZE = 3;
-  const PROGRESS_KEY = `univstore:progress:${new Date().toISOString().split('T')[0]}`;
-  let startIndex = parseInt(await redis.get(PROGRESS_KEY) || '0');
 
   await withPrismaRetry(() => prisma.crawlerStatus.upsert({
     where: { id: 'singleton' },
@@ -118,7 +145,7 @@ async function run() {
         const loginPage = await browserContext.newPage();
         await checkLogin(loginPage);
         await loginPage.close();
-        continue; // 인덱스 증가 없이 재시도
+        continue;
       }
 
       if (err instanceof BlockDetectedError) {
@@ -129,11 +156,10 @@ async function run() {
           headless: true,
           args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
         });
-        continue; // 인덱스 증가 없이 재시도
+        continue;
       }
 
       console.error(`❌ Batch Error (Index ${i}):`, err.message);
-      // 치명적이지 않은 에러는 해당 배지를 건너뜀 (무한 루프 방지)
       i += batchIds.length;
       await sleep(2000);
     }
