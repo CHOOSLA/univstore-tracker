@@ -17,9 +17,12 @@ model Product {
   stockStatus   String?
   bestBenefit   String?
   category      String?
+  subCategory   String?
+  thirdCategory String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   priceHistory  PriceHistory[]
+  priceAlerts   PriceAlert[]
 }
 
 model PriceHistory {
@@ -89,4 +92,26 @@ model FlashSale {
   status    String   @default("Upcoming") // Ongoing, Upcoming, Closed
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model PriceAlert {
+  id            Int      @id @default(autoincrement())
+  productId     String
+  targetPrice   Int
+  isActive      Boolean  @default(true)
+  lastNotifiedAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  product       Product  @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+}
+
+model CrawlerStatus {
+  id            String   @id @default("singleton")
+  totalItems    Int      @default(0)
+  currentIndex  Int      @default(0)
+  lastStatus    String   @default("IDLE") // IDLE, RUNNING, BLOCKED, COMPLETED
+  lastHeartbeat DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
