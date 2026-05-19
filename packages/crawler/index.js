@@ -10,6 +10,8 @@ const {
 } = require('./lib/filters');
 const { XMLParser } = require('fast-xml-parser');
 
+const PRIORITY_KEY = 'univstore:priority_set';
+
 async function discoverAllProductIds(page) {
   console.log("🔍 사이트맵(item.xml) 분석하여 전체 상품 ID 수집 중...");
   try {
@@ -62,6 +64,14 @@ async function discoverSpecials(page) {
   }
 }
 
+async function handleBatch(batchIds, i, totalItems, pipeline, browserContext) {
+  await Promise.all(batchIds.map(async (id, idx) => {
+    const batchPage = await browserContext.newPage();
+    const ctx = new CrawlerContext(id, i + idx, totalItems, batchPage, browserContext, USER_DATA_DIR);
+    try { await pipeline.execute(ctx); } finally { await batchPage.close(); }
+  }));
+}
+
 async function run() {
   const BATCH_SIZE = 3;
   const PROGRESS_KEY = `univstore:progress:${new Date().toISOString().split('T')[0]}`;
@@ -80,11 +90,7 @@ async function run() {
     const initPage = await initContext.newPage();
     await checkLogin(initPage);
     await discoverSpecials(initPage);
-    const rawItemIds = await discoverAllProductIds(initPage);
-    
-    const dailyPicks = await prisma.dailyPick.findMany({ select: { productId: true } });
-    const priorityIds = dailyPicks.map(p => p.productId);
-    allItemIds = [...priorityIds, ...rawItemIds.filter(id => !priorityIds.includes(id))];
+    allItemIds = await discoverAllProductIds(initPage);
     totalItems = allItemIds.length;
     await initContext.close();
   } catch (err) {
@@ -92,7 +98,7 @@ async function run() {
       console.error(`🔥 초기화 단계 차단 감지: ${err.message}. 10분 대기...`);
       await initContext.close();
       await sleep(600000);
-      process.exit(1); // PM2가 나중에 다시 시도하도록
+      process.exit(1);
     }
     console.error("❌ 초기화 에러:", err.message);
     await initContext.close();
@@ -124,13 +130,26 @@ async function run() {
 
   let i = startIndex;
   while (i < totalItems) {
+    // [Hybrid Priority Interrupt] 매 배치 시작 전 우선순위 큐 체크
+    const priorityIds = await redis.spop(PRIORITY_KEY, 10); // 최대 10개씩 새치기 허용
+    if (priorityIds.length > 0) {
+      console.log(`🚀 [Priority] 우선순위 아이템 ${priorityIds.length}개 새치기 처리 시작...`);
+      try {
+        // 우선순위 아이템은 낱개로 처리하여 안정성 확보
+        for (const pid of priorityIds) {
+          const pPage = await browserContext.newPage();
+          const pCtx = new CrawlerContext(pid, 0, 0, pPage, browserContext, USER_DATA_DIR);
+          try { await pipeline.execute(pCtx); } finally { await pPage.close(); }
+        }
+        console.log(`✅ [Priority] 우선순위 아이템 처리 완료. 메인 루프(Index ${i})를 재개합니다.`);
+      } catch (err) {
+        console.error("❌ [Priority] 처리 중 에러:", err.message);
+      }
+    }
+
     const batchIds = allItemIds.slice(i, i + BATCH_SIZE);
     try {
-      await Promise.all(batchIds.map(async (id, idx) => {
-        const batchPage = await browserContext.newPage();
-        const ctx = new CrawlerContext(id, i + idx, totalItems, batchPage, browserContext, USER_DATA_DIR);
-        try { await pipeline.execute(ctx); } finally { await batchPage.close(); }
-      }));
+      await handleBatch(batchIds, i, totalItems, pipeline, browserContext);
       
       i += batchIds.length;
       await redis.set(PROGRESS_KEY, i);
