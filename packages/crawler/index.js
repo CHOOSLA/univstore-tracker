@@ -2,11 +2,11 @@ require('dotenv').config();
 const { chromium } = require('playwright');
 const { 
   prisma, redis, CrawlerContext, Pipeline, BlockDetectedError, 
-  withPrismaRetry, sleep, USER_DATA_DIR, checkLogin 
+  withPrismaRetry, sleep, USER_DATA_DIR, checkLogin, SessionExpiredError 
 } = require('./lib/engine');
 const { 
   DBStateFilter, NavigationFilter, ExtractionFilter, 
-  ValidationFilter, StorageFilter 
+  ValidationFilter, StorageFilter, SessionCheckFilter 
 } = require('./lib/filters');
 const { XMLParser } = require('fast-xml-parser');
 
@@ -73,6 +73,7 @@ async function run() {
   const pipeline = new Pipeline([
     new DBStateFilter(),
     new NavigationFilter(),
+    new SessionCheckFilter(),
     new ExtractionFilter(),
     new ValidationFilter(),
     new StorageFilter()
@@ -112,7 +113,7 @@ async function run() {
       }).catch(() => {});
       
     } catch (err) {
-      if (err.message === "Session Expired") {
+      if (err instanceof SessionExpiredError) {
         console.error("🔄 세션 만료 감지. 재로그인을 시도합니다...");
         const loginPage = await browserContext.newPage();
         await checkLogin(loginPage);
