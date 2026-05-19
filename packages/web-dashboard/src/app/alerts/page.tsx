@@ -1,20 +1,41 @@
 import React from 'react';
-import Link from 'next/link';
+import { prisma } from "@/lib/prisma";
+import PriceAlertList from "@/components/alerts/PriceAlertList";
 import { Bell, Send, Settings, ShieldCheck, ChevronRight } from "lucide-react";
 
-export default function AlertsPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function AlertsPage() {
+  const alerts = await prisma.priceAlert.findMany({
+    include: {
+      product: {
+        select: {
+          title: true,
+          brand: true,
+          imageUrl: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
   return (
-    <div className="pb-20">
-      <main className="max-w-4xl mx-auto px-6 space-y-12">
+    <div className="pb-20 bg-zinc-950 min-h-screen">
+      <main className="max-w-4xl mx-auto px-6 pt-12 space-y-12">
         <section className="space-y-4 text-center">
           <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-3xl flex items-center justify-center mb-6">
             <Bell className="text-blue-500" size={32} />
           </div>
-          <h1 className="text-4xl font-black text-white">Notification Center</h1>
-          <p className="text-zinc-400 text-lg">가격 하락 및 역대 최저가 경신 알림을 설정하세요.</p>
+          <h1 className="text-5xl font-black text-white tracking-tight">Notification Center</h1>
+          <p className="text-zinc-400 text-lg">가격 하락 및 역대 최저가 경신 알림을 실시간으로 관리하세요.</p>
         </section>
 
+        {/* Real Data Section */}
+        <PriceAlertList alerts={alerts as any} />
+
         <div className="grid gap-6">
+          <h3 className="text-xs font-black text-zinc-600 uppercase tracking-widest px-2">Global Settings</h3>
+...
           <AlertSettingCard 
             title="Telegram Integration" 
             desc="텔레그램 봇을 통해 실시간으로 꿀매 정보를 받아봅니다." 
