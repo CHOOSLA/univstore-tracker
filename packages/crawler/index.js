@@ -82,32 +82,12 @@ class DBStateFilter {
   }
 }
 
-class ResourceManagerFilter {
-  static processedCount = 0;
-
-  async process(ctx) {
-    if (ResourceManagerFilter.processedCount > 0 && ResourceManagerFilter.processedCount % 500 === 0) {
-      console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${ResourceManagerFilter.processedCount}개 처리 완료)`);
-      await ctx.browserContext.close();
-      await sleep(5000);
-      
-      ctx.browserContext = await chromium.launchPersistentContext(ctx.USER_DATA_DIR, {
-        headless: true,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        viewport: { width: 1280, height: 720 },
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
-      });
-      ctx.page = await ctx.browserContext.newPage();
-      await checkLogin(ctx.page);
-    }
-  }
-}
-
 class NavigationFilter {
   async process(ctx) {
-    const jitter = ctx.isRecoveryMode ? 2500 : 1200; 
-    const randomWait = Math.floor(Math.random() * (ctx.isRecoveryMode ? 1500 : 800));
-    await sleep(jitter + randomWait);
+    // 병렬 처리 시에는 지터를 조금 더 여유 있게 (과거 블락 안 먹던 수치 기반)
+    const baseJitter = ctx.isRecoveryMode ? 2000 : 1000;
+    const randomWait = Math.floor(Math.random() * 3000); 
+    await sleep(baseJitter + randomWait);
 
     const res = await ctx.page.goto(`https://www.univstore.com/item/${ctx.id}`, { 
       waitUntil: 'domcontentloaded', 
@@ -134,7 +114,7 @@ class ExtractionFilter {
     const cookies = await ctx.browserContext.cookies('https://www.univstore.com');
     const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
 
-    ctx.itemInfo = await ctx.page.evaluate(async ({ id, recovery, cookieStr }) => {
+    ctx.itemInfo = await ctx.page.evaluate(async ({ id, recovery }) => {
       const body = document.body.innerText;
       const html = document.body.innerHTML;
       if (body.includes('존재하지 않는 상품') || body.includes('판매가 중단')) return { error: 'Not available' };
@@ -166,18 +146,42 @@ class ExtractionFilter {
       }
       if (body.includes('남은 수량') || body.includes('품절 임박')) stockStatus = 'Low Stock';
 
-      // 4. 브랜드, 이름, 이미지 (복구 모드 최적화)
+      // 4. 브랜드, 이름, 이미지 (복구 모드 정밀 추출)
       let brand = apiData?.brand_name || document.querySelector('.usItemCardInfoBrandName')?.innerText?.trim() || '', 
           name = apiData?.front_name || document.querySelector('.usItemCardInfoName')?.innerText?.trim() || '이름 없음', 
           imageUrl = apiData?.thumbnail_url || null;
 
       if (recovery && !imageUrl) {
-        imageUrl = document.querySelector('.usItemImageArea img')?.src || null;
+        // [이미지 추출 로직 1순위: 컨테이너]
+        const productContainers = ['.usItemImageArea', '.usItemAreaTop', '.usItemThumbnail'];
+        for (const sel of productContainers) {
+          const container = document.querySelector(sel);
+          if (container) {
+            const img = container.querySelector('img');
+            if (img && img.src.includes('http')) { imageUrl = img.src; break; }
+          }
+        }
+        
+        // [이미지 추출 로직 2순위: 가장 큰 이미지]
         if (!imageUrl) {
-          const candidate = Array.from(document.querySelectorAll('img'))
-            .filter(img => img.src.includes('http') && !img.src.includes('icon'))
+          const allImages = Array.from(document.querySelectorAll('img'));
+          const candidate = allImages
+            .filter(img => {
+              const src = img.src.toLowerCase();
+              const isIcon = src.includes('icon') || src.includes('logo') || src.includes('arrow') || src.includes('btn_') || src.includes('banner');
+              return src.includes('http') && !isIcon;
+            })
             .sort((a, b) => (b.naturalWidth * b.naturalHeight) - (a.naturalWidth * a.naturalHeight))[0];
-          imageUrl = candidate?.src || null;
+          if (candidate && candidate.naturalWidth > 200) imageUrl = candidate.src;
+        }
+
+        // [이미지 추출 로직 3순위: 패턴 매칭]
+        if (!imageUrl) {
+          const patternImg = Array.from(document.querySelectorAll('img')).find(img => {
+            const src = img.src.toLowerCase();
+            return (src.includes('thumbnail') || src.includes('goods') || src.includes('item')) && !src.includes('icon');
+          });
+          imageUrl = patternImg?.src || null;
         }
       }
 
@@ -187,7 +191,7 @@ class ExtractionFilter {
         subCategory: apiData?.brand_item_category_name || null,
         isLoggedIn: !html.includes('학생인증 후 가격 확인')
       };
-    }, { id: ctx.id, recovery: ctx.isRecoveryMode, cookieStr: cookieString });
+    }, { id: ctx.id, recovery: ctx.isRecoveryMode });
 
     if (!ctx.itemInfo.isLoggedIn) {
       console.log("🔑 세션 만료. 재로그인 중...");
@@ -247,8 +251,6 @@ class StorageFilter {
     } else if (ctx.index % 100 === 0) {
       console.log(`✅ [${ctx.progress}] 가격 갱신: ₩${ctx.payload.price.toLocaleString()}`);
     }
-
-    ResourceManagerFilter.processedCount++;
   }
 }
 
@@ -273,8 +275,6 @@ class SimulationFilter {
 
     console.log(`\n🧪 [SIMULATION] Payload for ID ${id}:`);
     console.dir(ctx.payload);
-    
-    ResourceManagerFilter.processedCount++;
   }
 }
 
@@ -405,14 +405,14 @@ async function run() {
 
   const pipeline = new Pipeline([
     new DBStateFilter(),
-    new ResourceManagerFilter(),
     new NavigationFilter(),
     new ExtractionFilter(),
     new ValidationFilter(),
     isDryRun ? new SimulationFilter() : new StorageFilter()
   ]);
 
-  // 3. 메인 수집 루프
+  // 3. 메인 수집 루프 (배치 병렬 모드)
+  const BATCH_SIZE = 3; 
   const PROGRESS_KEY = `univstore:progress:${new Date().toISOString().split('T')[0]}`;
   let startIndex = parseInt(await redis.get(PROGRESS_KEY) || '0');
   
@@ -422,21 +422,42 @@ async function run() {
     viewport: { width: 1280, height: 720 },
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
   });
-  let page = await browserContext.newPage();
-  await checkLogin(page);
+  
+  let processedCount = 0;
+  console.log(`\n🚀 파이프라인 병렬 엔진 가동 (배치 크기: ${BATCH_SIZE}, Index: ${startIndex}/${totalItems})`);
 
-  console.log(`\n🚀 파이프라인 엔진 가동 (Index: ${startIndex}/${totalItems})`);
-
-  for (let i = startIndex; i < totalItems; i++) {
-    const id = allItemIds[i];
-    const ctx = new CrawlerContext(id, i, totalItems, page, browserContext, USER_DATA_DIR);
+  for (let i = startIndex; i < totalItems; i += BATCH_SIZE) {
+    const batchIds = allItemIds.slice(i, i + BATCH_SIZE);
+    
+    // --- [브라우저 리소스 관리: 500개마다 세션 리프레시] ---
+    if (processedCount > 0 && processedCount % 500 === 0) {
+      console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
+      await browserContext.close();
+      await sleep(5000);
+      browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
+        headless: true,
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        viewport: { width: 1280, height: 720 },
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
+      });
+    }
 
     try {
-      await pipeline.execute(ctx);
-      
-      // 필터 실행 중 브라우저가 교체되었을 수 있으므로 업데이트
-      page = ctx.page;
-      browserContext = ctx.browserContext;
+      await Promise.all(batchIds.map(async (id, idx) => {
+        const globalIndex = i + idx;
+        const batchPage = await browserContext.newPage();
+        await checkLogin(batchPage); // 각 페이지별 세션 확인
+        
+        const ctx = new CrawlerContext(id, globalIndex, totalItems, batchPage, browserContext, USER_DATA_DIR);
+        try {
+          await pipeline.execute(ctx);
+        } finally {
+          await batchPage.close();
+        }
+      }));
+
+      processedCount += batchIds.length;
+      await redis.set(PROGRESS_KEY, i + batchIds.length);
 
     } catch (err) {
       if (err instanceof BlockDetectedError) {
@@ -446,21 +467,18 @@ async function run() {
         await browserContext.close();
         await sleep(cooldownMins * 60 * 1000);
         
-        // 재시작 준비
         browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
           headless: true,
           userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
           viewport: { width: 1280, height: 720 },
           args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-blink-features=AutomationControlled']
         });
-        page = await browserContext.newPage();
-        await checkLogin(page);
         
-        i--; // 현재 아이템 재시도
+        i -= BATCH_SIZE; // 현재 배치 재시도
         continue;
       }
       
-      console.error(`❌ [${ctx.progress}] ID ${id} 파이프라인 에러:`, err.message);
+      console.error(`❌ [Batch ${i + 1}] 파이프라인 에러:`, err.message);
       await sleep(5000);
     }
   }
@@ -494,7 +512,6 @@ module.exports = {
   CrawlerContext,
   Pipeline,
   DBStateFilter,
-  ResourceManagerFilter,
   NavigationFilter,
   ExtractionFilter,
   ValidationFilter,

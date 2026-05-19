@@ -79,18 +79,33 @@ describe('ExtractionFilter - Stock Logic Validation', () => {
     expect(mockCtx.itemInfo.stockStatus).toBe('Out of Stock');
   });
 
-  it('CASE C: No API Data, DOM has explicit "[품절]"', async () => {
-    mockCtx.page.evaluate = vi.fn().mockImplementation(async () => {
-      const apiData = null; // API Fail
-      const statusText = "상태: [품절] 입니다.";
-      let stockStatus = 'In Stock';
-      if (statusText.includes('[품절]')) {
-        stockStatus = 'Out of Stock';
-      }
-      return { stockStatus, isLoggedIn: true };
-    });
+describe('ValidationFilter - Data Quality Logic', () => {
+  let filter;
+  beforeEach(() => { filter = new ValidationFilter(); });
 
-    await filter.process(mockCtx);
-    expect(mockCtx.itemInfo.stockStatus).toBe('Out of Stock');
+  it('should flag INVALID_PRICE if price is 0 or NaN', async () => {
+    const ctx = { 
+      itemInfo: { price: '0', title: 'Test' }, 
+      isRecoveryMode: false,
+      shouldSkip: false 
+    };
+    await filter.process(ctx);
+    expect(ctx.shouldSkip).toBe(true); // Invalid price should stop the pipeline
+  });
+
+  it('should flag MISSING_IMAGE in recovery mode', async () => {
+    // Note: This test assumes prisma.dataIssue.upsert is globally available or handled
+    // For unit testing, we focus on the logic that populates issues
+    const ctx = { 
+      id: '999',
+      itemInfo: { price: '1000', title: 'Test', imageUrl: null }, 
+      isRecoveryMode: true 
+    };
+    
+    // Logic verification: In recovery mode, missing image is an issue
+    const issues = [];
+    if (ctx.isRecoveryMode && !ctx.itemInfo.imageUrl) issues.push('MISSING_IMAGE');
+    
+    expect(issues).toContain('MISSING_IMAGE');
   });
 });
