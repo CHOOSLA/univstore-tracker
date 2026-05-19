@@ -18,7 +18,13 @@ class DBStateFilter {
       ctx.shouldSkip = true;
       return;
     }
-    ctx.isRecoveryMode = !hasBasicInfo;
+    
+    if (!hasBasicInfo) {
+      console.log(`🔍 [ID ${ctx.id}] 데이터 유실 발견 - 정밀 복구 모드 가동`);
+      ctx.isRecoveryMode = true;
+    } else {
+      ctx.isRecoveryMode = false;
+    }
   }
 }
 

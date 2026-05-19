@@ -67,8 +67,17 @@ async function discoverSpecials(page) {
 async function handleBatch(batchIds, i, totalItems, pipeline, browserContext) {
   await Promise.all(batchIds.map(async (id, idx) => {
     const batchPage = await browserContext.newPage();
+    const currentIdx = i + idx + 1;
     const ctx = new CrawlerContext(id, i + idx, totalItems, batchPage, browserContext, USER_DATA_DIR);
-    try { await pipeline.execute(ctx); } finally { await batchPage.close(); }
+    try { 
+      await pipeline.execute(ctx); 
+      if (ctx.payload) {
+        const statusIcon = ctx.isRecoveryMode ? '✅' : '📦';
+        console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title}`);
+      }
+    } finally { 
+      await batchPage.close(); 
+    }
   }));
 }
 
@@ -131,17 +140,23 @@ async function run() {
   let i = startIndex;
   while (i < totalItems) {
     // [Hybrid Priority Interrupt] 매 배치 시작 전 우선순위 큐 체크
-    const priorityIds = await redis.spop(PRIORITY_KEY, 10); // 최대 10개씩 새치기 허용
+    const priorityIds = await redis.spop(PRIORITY_KEY, 10);
     if (priorityIds.length > 0) {
       console.log(`🚀 [Priority] 우선순위 아이템 ${priorityIds.length}개 새치기 처리 시작...`);
       try {
-        // 우선순위 아이템은 낱개로 처리하여 안정성 확보
         for (const pid of priorityIds) {
           const pPage = await browserContext.newPage();
           const pCtx = new CrawlerContext(pid, 0, 0, pPage, browserContext, USER_DATA_DIR);
-          try { await pipeline.execute(pCtx); } finally { await pPage.close(); }
+          try { 
+            await pipeline.execute(pCtx); 
+            if (pCtx.payload) {
+              console.log(`✨ [Priority] 수집 완료: [${pCtx.payload.brand}] ${pCtx.payload.title}`);
+            }
+          } finally { 
+            await pPage.close(); 
+          }
         }
-        console.log(`✅ [Priority] 우선순위 아이템 처리 완료. 메인 루프(Index ${i})를 재개합니다.`);
+        console.log(`✅ [Priority] 처리 완료. 메인 루프(Index ${i})를 재개합니다.`);
       } catch (err) {
         console.error("❌ [Priority] 처리 중 에러:", err.message);
       }
