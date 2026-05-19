@@ -1,0 +1,71 @@
+const { PrismaClient } = require('@prisma/client');
+const Redis = require('ioredis');
+const path = require('path');
+
+const prisma = new PrismaClient();
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+
+class BlockDetectedError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = 'BlockDetectedError';
+    this.status = status;
+  }
+}
+
+class CrawlerContext {
+  constructor(id, index, total, page, browserContext, USER_DATA_DIR) {
+    this.id = id;
+    this.index = index;
+    this.total = total;
+    this.page = page;
+    this.browserContext = browserContext;
+    this.USER_DATA_DIR = USER_DATA_DIR;
+    this.progress = `${index + 1}/${total}`;
+    this.productStatus = null;
+    this.shouldSkip = false;
+    this.isRecoveryMode = false;
+    this.itemInfo = null;
+    this.payload = null;
+  }
+}
+
+class Pipeline {
+  constructor(filters) {
+    this.filters = filters;
+  }
+
+  async execute(context) {
+    for (const filter of this.filters) {
+      if (context.shouldSkip) break;
+      await filter.process(context);
+    }
+    return context;
+  }
+}
+
+async function withPrismaRetry(fn, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (err.message.includes('closed') && i < retries - 1) {
+        await prisma.$disconnect().catch(() => {});
+        await new Promise(r => setTimeout(r, 5000));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+module.exports = {
+  prisma,
+  redis,
+  CrawlerContext,
+  Pipeline,
+  BlockDetectedError,
+  withPrismaRetry,
+  sleep: (ms) => new Promise(r => setTimeout(r, ms)),
+  USER_DATA_DIR: path.join(__dirname, '../user_data')
+};

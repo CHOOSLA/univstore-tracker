@@ -81,9 +81,9 @@ export default async function HomePage() {
             Real-Time <span className="text-blue-500 italic">Insights</span> <br />
             From UnivStore.
           </h1>
-          <p className="text-zinc-400 max-w-2xl text-lg md:text-xl">
-            수집된 실제 데이터를 바탕으로 실시간 가격 변동을 분석합니다. <br className="hidden md:block" />
-            이제 가짜가 아닌 진짜 학생 복지 혜택을 확인하세요.
+          <p className="text-zinc-400 max-w-3xl text-lg md:text-xl font-medium leading-relaxed">
+            33,000+ 데이터 포인트가 증명하는 시장의 무결성. <br className="hidden md:block" />
+            UnivWatch는 자체 분산 수집 파이프라인을 통해 가공되지 않은 실시간 가격 변동을 정밀 분석합니다.
           </p>
         </section>
 
