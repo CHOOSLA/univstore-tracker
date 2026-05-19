@@ -84,9 +84,9 @@ class DBStateFilter {
 
 class NavigationFilter {
   async process(ctx) {
-    // 405 차단 빈도가 높아짐에 따라 지터를 더 여유 있게 (1.5초 ~ 5.5초) 조정
-    const baseJitter = 1500;
-    const randomWait = Math.floor(Math.random() * 4000); 
+    // 지터를 다시 기존의 안정적인 범위(1.0초 ~ 4.0초)로 복구
+    const baseJitter = 1000;
+    const randomWait = Math.floor(Math.random() * 3000); 
     await sleep(baseJitter + randomWait);
 
     const res = await ctx.page.goto(`https://www.univstore.com/item/${ctx.id}`, { 
@@ -446,7 +446,6 @@ async function run() {
       await Promise.all(batchIds.map(async (id, idx) => {
         const globalIndex = i + idx;
         const batchPage = await browserContext.newPage();
-        await checkLogin(batchPage); // 각 페이지별 세션 확인
         
         const ctx = new CrawlerContext(id, globalIndex, totalItems, batchPage, browserContext, USER_DATA_DIR);
         try {
