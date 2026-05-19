@@ -315,11 +315,20 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
                  <div className="grid grid-cols-2 gap-4 text-center">
                     <div>
                        <p className="text-[10px] font-bold text-zinc-600 uppercase">Pending</p>
-                       <p className="text-lg font-black text-white">{queueSize}</p>
+                       <p className="text-lg font-black text-white">{queueSize.toLocaleString()}</p>
                     </div>
                     <div>
                        <p className="text-[10px] font-bold text-zinc-600 uppercase">Buffer State</p>
-                       <p className="text-lg font-black text-emerald-500">Stable</p>
+                       <p className={cn(
+                         "text-lg font-black",
+                         queueSize === 0 ? "text-emerald-500" :
+                         queueSize < 100 ? "text-blue-500" :
+                         queueSize < 500 ? "text-amber-500" : "text-red-500"
+                       )}>
+                         {queueSize === 0 ? "Empty" : 
+                          queueSize < 100 ? "Stable" : 
+                          queueSize < 500 ? "Busy" : "Backlogged"}
+                       </p>
                     </div>
                  </div>
               </div>
