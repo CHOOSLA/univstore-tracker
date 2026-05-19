@@ -15,6 +15,8 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { restartCrawler, restartAllNodes, executeSystemCommand } from "@/app/terminal/actions";
+import { Loader2 } from "lucide-react";
 
 interface SystemLogEntry {
   id: number;
@@ -48,10 +50,52 @@ interface TerminalViewProps {
 
 export default function TerminalView({ logs, dataIssues, queueSize, totalProducts, totalHistory, crawlerStatus }: TerminalViewProps) {
   const [mounted, setMounted] = useState(false);
+  const [command, setCommand] = useState('');
+  const [localLogs, setLocalLogs] = useState<any[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+
   useEffect(() => {
     setMounted(true);
     console.log("🚀 TerminalView Mounted");
   }, []);
+
+  const handleCommand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!command.trim()) return;
+
+    const cmd = command.trim();
+    setCommand('');
+    setIsProcessing(true);
+
+    const result = await executeSystemCommand(cmd);
+    setIsProcessing(false);
+
+    const newLog = {
+      id: Date.now(),
+      time: new Date().toLocaleTimeString('ko-KR', { hour12: false }),
+      type: result.success ? 'SUCCESS' : 'WARNING',
+      service: 'SYSTEM',
+      message: result.success ? `Output: ${result.output}` : `Error: ${result.error}`
+    };
+
+    setLocalLogs(prev => [newLog, ...prev]);
+  };
+
+  const handleRestartCrawler = async () => {
+    if (!confirm('크롤러를 재시작하시겠습니까?')) return;
+    setIsProcessing(true);
+    const res = await restartCrawler();
+    setIsProcessing(false);
+    if (res.success) alert('크롤러 재시작 명령이 전송되었습니다.');
+  };
+
+  const handleRestartAll = async () => {
+    if (!confirm('모든 노드를 재시작하시겠습니까?')) return;
+    setIsProcessing(true);
+    const res = await restartAllNodes();
+    setIsProcessing(false);
+    if (res.success) alert('전체 재시작 명령이 전송되었습니다.');
+  };
 
   if (!mounted) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Initializing Console...</div>;
@@ -89,11 +133,19 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
             <h1 className="text-5xl font-black tracking-tighter text-white">The Terminal.</h1>
           </div>
           <div className="flex space-x-3">
-             <button className="flex items-center space-x-2 bg-emerald-500 text-black px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-400 transition-all">
+             <button 
+               onClick={handleRestartCrawler}
+               disabled={isProcessing}
+               className="flex items-center space-x-2 bg-emerald-500 text-black px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-400 transition-all disabled:opacity-50"
+             >
                <Play size={14} fill="currentColor" />
                <span>Resume Pipeline</span>
              </button>
-             <button className="flex items-center space-x-2 bg-zinc-900 border border-white/10 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all">
+             <button 
+               onClick={handleRestartAll}
+               disabled={isProcessing}
+               className="flex items-center space-x-2 bg-zinc-900 border border-white/10 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all disabled:opacity-50"
+             >
                <RefreshCcw size={14} />
                <span>Restart Nodes</span>
              </button>
@@ -170,6 +222,15 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
                     <button className="text-[10px] font-black text-zinc-600 hover:text-white transition-colors uppercase tracking-widest">Clear Logs</button>
                  </div>
                  <div className="flex-1 p-8 font-mono text-sm space-y-3 overflow-y-auto">
+                    {/* Local dynamic logs (command output) */}
+                    {localLogs.map((log) => (
+                      <div key={log.id} className="flex space-x-4 text-emerald-500/80 animate-in fade-in slide-in-from-left-2 duration-300">
+                         <span className="text-zinc-700 shrink-0">[{log.time}]</span>
+                         <span className="font-black shrink-0 w-16">[{log.type}]</span>
+                         <span className="whitespace-pre-wrap">[{log.service}] {log.message}</span>
+                      </div>
+                    ))}
+                    
                     {logs.length > 0 ? logs.map((log) => (
                       <div key={log.id} className="flex space-x-4 animate-in fade-in slide-in-from-left-2 duration-300">
                          <span className="text-zinc-700 shrink-0">[{log.time}]</span>
@@ -188,14 +249,18 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
                        <span className="animate-pulse">_</span>
                     </div>
                  </div>
-                 <div className="bg-zinc-950 px-8 py-4 border-t border-white/5 flex items-center space-x-4">
+                 <form onSubmit={handleCommand} className="bg-zinc-950 px-8 py-4 border-t border-white/5 flex items-center space-x-4">
                     <span className="text-emerald-500 font-bold">$</span>
                     <input 
                       type="text" 
-                      placeholder="Execute system command..." 
+                      value={command}
+                      onChange={(e) => setCommand(e.target.value)}
+                      placeholder="Execute system command (e.g. pm2 status)..." 
                       className="bg-transparent border-none focus:outline-none text-zinc-400 w-full text-sm font-mono"
+                      disabled={isProcessing}
                     />
-                 </div>
+                    {isProcessing && <Loader2 size={16} className="animate-spin text-zinc-600" />}
+                 </form>
               </div>
            </div>
 
