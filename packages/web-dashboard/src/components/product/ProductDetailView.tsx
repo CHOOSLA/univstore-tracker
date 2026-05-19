@@ -107,13 +107,7 @@ export default function ProductDetailView({ product, history, benefitRules }: Pr
 
   return (
     <div className="min-h-screen pb-20 bg-zinc-950">
-      <main className="max-w-7xl mx-auto px-6 pt-4 space-y-8">
-        <div className="mb-4">
-          <Link href="/products" className="flex items-center space-x-3 text-zinc-400 hover:text-white transition-all group w-fit bg-zinc-900/50 px-5 py-3 rounded-2xl border border-white/5 hover:border-white/10 hover:bg-zinc-900">
-            <ChevronLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
-            <span className="text-sm font-black uppercase tracking-widest">Back to Explorer</span>
-          </Link>
-        </div>
+      <main className="max-w-7xl mx-auto px-6 pt-12 space-y-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* Left: Product Visuals & Main Info */}
@@ -148,7 +142,7 @@ export default function ProductDetailView({ product, history, benefitRules }: Pr
 
               <div className="h-[300px] w-full pt-8">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={[...history].reverse()}>
+                  <AreaChart data={[...history].reverse()} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
                     <defs>
                       <linearGradient id="colorPriceDetail" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
@@ -156,7 +150,7 @@ export default function ProductDetailView({ product, history, benefitRules }: Pr
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
-                    <XAxis dataKey="date" stroke="#3f3f46" fontSize={10} tickLine={false} axisLine={false} tickMargin={10} />
+                    <XAxis dataKey="date" stroke="#3f3f46" fontSize={10} tickLine={false} axisLine={false} tickMargin={10} interval={0} />
                     <YAxis hide domain={['dataMin - 10000', 'dataMax + 10000']} />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px' }}
