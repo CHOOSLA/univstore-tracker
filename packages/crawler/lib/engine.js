@@ -13,6 +13,13 @@ class BlockDetectedError extends Error {
   }
 }
 
+class SessionExpiredError extends Error {
+  constructor(message = 'Session Expired') {
+    super(message);
+    this.name = 'SessionExpiredError';
+  }
+}
+
 class CrawlerContext {
   constructor(id, index, total, page, browserContext, USER_DATA_DIR) {
     this.id = id;
@@ -80,6 +87,7 @@ module.exports = {
   CrawlerContext,
   Pipeline,
   BlockDetectedError,
+  SessionExpiredError,
   withPrismaRetry,
   checkLogin,
   sleep: (ms) => new Promise(r => setTimeout(r, ms)),
