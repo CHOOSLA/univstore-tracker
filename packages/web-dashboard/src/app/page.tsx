@@ -60,7 +60,7 @@ export default async function HomePage() {
     color: group.brand === 'Apple' ? "text-zinc-50" : "text-blue-400"
   })).sort((a, b) => b.count - a.count).slice(0, 4);
 
-  // 상단 유지할 매트릭
+  // 상단 매트릭 (요청대로 추적 상품, 오늘의 수집 제외)
   const metrics = [
     { title: "브랜드 수", value: brandGroups.length, sub: "Active Brands", icon: Zap, accent: "text-amber-500" },
     { title: "서버 상태", value: "ONLINE", sub: "Sync Active", icon: Clock, accent: "text-emerald-500" },
@@ -70,9 +70,9 @@ export default async function HomePage() {
     <div className="min-h-screen pb-20 bg-zinc-950">
       <main className="max-w-7xl mx-auto px-6 space-y-12">
         
-        {/* --- [Hero Section: Restored Original] --- */}
+        {/* --- [Hero Section: Restored Original Text] --- */}
         <section className="space-y-4 text-center md:text-left pt-12">
-          <h1 className="text-5xl md:text-8xl font-black tracking-tight text-white leading-[1] md:leading-[1.1]">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white leading-[1] md:leading-[1.1]">
             Real-Time <span className="text-blue-500 italic">Insights</span> <br />
             From UnivStore.
           </h1>
@@ -82,58 +82,83 @@ export default async function HomePage() {
           </p>
         </section>
 
-        {/* --- [Top Row: EVERYUNIV 추천 PICK + 기존 Metrics] --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-           {/* EVERYUNIV 추천 PICK (왼쪽 8칸 차지) */}
-           <div className="lg:col-span-8 space-y-6">
-              <div className="flex items-center space-x-2 text-blue-500 px-2">
-                 <Sparkles size={18} fill="currentColor" />
-                 <span className="text-[10px] font-black uppercase tracking-[0.4em]">EVERYUNIV 추천 PICK</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 {dailyPicks.map((pick) => {
-                   const item = pick.product;
-                   const currentPrice = item.priceHistory[0]?.price || 0;
-                   const historyData = item.priceHistory.map(h => h.price).reverse();
-                   return (
-                     <Link key={item.id} href={`/product/${item.id}`} className="glass p-5 rounded-[32px] flex items-center space-x-5 group glass-hover border-white/[0.03]">
-                        <div className="w-16 h-16 bg-zinc-950 rounded-2xl border border-white/5 overflow-hidden shrink-0">
-                           {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[8px] text-zinc-800 font-black">NO IMG</div>}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                           <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-1">{item.brand}</p>
-                           <p className="text-sm font-bold text-white truncate group-hover:text-blue-400 transition-colors">{item.title}</p>
-                           <p className="text-base font-black text-white mt-1">₩{currentPrice.toLocaleString()}</p>
-                        </div>
-                        <div className="w-20 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
-                           <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color="#3b82f6" height={30} />
-                        </div>
-                     </Link>
-                   );
-                 })}
-              </div>
-           </div>
-
-           {/* 기존 Metrics (오른쪽 4칸 차지) */}
-           <div className="lg:col-span-4 grid grid-cols-1 gap-4 pt-10">
-              {metrics.map((m, i) => (
-                <div key={i} className="glass p-8 rounded-[40px] flex items-start justify-between border-white/[0.03] group hover:border-white/10 transition-all">
-                  <div>
-                    <p className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-4">{m.title}</p>
-                    <p className="text-4xl font-black text-white tabular-nums tracking-tighter">{m.value}</p>
-                    <p className={cn("text-[10px] font-bold mt-4 uppercase tracking-widest opacity-80", m.accent)}>{m.sub}</p>
-                  </div>
-                  <div className={cn("p-4 bg-zinc-950/50 rounded-2xl border border-white/5 group-hover:scale-110 transition-transform", m.accent)}>
-                    <m.icon size={24} />
-                  </div>
-                </div>
-              ))}
-           </div>
+        {/* --- [Top Tier Metrics: Only requested ones] --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+           {metrics.map((m, i) => (
+             <MetricCard key={i} title={m.title} value={String(m.value)} sub={m.sub} icon={m.icon} accent={m.accent} />
+           ))}
         </div>
 
-        {/* --- [Main Grid: Recent Updates + Brand Pulse] --- */}
+        {/* --- [EVERYUNIV 추천 PICK: The New Materialization Style] --- */}
+        <section className="space-y-8">
+           <div className="flex justify-between items-end px-2">
+              <div className="space-y-1">
+                 <h2 className="text-3xl font-black text-white tracking-tight flex items-center">
+                    EVERYUNIV 추천 PICK
+                 </h2>
+                 <p className="text-xs text-zinc-600 font-bold uppercase tracking-widest">EveryUniv Curated + Price Engine</p>
+              </div>
+              <Link href="/products" className="group flex items-center space-x-2 text-zinc-500 hover:text-white transition-colors">
+                 <span className="text-xs font-black uppercase tracking-widest">Explore All</span>
+                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+              {dailyPicks.length > 0 ? dailyPicks.map((pick) => {
+                const item = pick.product;
+                const currentPrice = item.priceHistory[0]?.price || 0;
+                const historyData = item.priceHistory.map(h => h.price).reverse();
+                
+                return (
+                  <Link key={item.id} href={`/product/${item.id}`} className="glass p-6 rounded-[40px] flex flex-col space-y-6 group glass-hover border-white/[0.03]">
+                    <div className="flex justify-between items-start">
+                       <div className="w-20 h-20 bg-zinc-950 rounded-3xl border border-white/5 overflow-hidden group-hover:scale-105 transition-transform duration-500 shrink-0">
+                          {item.imageUrl ? (
+                            <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-800 font-black">NO IMG</div>
+                          )}
+                       </div>
+                       <div className="text-right">
+                          <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
+                          <p className="text-lg font-black text-white mt-1">₩{currentPrice > 0 ? currentPrice.toLocaleString() : '---'}</p>
+                       </div>
+                    </div>
+
+                    <div className="space-y-2 flex-1">
+                       <p className="text-sm font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors">
+                          {item.title}
+                       </p>
+                    </div>
+
+                    <div className="pt-4 border-t border-white/5 space-y-4">
+                       <div className="flex justify-between items-end">
+                          <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">7D Trend</p>
+                          {historyData.length > 1 && (
+                            <span className="text-[10px] font-bold text-emerald-500">Live Feed</span>
+                          )}
+                       </div>
+                       <div className="h-12 w-full">
+                          {historyData.length > 1 ? (
+                            <Sparkline data={historyData} color="#3b82f6" height={40} />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center border border-dashed border-zinc-800 rounded-xl">
+                               <p className="text-[9px] font-black text-zinc-700 uppercase tracking-widest">Collecting Data...</p>
+                            </div>
+                          )}
+                       </div>
+                    </div>
+                  </Link>
+                );
+              }) : (
+                <div className="col-span-full py-10 text-center text-zinc-700 font-black uppercase text-xs tracking-widest italic">Syncing Recommendations...</div>
+              )}
+           </div>
+        </section>
+
+        {/* --- [Main Layout: Recent Updates + Brand Pulse] --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
-          
           {/* Recent Market Updates (8) */}
           <div className="lg:col-span-8 space-y-6">
             <div className="flex justify-between items-end px-2">
@@ -209,7 +234,7 @@ export default async function HomePage() {
               ))}
             </div>
             
-            {/* --- [System Node: Restored Storage Gauge] --- */}
+            {/* System Node: Storage Gauge */}
             <div className="glass p-8 rounded-[40px] space-y-6 border-blue-500/20 bg-blue-500/[0.02]">
               <div className="flex items-center space-x-3">
                 <ShieldCheck className="text-blue-500" size={28} />
@@ -237,6 +262,21 @@ export default async function HomePage() {
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+function MetricCard({ title, value, sub, icon: Icon, accent }: any) {
+  return (
+    <div className="glass p-8 rounded-[40px] flex items-start justify-between border-white/[0.03] group hover:border-white/10 transition-all">
+      <div>
+        <p className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-4">{title}</p>
+        <p className="text-5xl font-black text-white tabular-nums tracking-tighter">{value}</p>
+        <p className={cn("text-[10px] font-bold mt-4 uppercase tracking-widest opacity-80", accent)}>{sub}</p>
+      </div>
+      <div className={cn("p-4 bg-zinc-950/50 rounded-2xl border border-white/5 group-hover:scale-110 transition-transform", accent)}>
+        <Icon size={24} />
+      </div>
     </div>
   );
 }
