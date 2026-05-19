@@ -88,42 +88,49 @@ async function handlePriceUpdate(payload) {
 
     const finalPrice = calculateFinalPrice(price, bestBenefit);
 
+    // --- [시스템 설정 로드 및 적용] ---
+    const configs = await prisma.systemConfig.findMany();
+    const configMap = {};
+    configs.forEach(c => configMap[c.key] = c.value);
+    
+    const telegramEnabled = configMap['TELEGRAM_ENABLED'] !== 'false';
+    const minDropRate = parseInt(configMap['MIN_DROP_RATE'] || '10');
+
     // 2. 활성화된 알림 중 목표가에 도달한 항목 조회
-    const activeAlerts = await prisma.priceAlert.findMany({
-      where: {
-        productId: id,
-        isActive: true,
-        targetPrice: { gte: finalPrice }
-      }
-    });
+    if (telegramEnabled) {
+      const activeAlerts = await prisma.priceAlert.findMany({
+        where: {
+          productId: id,
+          isActive: true,
+          targetPrice: { gte: finalPrice }
+        }
+      });
 
-    for (const alert of activeAlerts) {
-      // 오늘 이미 알림을 보냈다면 스킵 (중복 알림 방지)
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      if (alert.lastNotifiedAt && new Date(alert.lastNotifiedAt) >= today) continue;
+      for (const alert of activeAlerts) {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        if (alert.lastNotifiedAt && new Date(alert.lastNotifiedAt) >= today) continue;
 
-      if (bot && chatId) {
-        const message = `🎯 *목표 가격 도달 알림!*\n\n📦 *상품명*: ${title}\n🔥 *현재 실질 구매가*: ${finalPrice.toLocaleString()}원\n📍 *설정 목표가*: ${alert.targetPrice.toLocaleString()}원 이하\n🎁 *혜택*: ${bestBenefit || '기본'}\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
-        await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-        
-        // 알림 발송 기록 업데이트
-        await prisma.priceAlert.update({
-          where: { id: alert.id },
-          data: { lastNotifiedAt: new Date() }
-        });
+        if (bot && chatId) {
+          const message = `🎯 *목표 가격 도달 알림!*\n\n📦 *상품명*: ${title}\n🔥 *현재 실질 구매가*: ${finalPrice.toLocaleString()}원\n📍 *설정 목표가*: ${alert.targetPrice.toLocaleString()}원 이하\n🎁 *혜택*: ${bestBenefit || '기본'}\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
+          await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+          await prisma.priceAlert.update({ where: { id: alert.id }, data: { lastNotifiedAt: new Date() } });
+        }
       }
     }
 
-    // 3. 기존의 단순 가격 하락 알림 로직 (유지)
+    // 3. 기존의 단순 가격 하락 알림 로직 (설정한 최소 하락율 이상일 때만 발송)
     if (lastRecord && price < lastRecord.price) {
-      const dropPercent = (((lastRecord.price - price) / lastRecord.price) * 100).toFixed(1);
-      await prisma.systemLog.create({
-        data: { type: 'ALERT', service: 'Worker', message: `가격 하락 감지: [${brand}] ${title} (-${dropPercent}%)` }
-      });
+      const dropPercent = (((lastRecord.price - price) / lastRecord.price) * 100);
+      
+      if (dropPercent >= minDropRate) {
+        await prisma.systemLog.create({
+          data: { type: 'ALERT', service: 'Worker', message: `가격 하락 감지: [${brand}] ${title} (-${dropPercent.toFixed(1)}%)` }
+        });
 
-      if (bot && chatId) {
-        const message = `🚨 *가격 하락 알림!*\n\n📦 *상품명*: ${title}\n💰 *현재가*: ${price.toLocaleString()}원\n📉 *하락폭*: -${(lastRecord.price - price).toLocaleString()}원 (${dropPercent}%)\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
-        await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+        if (telegramEnabled && bot && chatId) {
+          const message = `🚨 *가격 하락 알림 (${minDropRate}% 이상)!*\n\n📦 *상품명*: ${title}\n💰 *현재가*: ${price.toLocaleString()}원\n📉 *하락폭*: -${(lastRecord.price - price).toLocaleString()}원 (${dropPercent.toFixed(1)}%)\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
+          await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+        }
       }
     }
   } catch (err) {

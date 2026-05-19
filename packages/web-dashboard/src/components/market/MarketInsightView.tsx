@@ -24,6 +24,7 @@ import {
   Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ReportDownloader from "./ReportDownloader";
 
 interface MarketInsightViewProps {
   totalSavings: number;
@@ -203,9 +204,7 @@ export default function MarketInsightView({
                 <p className="text-sm text-zinc-500">본 분석 리포트는 실시간으로 수집된 {totalDataPoints.toLocaleString()}개의 상품 데이터를 기반으로 생성되었습니다.</p>
               </div>
            </div>
-           <button className="px-8 py-4 bg-zinc-900 border border-white/10 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all hidden md:block">
-             Download Report
-           </button>
+           <ReportDownloader />
         </div>
 
         {/* --- [Top Value Deals Section] --- */}

@@ -49,3 +49,30 @@ export async function togglePriceAlert(id: number, isActive: boolean) {
     return { success: false, error: err.message };
   }
 }
+
+export async function getSystemConfig() {
+  const configs = await prisma.systemConfig.findMany();
+  const configMap: Record<string, string> = {};
+  configs.forEach(c => configMap[c.key] = c.value);
+  
+  return {
+    TELEGRAM_ENABLED: configMap['TELEGRAM_ENABLED'] || 'true',
+    MIN_DROP_RATE: configMap['MIN_DROP_RATE'] || '10',
+    HEALTH_ALERTS_ENABLED: configMap['HEALTH_ALERTS_ENABLED'] || 'true'
+  };
+}
+
+export async function updateSystemConfig(key: string, value: string) {
+  try {
+    await prisma.systemConfig.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value }
+    });
+    revalidatePath('/alerts');
+    return { success: true };
+  } catch (err: any) {
+    console.error("❌ SystemConfig 업데이트 실패:", err.message);
+    return { success: false, error: err.message };
+  }
+}
