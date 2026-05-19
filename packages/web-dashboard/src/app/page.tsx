@@ -11,7 +11,9 @@ import {
   ShieldCheck,
   CreditCard,
   Sparkles,
-  ArrowRight
+  ArrowRight,
+  Database,
+  BarChart3
 } from "lucide-react";
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
@@ -21,9 +23,10 @@ import { getStorageMetrics } from "./terminal/actions";
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  // 1. 데이터 병렬 쿼리
-  const [totalProductsCount, brandGroups, dailyPicks, featuredProducts, storage, dbStats] = await Promise.all([
+  // 1. 데이터 병렬 쿼리 (추천 PICK 전체 수집 및 모든 지표 포함)
+  const [totalProductsCount, totalHistoryCount, brandGroups, dailyPicks, featuredProducts, storage, dbStats] = await Promise.all([
     prisma.product.count(),
+    prisma.priceHistory.count(),
     prisma.product.groupBy({ by: ['brand'], _count: { id: true } }),
     prisma.dailyPick.findMany({
       include: {
@@ -37,7 +40,7 @@ export default async function HomePage() {
         }
       },
       orderBy: { createdAt: 'desc' },
-      take: 4
+      take: 12 // 추천 PICK 전체 노출
     }),
     prisma.product.findMany({
       take: 5,
@@ -60,8 +63,10 @@ export default async function HomePage() {
     color: group.brand === 'Apple' ? "text-zinc-50" : "text-blue-400"
   })).sort((a, b) => b.count - a.count).slice(0, 4);
 
-  // 상단 매트릭 (요청대로 추적 상품, 오늘의 수집 제외)
+  // 상단 4구 매트릭 완벽 복구
   const metrics = [
+    { title: "전체 상품", value: totalProductsCount.toLocaleString(), sub: "Data Scale", icon: Package, accent: "text-blue-500" },
+    { title: "누적 데이터", value: totalHistoryCount.toLocaleString(), sub: "Price History", icon: Database, accent: "text-purple-500" },
     { title: "브랜드 수", value: brandGroups.length, sub: "Active Brands", icon: Zap, accent: "text-amber-500" },
     { title: "서버 상태", value: "ONLINE", sub: "Sync Active", icon: Clock, accent: "text-emerald-500" },
   ];
@@ -82,29 +87,25 @@ export default async function HomePage() {
           </p>
         </section>
 
-        {/* --- [Top Tier Metrics: Only requested ones] --- */}
+        {/* --- [Top Tier Metrics: Full 4-Card Layout Restored] --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
            {metrics.map((m, i) => (
              <MetricCard key={i} title={m.title} value={String(m.value)} sub={m.sub} icon={m.icon} accent={m.accent} />
            ))}
         </div>
 
-        {/* --- [EVERYUNIV 추천 PICK: The New Materialization Style] --- */}
+        {/* --- [EVERYUNIV 추천 PICK: Full Display Without Link] --- */}
         <section className="space-y-8">
-           <div className="flex justify-between items-end px-2">
+           <div className="px-2">
               <div className="space-y-1">
-                 <h2 className="text-3xl font-black text-white tracking-tight flex items-center">
+                 <h2 className="text-3xl font-black text-white tracking-tight flex items-center uppercase">
                     EVERYUNIV 추천 PICK
                  </h2>
-                 <p className="text-xs text-zinc-600 font-bold uppercase tracking-widest">EveryUniv Curated + Price Engine</p>
+                 <p className="text-xs text-zinc-600 font-bold uppercase tracking-widest">EveryUniv Curated + UnivWatch Price Engine</p>
               </div>
-              <Link href="/products" className="group flex items-center space-x-2 text-zinc-500 hover:text-white transition-colors">
-                 <span className="text-xs font-black uppercase tracking-widest">Explore All</span>
-                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
            </div>
 
-           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {dailyPicks.length > 0 ? dailyPicks.map((pick) => {
                 const item = pick.product;
                 const currentPrice = item.priceHistory[0]?.price || 0;
@@ -134,9 +135,12 @@ export default async function HomePage() {
 
                     <div className="pt-4 border-t border-white/5 space-y-4">
                        <div className="flex justify-between items-end">
-                          <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">7D Trend</p>
+                          <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">7D Trend Feed</p>
                           {historyData.length > 1 && (
-                            <span className="text-[10px] font-bold text-emerald-500">Live Feed</span>
+                            <div className="flex items-center space-x-1">
+                               <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                               <span className="text-[8px] font-black text-emerald-500 uppercase">Live</span>
+                            </div>
                           )}
                        </div>
                        <div className="h-12 w-full">
@@ -144,7 +148,7 @@ export default async function HomePage() {
                             <Sparkline data={historyData} color="#3b82f6" height={40} />
                           ) : (
                             <div className="h-full w-full flex items-center justify-center border border-dashed border-zinc-800 rounded-xl">
-                               <p className="text-[9px] font-black text-zinc-700 uppercase tracking-widest">Collecting Data...</p>
+                               <p className="text-[9px] font-black text-zinc-700 uppercase tracking-widest">Awaiting Data</p>
                             </div>
                           )}
                        </div>
@@ -159,6 +163,7 @@ export default async function HomePage() {
 
         {/* --- [Main Layout: Recent Updates + Brand Pulse] --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
+          
           {/* Recent Market Updates (8) */}
           <div className="lg:col-span-8 space-y-6">
             <div className="flex justify-between items-end px-2">
