@@ -40,7 +40,7 @@ export default async function HomePage() {
         }
       },
       orderBy: { createdAt: 'desc' },
-      take: 12 // 추천 PICK 전체 노출
+      take: 24 // 추천 PICK 전체 노출 (24개)
     }),
     prisma.product.findMany({
       take: 5,
