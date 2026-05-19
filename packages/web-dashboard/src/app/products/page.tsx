@@ -12,6 +12,7 @@ import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import SearchBar from "@/components/products/SearchBar";
+import VirtualizedProductList from "@/components/products/VirtualizedProductList";
 import { Suspense } from 'react';
 import { getSearchKeywords } from "@/lib/search-utils";
 
@@ -20,39 +21,61 @@ export const dynamic = 'force-dynamic';
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ brand?: string; q?: string; category?: string }>;
+  searchParams: Promise<{ brand?: string; q?: string; category?: string; sort?: string }>;
 }) {
-  const { brand: brandFilter, q: searchQuery, category: categoryFilter } = await searchParams;
+  const { brand: brandFilter, q: searchQuery, category: categoryFilter, sort: sortOption = 'latest' } = await searchParams;
 
   // 지능형 검색 키워드 생성 (유사어 지원)
   const searchKeywords = searchQuery ? getSearchKeywords(searchQuery) : [];
 
-  // 1. 실제 데이터베이스 쿼리
-  const products = await prisma.product.findMany({
-    where: {
-      AND: [
-        brandFilter ? { brand: brandFilter } : {},
-        categoryFilter ? { category: categoryFilter } : {},
-        searchQuery ? {
-          OR: searchKeywords.flatMap(kw => [
-            { title: { contains: kw, mode: 'insensitive' } },
-            { brand: { contains: kw, mode: 'insensitive' } },
-            { id: { contains: kw } },
-          ])
-        } : {}
-      ]
-    },
+  // 1. 기본 필터 정의
+  const whereClause = {
+    AND: [
+      brandFilter ? { brand: brandFilter } : {},
+      categoryFilter ? { category: categoryFilter } : {},
+      searchQuery ? {
+        OR: searchKeywords.flatMap(kw => [
+          { title: { contains: kw, mode: 'insensitive' } },
+          { brand: { contains: kw, mode: 'insensitive' } },
+          { id: { contains: kw } },
+          { category: { contains: kw, mode: 'insensitive' } },
+        ])
+      } : {}
+    ]
+  };
+
+  // 2. 데이터베이스 쿼리 실행
+  const productsRaw = await prisma.product.findMany({
+    where: whereClause as any,
     include: {
       priceHistory: {
         orderBy: { timestamp: 'desc' },
-        take: 14, // 최근 14회의 가격 이력 (Sparkline용)
+        take: 14,
       },
     },
-    orderBy: { updatedAt: 'desc' },
-    take: 50, // 최근 50개만 노출
+    orderBy: sortOption === 'latest' ? { updatedAt: 'desc' } : undefined,
+    take: 100, // 정렬을 위해 넉넉하게 가져옴
   });
 
-  // 2. DB에 존재하는 실제 카테고리 목록 및 개수 가져오기
+  // 3. 메모리 상에서의 고급 정렬 (할인율, 가격 등)
+  let products = [...productsRaw];
+  if (sortOption === 'discount') {
+    products.sort((a, b) => {
+      const aCurr = a.priceHistory[0]?.price || 0;
+      const aOld = a.originalPrice || aCurr;
+      const aRate = aOld > 0 ? (aOld - aCurr) / aOld : 0;
+      
+      const bCurr = b.priceHistory[0]?.price || 0;
+      const bOld = b.originalPrice || bCurr;
+      const bRate = bOld > 0 ? (bOld - bCurr) / bOld : 0;
+      
+      return bRate - aRate;
+    });
+  } else if (sortOption === 'price-asc') {
+    products.sort((a, b) => (a.priceHistory[0]?.price || 0) - (b.priceHistory[0]?.price || 0));
+  }
+
+  // 4. DB에 존재하는 실제 카테고리 목록 및 개수 가져오기
   const dbCategories = await prisma.product.groupBy({
     by: ['category'],
     where: { category: { not: null } },
@@ -68,6 +91,8 @@ export default async function ProductsPage({
     name: c.category!,
     count: c._count.id
   }));
+
+  const initialCursor = products.length === 100 ? products[products.length - 1].id : null;
 
   return (
     <div className="pb-20 bg-zinc-950 text-zinc-50 min-h-screen">
@@ -90,25 +115,62 @@ export default async function ProductsPage({
           </div>
         </header>
 
-        {/* --- [Toolbar: Search & Filters] --- */}
+        {/* --- [Toolbar: Search, Sort & Brands] --- */}
         <div className="space-y-6">
-          <div className="flex flex-col md:flex-row gap-4 bg-zinc-900/30 p-3 rounded-[32px] border border-white/5 backdrop-blur-md">
+          <div className="flex flex-col lg:flex-row gap-4 bg-zinc-900/30 p-3 rounded-[32px] border border-white/5 backdrop-blur-md">
             <Suspense fallback={<div className="flex-1 h-12 bg-zinc-900/50 animate-pulse rounded-2xl" />}>
-              <SearchBar />
+              <div className="flex-1">
+                <SearchBar />
+              </div>
             </Suspense>
-            <div className="flex items-center space-x-2 px-2">
-              <Link href="/products" className={cn(
-                "px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border border-white/10",
-                !brandFilter ? "bg-white text-black" : "bg-zinc-900/80 text-zinc-500 hover:bg-zinc-800"
+            
+            <div className="flex items-center space-x-2 px-4 border-l border-white/5">
+              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block">Sort</span>
+              {[
+                { id: 'latest', label: 'Latest' },
+                { id: 'discount', label: '% Off' },
+                { id: 'price-asc', label: 'Low Price' }
+              ].map((opt) => (
+                <Link 
+                  key={opt.id}
+                  href={{
+                    pathname: '/products',
+                    query: { ... (searchQuery ? { q: searchQuery } : {}), ... (brandFilter ? { brand: brandFilter } : {}), ... (categoryFilter ? { category: categoryFilter } : {}), sort: opt.id }
+                  }}
+                  className={cn(
+                    "px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                    sortOption === opt.id ? "bg-white text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
+                  )}
+                >
+                  {opt.label}
+                </Link>
+              ))}
+            </div>
+
+            <div className="flex items-center space-x-2 px-4 border-l border-white/5">
+              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block">Brand</span>
+              <Link href={{
+                pathname: '/products',
+                query: { ... (searchQuery ? { q: searchQuery } : {}), ... (categoryFilter ? { category: categoryFilter } : {}), ... (sortOption !== 'latest' ? { sort: sortOption } : {}) }
+              }} className={cn(
+                "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                !brandFilter ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
               )}>All</Link>
-              <Link href={searchQuery ? `/products?brand=Apple&q=${searchQuery}` : "/products?brand=Apple"} className={cn(
-                "px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border border-white/10",
-                brandFilter === 'Apple' ? "bg-white text-black" : "bg-zinc-900/80 text-zinc-500 hover:bg-zinc-800"
-              )}>Apple</Link>
-              <Link href={searchQuery ? `/products?brand=Samsung&q=${searchQuery}` : "/products?brand=Samsung"} className={cn(
-                "px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border border-white/10",
-                brandFilter === 'Samsung' ? "bg-white text-black" : "bg-zinc-900/80 text-zinc-500 hover:bg-zinc-800"
-              )}>Samsung</Link>
+              {['Apple', 'Samsung'].map(b => (
+                <Link 
+                  key={b}
+                  href={{
+                    pathname: '/products',
+                    query: { brand: b, ... (searchQuery ? { q: searchQuery } : {}), ... (categoryFilter ? { category: categoryFilter } : {}), ... (sortOption !== 'latest' ? { sort: sortOption } : {}) }
+                  }} 
+                  className={cn(
+                    "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                    brandFilter === b ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
+                  )}
+                >
+                  {b}
+                </Link>
+              ))}
             </div>
           </div>
 
@@ -123,7 +185,12 @@ export default async function ProductsPage({
                 key={ctg.name}
                 href={{
                   pathname: '/products',
-                  query: { ... (searchQuery ? { q: searchQuery } : {}), ... (brandFilter ? { brand: brandFilter } : {}), category: ctg.name }
+                  query: { 
+                    ... (searchQuery ? { q: searchQuery } : {}), 
+                    ... (brandFilter ? { brand: brandFilter } : {}), 
+                    ... (sortOption !== 'latest' ? { sort: sortOption } : {}),
+                    category: ctg.name 
+                  }
                 }}
                 className={cn(
                   "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center space-x-2",
@@ -140,7 +207,7 @@ export default async function ProductsPage({
               <Link 
                 href={{
                   pathname: '/products',
-                  query: { ... (searchQuery ? { q: searchQuery } : {}), ... (brandFilter ? { brand: brandFilter } : {}) }
+                  query: { ... (searchQuery ? { q: searchQuery } : {}), ... (brandFilter ? { brand: brandFilter } : {}), ... (sortOption !== 'latest' ? { sort: sortOption } : {}) }
                 }}
                 className="text-zinc-600 hover:text-red-500 text-[10px] font-black uppercase tracking-widest pl-2 transition-colors flex items-center shrink-0"
               >
@@ -151,99 +218,12 @@ export default async function ProductsPage({
           </div>
         </div>
 
-        {/* High Density Table */}
-        <div className="glass rounded-[40px] overflow-hidden border-white/[0.03]">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 border-b border-white/5">
-                <th className="pl-10 pr-6 py-6">Product Details</th>
-                <th className="px-6 py-6 text-right">Price Matrix</th>
-                <th className="px-6 py-6 text-center">Trend (14D)</th>
-                <th className="pr-10 pl-6 py-6 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {products.length > 0 ? products.map((item) => {
-                const currentPrice = item.priceHistory[0]?.price || 0;
-                const oldPrice = item.originalPrice || currentPrice;
-                const dropRate = oldPrice > 0 ? (((oldPrice - currentPrice) / oldPrice) * 100).toFixed(1) : "0";
-                const historyData = item.priceHistory.map(h => h.price).reverse();
-
-                return (
-                  <tr key={item.id} className="group hover:bg-white/[0.02] transition-all relative">
-                    <td className="pl-10 pr-6 py-8">
-                      <Link href={`/product/${item.id}`} className="absolute inset-0 z-10" />
-                      <div className="flex items-center space-x-6 relative z-0">
-                        <div className="w-14 h-14 bg-zinc-900 rounded-2xl border border-white/5 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="text-[8px] text-zinc-700 font-black uppercase tracking-tighter">IMAGE</div>
-                          )}
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{item.brand || 'Brand'}</span>
-                            {item.category && (
-                              <span className="text-[8px] font-black bg-zinc-900 text-zinc-500 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-tighter">{item.category}</span>
-                            )}
-                          </div>
-                          <p className="text-base font-black text-white group-hover:text-blue-400 transition-colors line-clamp-1">{item.title}</p>
-                          <div className="flex items-center space-x-3 text-[11px] text-zinc-500 font-bold">
-                             <span className="flex items-center space-x-1 text-emerald-400/80">
-                               <CreditCard size={10} /> <span>{item.bestBenefit || '기본 혜택'}</span>
-                             </span>
-                             <span className="w-1 h-1 bg-zinc-800 rounded-full" />
-                             <span className="flex items-center space-x-1">
-                               <Truck size={10} /> <span>무료 배송</span>
-                             </span>
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-8 text-right relative z-0">
-                      <div className="flex flex-col items-end">
-                        <div className="flex items-baseline space-x-2">
-                           <span className="text-xs text-zinc-600 line-through tabular-nums font-medium">₩{oldPrice.toLocaleString()}</span>
-                           <span className="text-red-500 font-black text-sm">-{dropRate}%</span>
-                        </div>
-                        <p className="text-2xl font-black text-white tracking-tighter tabular-nums">₩{currentPrice.toLocaleString()}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-8 relative z-0">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color={parseFloat(dropRate) > 10 ? "#ef4444" : "#3b82f6"} />
-                        <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Trend Scan</span>
-                      </div>
-                    </td>
-                    <td className="pr-10 pl-6 py-8 text-right relative z-0">
-                      <div className="flex items-center justify-end space-x-4">
-                        <div className="flex flex-col items-end">
-                          <span className={cn(
-                            "text-[10px] font-black px-2.5 py-1 rounded-lg border uppercase tracking-widest",
-                            item.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                          )}>
-                            {item.stockStatus || 'In Stock'}
-                          </span>
-                          <p className="text-[10px] font-bold text-zinc-600 mt-2 italic">Ref: {item.id}</p>
-                        </div>
-                        <div className="p-3 bg-zinc-900 rounded-2xl border border-white/5 group-hover:border-blue-500/50 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-all">
-                          <Zap size={18} />
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              }) : (
-                <tr>
-                   <td colSpan={4} className="py-20 text-center text-zinc-500 font-black uppercase text-xs tracking-widest">
-                     검색 결과가 없습니다. 다른 키워드로 시도해 보세요.
-                   </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {/* Virtualized Infinite List */}
+        <VirtualizedProductList 
+          initialItems={products as any} 
+          initialCursor={initialCursor}
+          searchParams={{ q: searchQuery, brand: brandFilter, category: categoryFilter, sort: sortOption }}
+        />
       </main>
     </div>
   );
