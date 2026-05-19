@@ -1,4 +1,4 @@
-const { prisma, redis, withPrismaRetry, sleep, BlockDetectedError } = require('./engine');
+const { prisma, redis, withPrismaRetry, sleep, BlockDetectedError, SessionExpiredError } = require('./engine');
 
 class DBStateFilter {
   async process(ctx) {
@@ -38,6 +38,18 @@ class NavigationFilter {
   }
 }
 
+class SessionCheckFilter {
+  async process(ctx) {
+    const isLoggedIn = await ctx.page.evaluate(() => {
+      return !document.body.innerText.includes('학생인증 후 가격 확인');
+    });
+
+    if (!isLoggedIn) {
+      throw new SessionExpiredError();
+    }
+  }
+}
+
 class ExtractionFilter {
   async process(ctx) {
     const html = await ctx.page.content();
@@ -68,12 +80,9 @@ class ExtractionFilter {
 
       return { 
         brand, title: name, price, originalPrice, imageUrl, stockStatus, bestBenefit,
-        category: apiData?.item_category_name || null,
-        isLoggedIn: !document.body.innerText.includes('학생인증 후 가격 확인')
+        category: apiData?.item_category_name || null
       };
     }, { id: ctx.id, recovery: ctx.isRecoveryMode });
-
-    if (!ctx.itemInfo.isLoggedIn) throw new Error("Session Expired");
   }
 }
 
@@ -108,6 +117,7 @@ class StorageFilter {
 module.exports = {
   DBStateFilter,
   NavigationFilter,
+  SessionCheckFilter,
   ExtractionFilter,
   ValidationFilter,
   StorageFilter
