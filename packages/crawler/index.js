@@ -252,6 +252,32 @@ class StorageFilter {
   }
 }
 
+class SimulationFilter {
+  async process(ctx) {
+    const { id, itemInfo, productStatus, isRecoveryMode } = ctx;
+    const priceNum = parseInt(itemInfo.price);
+
+    ctx.payload = {
+      id,
+      brand: isRecoveryMode ? itemInfo.brand : productStatus.brand,
+      title: isRecoveryMode ? itemInfo.title : productStatus.title,
+      price: priceNum,
+      originalPrice: parseInt(itemInfo.originalPrice),
+      imageUrl: isRecoveryMode ? itemInfo.imageUrl : productStatus.imageUrl,
+      stockStatus: itemInfo.stockStatus,
+      bestBenefit: itemInfo.bestBenefit || (productStatus ? productStatus.bestBenefit : null),
+      category: itemInfo.category || (productStatus ? productStatus.category : null),
+      subCategory: itemInfo.subCategory || (productStatus ? productStatus.subCategory : null),
+      timestamp: new Date().toISOString()
+    };
+
+    console.log(`\n🧪 [SIMULATION] Payload for ID ${id}:`);
+    console.dir(ctx.payload);
+    
+    ResourceManagerFilter.processedCount++;
+  }
+}
+
 // --- [기존 도우미 함수들] ---
 async function withPrismaRetry(fn, retries = 3) {
   for (let i = 0; i < retries; i++) {
@@ -374,13 +400,16 @@ async function run() {
   }
 
   // 2. 파이프라인 구성
+  const isDryRun = process.argv.includes('--dry-run');
+  if (isDryRun) console.log("🧪 [DRY RUN] 시뮬레이션 모드로 작동합니다. DB에 저장하지 않습니다.");
+
   const pipeline = new Pipeline([
     new DBStateFilter(),
     new ResourceManagerFilter(),
     new NavigationFilter(),
     new ExtractionFilter(),
     new ValidationFilter(),
-    new StorageFilter()
+    isDryRun ? new SimulationFilter() : new StorageFilter()
   ]);
 
   // 3. 메인 수집 루프
@@ -460,3 +489,20 @@ run().catch(err => {
   console.error("🔥 치명적 에러:", err);
   process.exit(1);
 });
+
+module.exports = {
+  CrawlerContext,
+  Pipeline,
+  DBStateFilter,
+  ResourceManagerFilter,
+  NavigationFilter,
+  ExtractionFilter,
+  ValidationFilter,
+  StorageFilter,
+  SimulationFilter,
+  BlockDetectedError,
+  withPrismaRetry,
+  discoverAllProductIds,
+  discoverSpecials,
+  checkLogin
+};
