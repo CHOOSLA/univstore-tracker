@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const { prisma, redis, Pipeline, CrawlerContext, USER_DATA_DIR, sleep } = require('./lib/engine');
+const { prisma, redis, Pipeline, CrawlerContext, USER_DATA_DIR, sleep, checkLogin } = require('./lib/engine');
 const { DBStateFilter, NavigationFilter, ExtractionFilter, ValidationFilter, StorageFilter } = require('./lib/filters');
 require('dotenv').config();
 
@@ -8,15 +8,19 @@ const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor(Math
 async function scrapeDailyPicks() {
   const browser = await chromium.launch({ 
     headless: true,
-    args: ['--disable-blink-features=AutomationControlled'] 
+    args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'] 
   });
   const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
   });
   const page = await context.newPage();
 
   try {
     console.log('🚀 EVERYUNIV 추천 PICK 우선순위 수집 시작...');
+    
+    // 초기 세션 체크 및 로그인
+    await checkLogin(page);
+
     await page.goto('https://www.univstore.com/', { waitUntil: 'networkidle' });
     await randomSleep(2000, 4000);
 
