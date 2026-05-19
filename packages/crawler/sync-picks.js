@@ -25,9 +25,9 @@ async function scrapeDailyPicks() {
     
     // 1. 페이지 접속
     await page.goto('https://www.univstore.com/', { waitUntil: 'networkidle' });
-    await randomSleep(2000, 4000); // 인간미 있는 대기
+    await randomSleep(2000, 4000);
 
-    // 2. 스크롤을 통해 레이지 로딩된 아이템들 활성화 (24개를 찾기 위해)
+    // 2. 스크롤링
     console.log('🖱️ 추가 아이템 확보를 위한 스크롤링 중...');
     await page.evaluate(async () => {
       for (let i = 0; i < 3; i++) {
@@ -37,50 +37,103 @@ async function scrapeDailyPicks() {
     });
     await randomSleep(2000, 3000);
 
-    // 3. 추천 PICK 섹션 상품 ID 추출 (24개 타겟)
+    // 3. 추천 PICK 섹션 상품 ID 추출
     const pickIds = await page.evaluate(() => {
       const links = Array.from(document.querySelectorAll('a[href*="/item/"]'));
       const ids = links
         .map(a => a.href.split('/item/')[1]?.split('?')[0])
         .filter(id => id && /^\d+$/.test(id));
-      
-      // 중복 제거 후 상위 24개 추출
       return [...new Set(ids)].slice(0, 24);
     });
 
     console.log(`✅ ${pickIds.length}개의 추천 상품 ID 발견:`, pickIds);
 
-    if (pickIds.length === 0) {
-      console.error('❌ 추천 상품을 찾을 수 없습니다.');
-      return;
-    }
+    if (pickIds.length === 0) return;
 
-    // 4. DB 동기화 (기존 데이터 초기화 후 천천히 삽입)
+    // 4. DB 동기화
     await prisma.dailyPick.deleteMany({});
-    console.log('🧹 기존 추천 리스트 초기화 완료.');
-
+    
+    // 5. 추천 상품별 즉시 수집 (Priority Sync)
+    console.log('⚡ 추천 상품 정보 즉시 수집 시작...');
+    
     for (const id of pickIds) {
       const product = await prisma.product.findUnique({ where: { id } });
       
-      if (product) {
+      // 이미 정보가 있는 경우 DailyPick만 등록
+      if (product && product.title !== `수집 중... (${id})` && product.imageUrl) {
         await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
-      } else {
-        console.log(`📡 신규 상품 감지: ${id} (임시 껍데기 생성)`);
-        await prisma.product.create({
-          data: { 
-            id, 
-            title: `수집 중... (${id})`,
-            brand: 'EveryUniv'
+        continue;
+      }
+
+      // 정보가 없거나 '수집 중'인 경우 즉시 수집
+      console.log(`🔍 [Priority] 신규 추천 상품 상세 정보 수집 중: ${id}`);
+      try {
+        await page.goto(`https://www.univstore.com/item/${id}`, { waitUntil: 'domcontentloaded' });
+        await randomSleep(1500, 3000);
+
+        const itemInfo = await page.evaluate(() => {
+          const scripts = Array.from(document.querySelectorAll('script'));
+          const dataScript = scripts.find(s => s.innerText.includes('window.__INITIAL_STATE__'));
+          let apiData = null;
+          if (dataScript) {
+            try {
+              const match = dataScript.innerText.match(/window\.__INITIAL_STATE__\s*=\s*(\{.*?\});/);
+              if (match) apiData = JSON.parse(match[1])?.item?.item;
+            } catch (e) {}
           }
-        }).catch(() => {});
+
+          const name = apiData?.front_name || document.querySelector('.usItemCardInfoName')?.innerText?.trim() || '이름 없음';
+          const brand = apiData?.brand_name || document.querySelector('.usItemCardInfoBrandName')?.innerText?.trim() || 'EveryUniv';
+          let imageUrl = apiData?.thumbnail_url || null;
+          
+          if (!imageUrl) {
+             const img = document.querySelector('.usItemImageArea img') || document.querySelector('.usItemThumbnail img');
+             if (img) imageUrl = img.src;
+          }
+
+          const price = apiData?.price || document.querySelector('.usItemCardInfoPriceCurrent')?.innerText?.replace(/[^0-9]/g, '') || '0';
+          const originalPrice = apiData?.market_price || document.querySelector('.usItemCardInfoPriceOriginal')?.innerText?.replace(/[^0-9]/g, '') || price;
+
+          return { title: name, brand, imageUrl, price: parseInt(price), originalPrice: parseInt(originalPrice) };
+        });
+
+        // 상품 정보 업데이트 또는 생성
+        await prisma.product.upsert({
+          where: { id },
+          update: {
+            title: itemInfo.title,
+            brand: itemInfo.brand,
+            imageUrl: itemInfo.imageUrl,
+            originalPrice: itemInfo.originalPrice,
+            updatedAt: new Date()
+          },
+          create: {
+            id,
+            title: itemInfo.title,
+            brand: itemInfo.brand,
+            imageUrl: itemInfo.imageUrl,
+            originalPrice: itemInfo.originalPrice
+          }
+        });
+
+        // 첫 가격 이력 생성 (그래프를 위해)
+        if (itemInfo.price > 0) {
+          await prisma.priceHistory.create({
+            data: { productId: id, price: itemInfo.price }
+          }).catch(() => {});
+        }
+
+        await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
+        console.log(`✅ 수집 완료: [${itemInfo.brand}] ${itemInfo.title}`);
+
+      } catch (err) {
+        console.error(`❌ 상품 ${id} 수집 실패:`, err.message);
+        // 실패해도 DailyPick은 등록 (나중에 메인 크롤러가 처리하도록)
         await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
       }
-      
-      // 각 아이템 처리 사이에도 아주 짧은 지연 (DB 부하 분산)
-      await sleep(100);
     }
 
-    console.log(`✨ 총 ${pickIds.length}개의 추천 상품 동기화 완료!`);
+    console.log(`✨ 총 ${pickIds.length}개의 추천 상품 동기화 및 우선 수집 완료!`);
 
   } catch (err) {
     console.error('❌ 수집 실패:', err.message);

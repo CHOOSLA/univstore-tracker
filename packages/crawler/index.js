@@ -389,7 +389,16 @@ async function run() {
   await checkLogin(initPage);
   await discoverSpecials(initPage);
 
-  const allItemIds = await discoverAllProductIds(initPage);
+  const rawItemIds = await discoverAllProductIds(initPage);
+  
+  // [우선 순위 로직 추가] DailyPick 상품들을 큐의 맨 앞으로 이동
+  const dailyPicks = await prisma.dailyPick.findMany({ select: { productId: true } });
+  const priorityIds = dailyPicks.map(p => p.productId);
+  const allItemIds = [
+    ...priorityIds,
+    ...rawItemIds.filter(id => !priorityIds.includes(id))
+  ];
+  
   const totalItems = allItemIds.length;
 
   await initContext.close();
