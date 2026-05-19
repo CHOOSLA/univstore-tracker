@@ -52,7 +52,7 @@ export default async function TerminalPage() {
     message: log.message
   }));
 
-  // 4. 데이터 이슈 조회 (신설)
+  // 4. 데이터 이슈 조회
   let rawIssues = [];
   try {
     rawIssues = await prisma.dataIssue.findMany({
@@ -71,6 +71,11 @@ export default async function TerminalPage() {
     timestamp: issue.timestamp.toISOString()
   }));
 
+  // 5. 크롤러 상태 조회 (신설)
+  const crawlerStatus = await prisma.crawlerStatus.findUnique({
+    where: { id: 'singleton' }
+  });
+
   return (
     <TerminalView 
       logs={formattedLogs}
@@ -78,6 +83,7 @@ export default async function TerminalPage() {
       queueSize={queueSize}
       totalProducts={totalProducts}
       totalHistory={totalHistory}
+      crawlerStatus={crawlerStatus ? JSON.parse(JSON.stringify(crawlerStatus)) : null}
     />
   );
 }

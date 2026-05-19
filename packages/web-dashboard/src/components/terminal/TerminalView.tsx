@@ -38,9 +38,15 @@ interface TerminalViewProps {
   queueSize: number;
   totalProducts: number;
   totalHistory: number;
+  crawlerStatus: {
+    totalItems: number;
+    currentIndex: number;
+    lastStatus: string;
+    lastHeartbeat: string;
+  } | null;
 }
 
-export default function TerminalView({ logs, dataIssues, queueSize, totalProducts, totalHistory }: TerminalViewProps) {
+export default function TerminalView({ logs, dataIssues, queueSize, totalProducts, totalHistory, crawlerStatus }: TerminalViewProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
@@ -51,11 +57,23 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Initializing Console...</div>;
   }
 
+  // 크롤러 진행률 계산
+  const progressPercent = crawlerStatus && crawlerStatus.totalItems > 0 
+    ? Math.round((crawlerStatus.currentIndex / crawlerStatus.totalItems) * 1000) / 10 
+    : 0;
+
   const nodeHealth = [
-    { name: 'Crawler Node', status: 'Active', load: '12%', uptime: 'Online', icon: Cpu },
-    { name: 'Redis Buffer', status: queueSize > 100 ? 'Congested' : 'Healthy', load: `${queueSize} items`, uptime: 'Optimal', icon: Zap },
-    { name: 'DB Instance', status: 'Optimized', load: `${totalProducts} Products`, uptime: `${totalHistory} Rows`, icon: Database },
-    { name: 'Storage Node', status: 'Healthy', load: '1.2GB/50GB', uptime: 'Unlimited', icon: HardDrive },
+    { 
+      name: 'Crawler Node', 
+      status: crawlerStatus?.lastStatus === 'RUNNING' ? 'Active' : (crawlerStatus?.lastStatus === 'BLOCKED' ? 'Blocked' : 'Idle'), 
+      load: crawlerStatus ? `${crawlerStatus.currentIndex.toLocaleString()} / ${crawlerStatus.totalItems.toLocaleString()}` : 'N/A', 
+      uptime: crawlerStatus ? `Last: ${new Date(crawlerStatus.lastHeartbeat).toLocaleTimeString()}` : 'Offline', 
+      icon: Cpu,
+      color: crawlerStatus?.lastStatus === 'RUNNING' ? 'emerald' : (crawlerStatus?.lastStatus === 'BLOCKED' ? 'red' : 'zinc')
+    },
+    { name: 'Redis Buffer', status: queueSize > 100 ? 'Congested' : 'Healthy', load: `${queueSize} items`, uptime: 'Optimal', icon: Zap, color: 'emerald' },
+    { name: 'DB Instance', status: 'Optimized', load: `${totalProducts} Products`, uptime: `${totalHistory} Rows`, icon: Database, color: 'emerald' },
+    { name: 'Storage Node', status: 'Healthy', load: '1.2GB/50GB', uptime: 'Unlimited', icon: HardDrive, color: 'emerald' },
   ];
 
   return (
@@ -91,9 +109,9 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
                    </div>
                    <span className={cn(
                      "text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-widest",
-                     node.status === 'Healthy' || node.status === 'Active' || node.status === 'Optimized'
-                       ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                       : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                     node.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
+                     node.color === 'red' ? "bg-red-500/10 text-red-500 border-red-500/20" :
+                     "bg-zinc-500/10 text-zinc-500 border-zinc-500/20"
                    )}>
                      {node.status}
                    </span>
@@ -107,10 +125,33 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
                       <Clock size={10} />
                       <span>{node.uptime}</span>
                    </div>
-                   <Activity size={14} className="text-emerald-500 opacity-50" />
+                   <Activity size={14} className={cn(
+                     node.color === 'emerald' ? "text-emerald-500 animate-pulse" : "text-zinc-700"
+                   )} />
                 </div>
              </div>
            ))}
+        </div>
+
+        {/* --- [Progress Hub] --- */}
+        <div className="glass p-8 rounded-[40px] border-white/[0.03] bg-zinc-900/20">
+           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+              <div className="space-y-1">
+                 <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Global Collection Progress</h3>
+                 <p className="text-3xl font-black text-white tabular-nums">{progressPercent}%</p>
+              </div>
+              <div className="text-right">
+                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Estimated Completion</p>
+                 <p className="text-sm font-bold text-zinc-400">Calculated via Live Telemetry</p>
+              </div>
+           </div>
+           <div className="h-4 w-full bg-zinc-900 rounded-full overflow-hidden border border-white/5 p-1">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-600 to-emerald-500 rounded-full transition-all duration-1000 relative"
+                style={{ width: `${progressPercent}%` }}
+              >
+              </div>
+           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
