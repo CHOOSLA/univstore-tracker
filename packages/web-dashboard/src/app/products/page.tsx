@@ -58,9 +58,9 @@ export default async function ProductsPage({
   });
 
   // 3. 메모리 상에서의 고급 정렬 (할인율, 가격 등)
-  let products = [...productsRaw];
+  let productsSorted = [...productsRaw];
   if (sortOption === 'discount') {
-    products.sort((a, b) => {
+    productsSorted.sort((a, b) => {
       const aCurr = a.priceHistory[0]?.price || 0;
       const aOld = a.originalPrice || aCurr;
       const aRate = aOld > 0 ? (aOld - aCurr) / aOld : 0;
@@ -72,7 +72,7 @@ export default async function ProductsPage({
       return bRate - aRate;
     });
   } else if (sortOption === 'price-asc') {
-    products.sort((a, b) => (a.priceHistory[0]?.price || 0) - (b.priceHistory[0]?.price || 0));
+    productsSorted.sort((a, b) => (a.priceHistory[0]?.price || 0) - (b.priceHistory[0]?.price || 0));
   }
 
   // 4. DB에 존재하는 실제 카테고리 목록 및 개수 가져오기
@@ -92,7 +92,10 @@ export default async function ProductsPage({
     count: c._count.id
   }));
 
-  const initialCursor = products.length === 100 ? products[products.length - 1].id : null;
+  const initialCursor = productsSorted.length === 100 ? productsSorted[productsSorted.length - 1].id : null;
+
+  // JSON 직렬화 안전성 보장 (Date 객체 등 처리)
+  const safeInitialItems = JSON.parse(JSON.stringify(productsSorted));
 
   return (
     <div className="pb-20 bg-zinc-950 text-zinc-50 min-h-screen">
@@ -110,7 +113,7 @@ export default async function ProductsPage({
           </div>
           <div className="flex items-center space-x-3">
              <div className="bg-emerald-500/10 text-emerald-500 text-[10px] font-black px-4 py-2 rounded-full border border-emerald-500/20 uppercase tracking-widest">
-               {products.length} Intel Points Found
+               {productsSorted.length} Intel Points Found
              </div>
           </div>
         </header>
@@ -220,7 +223,7 @@ export default async function ProductsPage({
 
         {/* Virtualized Infinite List */}
         <VirtualizedProductList 
-          initialItems={products as any} 
+          initialItems={safeInitialItems} 
           initialCursor={initialCursor}
           searchParams={{ q: searchQuery, brand: brandFilter, category: categoryFilter, sort: sortOption }}
         />
