@@ -72,6 +72,49 @@ async function handlePriceUpdate(payload) {
       })
     ]);
 
+    // --- [목표 가격 알림 체크 로직 추가] ---
+    // 1. 실질 구매가 계산 (대시보드와 동일한 룰 적용)
+    const calculateFinalPrice = (price, benefit) => {
+      if (!benefit) return price;
+      const maxMatch = benefit.match(/(\d+)만/);
+      const maxLimit = maxMatch ? parseInt(maxMatch[1]) * 10000 : 0;
+      let rate = 0;
+      if (benefit.includes('페이코머니')) rate = 0.03;
+      else if (benefit.includes('토스페이')) rate = 0.10;
+      else if (benefit.includes('최대')) rate = 0.03;
+      const discount = Math.min(Math.floor(price * rate), maxLimit || Infinity);
+      return price - discount;
+    };
+
+    const finalPrice = calculateFinalPrice(price, bestBenefit);
+
+    // 2. 활성화된 알림 중 목표가에 도달한 항목 조회
+    const activeAlerts = await prisma.priceAlert.findMany({
+      where: {
+        productId: id,
+        isActive: true,
+        targetPrice: { gte: finalPrice }
+      }
+    });
+
+    for (const alert of activeAlerts) {
+      // 오늘 이미 알림을 보냈다면 스킵 (중복 알림 방지)
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      if (alert.lastNotifiedAt && new Date(alert.lastNotifiedAt) >= today) continue;
+
+      if (bot && chatId) {
+        const message = `🎯 *목표 가격 도달 알림!*\n\n📦 *상품명*: ${title}\n🔥 *현재 실질 구매가*: ${finalPrice.toLocaleString()}원\n📍 *설정 목표가*: ${alert.targetPrice.toLocaleString()}원 이하\n🎁 *혜택*: ${bestBenefit || '기본'}\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
+        await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+        
+        // 알림 발송 기록 업데이트
+        await prisma.priceAlert.update({
+          where: { id: alert.id },
+          data: { lastNotifiedAt: new Date() }
+        });
+      }
+    }
+
+    // 3. 기존의 단순 가격 하락 알림 로직 (유지)
     if (lastRecord && price < lastRecord.price) {
       const dropPercent = (((lastRecord.price - price) / lastRecord.price) * 100).toFixed(1);
       await prisma.systemLog.create({
