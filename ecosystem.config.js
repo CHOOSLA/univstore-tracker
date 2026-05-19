@@ -1,14 +1,6 @@
 module.exports = {
   apps: [
     {
-      name: "univ-dashboard",
-      script: "npm",
-      args: "run dashboard:dev",
-      env: {
-        NODE_ENV: "development",
-      }
-    },
-    {
       name: "univ-worker",
       script: "npm",
       args: "run worker:dev",
