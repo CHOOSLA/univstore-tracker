@@ -90,90 +90,89 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
 
   return (
     <div className="glass rounded-[40px] overflow-hidden border-white/[0.03]">
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="bg-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 border-b border-white/5">
-            <th className="pl-10 pr-6 py-6">Product Details</th>
-            <th className="px-6 py-6 text-right">Price Matrix</th>
-            <th className="px-6 py-6 text-center">Trend (14D)</th>
-            <th className="pr-10 pl-6 py-6 text-right">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-white/5">
-          {items.map((item) => {
-            const currentPrice = item.priceHistory[0]?.price || 0;
-            const oldPrice = item.originalPrice || currentPrice;
-            const dropRate = oldPrice > 0 ? (((oldPrice - currentPrice) / oldPrice) * 100).toFixed(1) : "0";
-            const historyData = item.priceHistory.map(h => h.price).reverse();
+      {/* Header */}
+      <div className="grid grid-cols-12 bg-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 border-b border-white/5 px-10 py-6">
+        <div className="col-span-6 lg:col-span-5">Product Details</div>
+        <div className="col-span-3 lg:col-span-3 text-right">Price Matrix</div>
+        <div className="hidden lg:block lg:col-span-2 text-center">Trend (14D)</div>
+        <div className="col-span-3 lg:col-span-2 text-right">Status</div>
+      </div>
 
-            return (
-              <tr key={item.id} className="group hover:bg-white/[0.02] transition-all relative">
-                <td className="pl-10 pr-6 py-8">
-                  <Link href={`/product/${item.id}`} className="absolute inset-0 z-10" />
-                  <div className="flex items-center space-x-6 relative z-0">
-                    <div className="w-14 h-14 bg-zinc-900 rounded-2xl border border-white/5 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden">
-                      {item.imageUrl ? (
-                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="text-[8px] text-zinc-700 font-black uppercase tracking-tighter">IMAGE</div>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{item.brand || 'Brand'}</span>
-                        {item.category && (
-                          <span className="text-[8px] font-black bg-zinc-900 text-zinc-500 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-tighter">{item.category}</span>
-                        )}
-                      </div>
-                      <p className="text-base font-black text-white group-hover:text-blue-400 transition-colors line-clamp-1">{item.title}</p>
-                      <div className="flex items-center space-x-3 text-[11px] text-zinc-500 font-bold">
-                         <span className="flex items-center space-x-1 text-emerald-400/80">
-                           <CreditCard size={10} /> <span>{item.bestBenefit || '기본 혜택'}</span>
-                         </span>
-                         <span className="w-1 h-1 bg-zinc-800 rounded-full" />
-                         <span className="flex items-center space-x-1">
-                           <Truck size={10} /> <span>무료 배송</span>
-                         </span>
-                      </div>
-                    </div>
+      {/* Body */}
+      <div className="divide-y divide-white/5">
+        {items.map((item) => {
+          const currentPrice = item.priceHistory[0]?.price || 0;
+          const oldPrice = item.originalPrice || currentPrice;
+          const dropRate = oldPrice > 0 ? (((oldPrice - currentPrice) / oldPrice) * 100).toFixed(1) : "0";
+          const historyData = item.priceHistory.map(h => h.price).reverse();
+
+          return (
+            <div key={item.id} className="group hover:bg-white/[0.02] transition-all relative grid grid-cols-12 items-center px-10 py-8">
+              {/* Entire Row Clickable Link */}
+              <Link href={`/product/${item.id}`} className="absolute inset-0 z-10" />
+              
+              {/* Product Details */}
+              <div className="col-span-6 lg:col-span-5 flex items-center space-x-6 relative z-0">
+                <div className="w-14 h-14 bg-zinc-900 rounded-2xl border border-white/5 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden shrink-0">
+                  {item.imageUrl ? (
+                    <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="text-[8px] text-zinc-700 font-black uppercase tracking-tighter">IMAGE</div>
+                  )}
+                </div>
+                <div className="space-y-1 min-w-0">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest truncate">{item.brand || 'Brand'}</span>
+                    {item.category && (
+                      <span className="text-[8px] font-black bg-zinc-900 text-zinc-500 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-tighter truncate">{item.category}</span>
+                    )}
                   </div>
-                </td>
-                <td className="px-6 py-8 text-right relative z-0">
-                  <div className="flex flex-col items-end">
-                    <div className="flex items-baseline space-x-2">
-                       <span className="text-xs text-zinc-600 line-through tabular-nums font-medium">₩{oldPrice.toLocaleString()}</span>
-                       <span className="text-red-500 font-black text-sm">-{dropRate}%</span>
-                    </div>
-                    <p className="text-2xl font-black text-white tracking-tighter tabular-nums">₩{currentPrice.toLocaleString()}</p>
+                  <p className="text-base font-black text-white group-hover:text-blue-400 transition-colors line-clamp-1">{item.title}</p>
+                  <div className="flex items-center space-x-3 text-[11px] text-zinc-500 font-bold truncate">
+                     <span className="flex items-center space-x-1 text-emerald-400/80">
+                       <CreditCard size={10} /> <span className="truncate">{item.bestBenefit || '기본 혜택'}</span>
+                     </span>
                   </div>
-                </td>
-                <td className="px-6 py-8 relative z-0">
-                  <div className="flex flex-col items-center justify-center space-y-2">
-                    <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color={parseFloat(dropRate) > 10 ? "#ef4444" : "#3b82f6"} />
-                    <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Trend Scan</span>
+                </div>
+              </div>
+
+              {/* Price Matrix */}
+              <div className="col-span-3 lg:col-span-3 text-right relative z-0">
+                <div className="flex flex-col items-end">
+                  <div className="flex items-baseline space-x-2">
+                     <span className="text-xs text-zinc-600 line-through tabular-nums font-medium">₩{oldPrice.toLocaleString()}</span>
+                     <span className="text-red-500 font-black text-sm">-{dropRate}%</span>
                   </div>
-                </td>
-                <td className="pr-10 pl-6 py-8 text-right relative z-0">
-                  <div className="flex items-center justify-end space-x-4">
-                    <div className="flex flex-col items-end">
-                      <span className={cn(
-                        "text-[10px] font-black px-2.5 py-1 rounded-lg border uppercase tracking-widest",
-                        item.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                      )}>
-                        {item.stockStatus || 'In Stock'}
-                      </span>
-                      <p className="text-[10px] font-bold text-zinc-600 mt-2 italic">Ref: {item.id}</p>
-                    </div>
-                    <div className="p-3 bg-zinc-900 rounded-2xl border border-white/5 group-hover:border-blue-500/50 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-all">
-                      <Zap size={18} />
-                    </div>
+                  <p className="text-2xl font-black text-white tracking-tighter tabular-nums">₩{currentPrice.toLocaleString()}</p>
+                </div>
+              </div>
+
+              {/* Trend (Desktop Only) */}
+              <div className="hidden lg:flex lg:col-span-2 flex-col items-center justify-center space-y-2 relative z-0">
+                <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color={parseFloat(dropRate) > 10 ? "#ef4444" : "#3b82f6"} />
+                <span className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Trend Scan</span>
+              </div>
+
+              {/* Status */}
+              <div className="col-span-3 lg:col-span-2 text-right relative z-0">
+                <div className="flex items-center justify-end space-x-4">
+                  <div className="flex flex-col items-end hidden sm:flex">
+                    <span className={cn(
+                      "text-[10px] font-black px-2.5 py-1 rounded-lg border uppercase tracking-widest",
+                      item.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                    )}>
+                      {item.stockStatus || 'In Stock'}
+                    </span>
                   </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  <div className="p-3 bg-zinc-900 rounded-2xl border border-white/5 group-hover:border-blue-500/50 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-all">
+                    <Zap size={18} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {isLoading && (
         <div className="py-10 flex justify-center bg-zinc-900/50">
