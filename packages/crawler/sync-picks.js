@@ -1,5 +1,5 @@
 const { chromium } = require('playwright');
-const { prisma, redis, Pipeline, CrawlerContext, USER_DATA_DIR, sleep, checkLogin, SessionExpiredError } = require('./lib/engine');
+const { prisma, redis, Pipeline, CrawlerContext, USER_DATA_DIR, sleep, checkLogin, SessionExpiredError, BlockDetectedError } = require('./lib/engine');
 const { 
   DBStateFilter, NavigationFilter, ExtractionFilter, 
   ValidationFilter, StorageFilter, SessionCheckFilter 
@@ -11,7 +11,6 @@ const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor(Math
 async function scrapeDailyPicks() {
   console.log('🚀 EVERYUNIV 추천 PICK 우선순위 수집 시작...');
   
-  // Persistent Context 사용 (index.js와 세션 공유 및 유지력 향상)
   const browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, { 
     headless: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -24,7 +23,14 @@ async function scrapeDailyPicks() {
     // 초기 세션 체크 및 로그인
     await checkLogin(page);
 
-    await page.goto('https://www.univstore.com/', { waitUntil: 'networkidle' });
+    console.log("🔍 추천 상품 목록 탐색 중...");
+    const response = await page.goto('https://www.univstore.com/', { waitUntil: 'networkidle' });
+    
+    // 차단 여부 체크
+    if (response.status() === 403 || response.status() === 429 || response.status() === 405) {
+      throw new BlockDetectedError(`메인 페이지 접근 차단됨 (HTTP ${response.status()})`, response.status());
+    }
+
     await randomSleep(2000, 4000);
 
     // 24개 상품 ID 추출
@@ -37,7 +43,12 @@ async function scrapeDailyPicks() {
       return [...new Set(links.map(a => a.href.split('/item/')[1]?.split('?')[0]).filter(id => id && /^\d+$/.test(id)))].slice(0, 24);
     });
 
-    console.log(`✅ ${pickIds.length}개의 추천 상품 ID 발견.`);
+    if (pickIds.length === 0) {
+      console.warn("⚠️ 추천 상품을 발견하지 못했습니다. (구조 변경 또는 세션 이슈 가능성)");
+    } else {
+      console.log(`✅ ${pickIds.length}개의 추천 상품 ID 발견.`);
+    }
+
     await prisma.dailyPick.deleteMany({});
 
     const pipeline = new Pipeline([
@@ -62,7 +73,7 @@ async function scrapeDailyPicks() {
           await pipeline.execute(ctx);
           await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
           if (ctx.payload) console.log(`✨ [Priority] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title}`);
-          break; // 성공 시 루프 탈출
+          break;
         } catch (err) {
           if (err instanceof SessionExpiredError && retryCount < MAX_RETRIES) {
             console.error(`🔄 [ID ${id}] 세션 만료 감지. 재로그인 시도 (${retryCount + 1}/${MAX_RETRIES})...`);
@@ -70,10 +81,16 @@ async function scrapeDailyPicks() {
             await checkLogin(loginPage);
             await loginPage.close();
             retryCount++;
-            continue; // 같은 ID로 다시 시도
+            continue;
           }
           
-          console.error(`❌ [ID ${id}] 수집 실패:`, err.message);
+          if (err instanceof BlockDetectedError) {
+            console.error(`🔥 [ID ${id}] 차단 감지: ${err.message}. 잠시 대기...`);
+            await sleep(60000); // 1분 대기 후 다음으로
+          } else {
+            console.error(`❌ [ID ${id}] 수집 실패:`, err.message);
+          }
+          
           await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
           break;
         }
@@ -83,7 +100,11 @@ async function scrapeDailyPicks() {
 
     console.log(`🏁 추천 PICK 동기화 공정 완료.`);
   } catch (err) {
-    console.error('❌ 치명적 에러:', err.message);
+    if (err instanceof BlockDetectedError) {
+      console.error(`🔥 치명적 차단 발생: ${err.message}. 수집을 중단합니다.`);
+    } else {
+      console.error('❌ 치명적 에러:', err.message);
+    }
   } finally {
     await browserContext.close();
     await prisma.$disconnect();
