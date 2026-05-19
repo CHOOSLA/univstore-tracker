@@ -245,39 +245,6 @@ export default function MarketInsightView({
            </div>
            <ReportDownloader />
         </div>
-
-        {/* --- [Extra Bento: Secondary Insights] --- */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-           <div className="glass p-8 rounded-[40px] space-y-4 border-white/[0.02]">
-              <div className="p-3 w-fit bg-zinc-900 rounded-xl border border-white/5 text-amber-500">
-                 <Zap size={20} fill="currentColor" />
-              </div>
-              <div>
-                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Active Deals</p>
-                 <p className="text-2xl font-black text-white">1,240 <span className="text-emerald-500 text-xs">+12</span></p>
-              </div>
-           </div>
-           <div className="glass p-8 rounded-[40px] space-y-4 border-white/[0.02]">
-              <div className="p-3 w-fit bg-zinc-900 rounded-xl border border-white/5 text-blue-500">
-                 <Target size={20} />
-              </div>
-              <div>
-                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Precision</p>
-                 <p className="text-2xl font-black text-white">99.8%</p>
-              </div>
-           </div>
-           <div className="col-span-1 md:col-span-2 glass p-8 rounded-[40px] flex items-center justify-between border-white/[0.02] bg-zinc-900/20">
-              <div className="space-y-1">
-                 <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Market intelligence API</p>
-                 <h4 className="text-lg font-bold text-white tracking-tight">기업용 커스텀 데이터 익스포트</h4>
-                 <p className="text-xs text-zinc-600 font-medium">대규모 상품 트래킹 데이터 및 가격 변동 API 솔루션 제공</p>
-              </div>
-              <div className="p-4 bg-zinc-900 rounded-2xl border border-white/5 text-zinc-500 hover:text-white transition-colors cursor-pointer">
-                 <ChevronRight size={20} />
-              </div>
-           </div>
-        </div>
-
       </main>
     </div>
   );
