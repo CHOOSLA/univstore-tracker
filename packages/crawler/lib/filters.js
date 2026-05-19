@@ -34,7 +34,9 @@ class NavigationFilter {
     });
 
     const status = res.status();
-    if (status === 403 || status === 429) throw new BlockDetectedError(`Bot detected (HTTP ${status})`, status);
+    if (status === 403 || status === 429 || status === 405) {
+      throw new BlockDetectedError(`Bot detected (HTTP ${status})`, status);
+    }
   }
 }
 
