@@ -9,18 +9,18 @@ require('dotenv').config();
 const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor(Math.random() * (max - min + 1) + min)));
 
 async function scrapeDailyPicks() {
-  const browser = await chromium.launch({ 
+  console.log('🚀 EVERYUNIV 추천 PICK 우선순위 수집 시작...');
+  
+  // Persistent Context 사용 (index.js와 세션 공유 및 유지력 향상)
+  const browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, { 
     headless: true,
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'] 
   });
-  const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-  });
-  const page = await context.newPage();
+
+  const page = await browserContext.newPage();
 
   try {
-    console.log('🚀 EVERYUNIV 추천 PICK 우선순위 수집 시작...');
-    
     // 초기 세션 체크 및 로그인
     await checkLogin(page);
 
@@ -40,7 +40,6 @@ async function scrapeDailyPicks() {
     console.log(`✅ ${pickIds.length}개의 추천 상품 ID 발견.`);
     await prisma.dailyPick.deleteMany({});
 
-    // 공통 파이프라인 엔진 사용 (리팩토링의 핵심)
     const pipeline = new Pipeline([
       new DBStateFilter(),
       new NavigationFilter(),
@@ -52,33 +51,41 @@ async function scrapeDailyPicks() {
 
     for (let i = 0; i < pickIds.length; i++) {
       const id = pickIds[i];
-      const pickPage = await context.newPage();
-      const ctx = new CrawlerContext(id, i, pickIds.length, pickPage, context, USER_DATA_DIR);
+      const pickPage = await browserContext.newPage();
+      const ctx = new CrawlerContext(id, i, pickIds.length, pickPage, browserContext, USER_DATA_DIR);
       
-      try {
-        await pipeline.execute(ctx);
-        await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
-        if (ctx.payload) console.log(`✨ [Priority] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title}`);
-      } catch (err) {
-        if (err instanceof SessionExpiredError) {
-          console.error("🔄 세션 만료 감지. 재로그인 후 재시도...");
-          await checkLogin(pickPage);
-          i--; // 현재 상품 재시도
-          await pickPage.close();
-          continue;
+      let retryCount = 0;
+      const MAX_RETRIES = 2;
+
+      while (retryCount <= MAX_RETRIES) {
+        try {
+          await pipeline.execute(ctx);
+          await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
+          if (ctx.payload) console.log(`✨ [Priority] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title}`);
+          break; // 성공 시 루프 탈출
+        } catch (err) {
+          if (err instanceof SessionExpiredError && retryCount < MAX_RETRIES) {
+            console.error(`🔄 [ID ${id}] 세션 만료 감지. 재로그인 시도 (${retryCount + 1}/${MAX_RETRIES})...`);
+            const loginPage = await browserContext.newPage();
+            await checkLogin(loginPage);
+            await loginPage.close();
+            retryCount++;
+            continue; // 같은 ID로 다시 시도
+          }
+          
+          console.error(`❌ [ID ${id}] 수집 실패:`, err.message);
+          await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
+          break;
         }
-        console.error(`❌ [ID ${id}] 수집 실패:`, err.message);
-        await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
-      } finally {
-        if (!pickPage.isClosed()) await pickPage.close();
       }
+      await pickPage.close();
     }
 
     console.log(`🏁 추천 PICK 동기화 공정 완료.`);
   } catch (err) {
     console.error('❌ 치명적 에러:', err.message);
   } finally {
-    await browser.close();
+    await browserContext.close();
     await prisma.$disconnect();
     await redis.quit();
   }
