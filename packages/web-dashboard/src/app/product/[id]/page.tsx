@@ -45,6 +45,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     orderBy: { priority: 'desc' }
   });
 
+  const priceAlerts = await prisma.priceAlert.findMany({
+    where: { productId: id, isActive: true },
+    orderBy: { targetPrice: 'asc' }
+  });
+
   return (
     <ProductDetailView 
       product={product} 
@@ -55,6 +60,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         maxLimit: r.maxLimit,
         label: r.label
       }))}
+      existingAlerts={priceAlerts.map(a => ({ id: a.id, targetPrice: a.targetPrice }))}
     />
   );
 }

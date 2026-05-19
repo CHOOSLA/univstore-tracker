@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import PriceAlertControl from "./PriceAlertControl";
 import { 
   AreaChart, 
   Area, 
@@ -51,9 +52,10 @@ interface ProductDetailViewProps {
   };
   history: PriceHistoryEntry[];
   benefitRules: BenefitRuleProp[];
+  existingAlerts: { id: number, targetPrice: number }[];
 }
 
-export default function ProductDetailView({ product, history, benefitRules }: ProductDetailViewProps) {
+export default function ProductDetailView({ product, history, benefitRules, existingAlerts }: ProductDetailViewProps) {
   const [mounted, setMounted] = useState(false);
   
   useEffect(() => {
@@ -263,9 +265,17 @@ export default function ProductDetailView({ product, history, benefitRules }: Pr
                   <ChevronRight size={14} />
                 </div>
               </div>
-            </div>
+              </div>
 
-            <div className="glass p-6 rounded-[32px] border-white/[0.03] space-y-4">
+              {/* Price Alert Center */}
+              <PriceAlertControl 
+              productId={product.id} 
+              currentPrice={finalPrice} 
+              existingAlerts={existingAlerts} 
+              />
+
+              <div className="glass p-10 rounded-[40px] border-white/[0.03] space-y-6">
+
                <div className="flex items-center space-x-2 text-zinc-400 font-bold text-xs uppercase tracking-widest">
                   <Info size={14} />
                   <span>Insight</span>
