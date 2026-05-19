@@ -12,11 +12,11 @@ import {
   Play, 
   Clock,
   Info,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { restartCrawler, restartAllNodes, executeSystemCommand } from "@/app/terminal/actions";
-import { Loader2 } from "lucide-react";
 
 interface SystemLogEntry {
   id: number;
@@ -48,15 +48,45 @@ interface TerminalViewProps {
   } | null;
 }
 
-export default function TerminalView({ logs, dataIssues, queueSize, totalProducts, totalHistory, crawlerStatus }: TerminalViewProps) {
+export default function TerminalView({ 
+  logs: initialLogs, 
+  dataIssues, 
+  queueSize, 
+  totalProducts, 
+  totalHistory: initialHistory, 
+  crawlerStatus: initialStatus 
+}: TerminalViewProps) {
   const [mounted, setMounted] = useState(false);
   const [command, setCommand] = useState('');
   const [localLogs, setLocalLogs] = useState<any[]>([]);
+  const [dbLogs, setDbLogs] = useState(initialLogs);
+  const [liveStatus, setLiveStatus] = useState(initialStatus);
+  const [liveHistory, setLiveHistory] = useState(initialHistory);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    console.log("🚀 TerminalView Mounted");
+    
+    // Real-time Update Stream (SSE)
+    const eventSource = new EventSource('/api/terminal/stream');
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.logs) setDbLogs(data.logs);
+        if (data.crawlerStatus) setLiveStatus(data.crawlerStatus);
+        if (data.totalHistory) setLiveHistory(data.totalHistory);
+      } catch (e) {
+        console.error("Failed to parse SSE data:", e);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("SSE Connection Failed:", err);
+      eventSource.close();
+    };
+
+    return () => eventSource.close();
   }, []);
 
   const handleCommand = async (e: React.FormEvent) => {
@@ -75,7 +105,7 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
       time: new Date().toLocaleTimeString('ko-KR', { hour12: false }),
       type: result.success ? 'SUCCESS' : 'WARNING',
       service: 'SYSTEM',
-      message: result.success ? `Output: ${result.output}` : `Error: ${result.error}`
+      message: result.success ? `Result: ${result.output}` : `Error: ${result.error}`
     };
 
     setLocalLogs(prev => [newLog, ...prev]);
@@ -101,137 +131,111 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Initializing Console...</div>;
   }
 
-  // 크롤러 진행률 계산
-  const progressPercent = crawlerStatus && crawlerStatus.totalItems > 0 
-    ? Math.round((crawlerStatus.currentIndex / crawlerStatus.totalItems) * 1000) / 10 
-    : 0;
-
-  const nodeHealth = [
-    { 
-      name: 'Crawler Node', 
-      status: crawlerStatus?.lastStatus === 'RUNNING' ? 'Active' : (crawlerStatus?.lastStatus === 'BLOCKED' ? 'Blocked' : 'Idle'), 
-      load: crawlerStatus ? `${crawlerStatus.currentIndex.toLocaleString()} / ${crawlerStatus.totalItems.toLocaleString()}` : 'N/A', 
-      uptime: crawlerStatus ? `Last: ${new Date(crawlerStatus.lastHeartbeat).toLocaleTimeString()}` : 'Offline', 
-      icon: Cpu,
-      color: crawlerStatus?.lastStatus === 'RUNNING' ? 'emerald' : (crawlerStatus?.lastStatus === 'BLOCKED' ? 'red' : 'zinc')
-    },
-    { name: 'Redis Buffer', status: queueSize > 100 ? 'Congested' : 'Healthy', load: `${queueSize} items`, uptime: 'Optimal', icon: Zap, color: 'emerald' },
-    { name: 'DB Instance', status: 'Optimized', load: `${totalProducts} Products`, uptime: `${totalHistory} Rows`, icon: Database, color: 'emerald' },
-    { name: 'Storage Node', status: 'Healthy', load: '1.2GB/50GB', uptime: 'Unlimited', icon: HardDrive, color: 'emerald' },
-  ];
+  // Real-time Progress Logic
+  const currentIdx = liveStatus?.currentIndex || 0;
+  const totalItems = liveStatus?.totalItems || 32979;
+  const progressPercent = totalItems > 0 ? Math.min(Math.round((currentIdx / totalItems) * 100), 100) : 0;
+  
+  const isBlocked = liveStatus?.lastStatus === 'BLOCKED';
+  const isRunning = liveStatus?.lastStatus === 'RUNNING';
 
   return (
     <div className="pb-20 bg-zinc-950" suppressHydrationWarning>
-      <main className="max-w-7xl mx-auto px-6 pt-12 space-y-8">
+      <main className="max-w-7xl mx-auto px-6 pt-12 space-y-10">
         
-        <section className="flex flex-col md:flex-row justify-between items-center gap-6">
-          <div className="space-y-1">
+        {/* Real-time Progress Hub */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+          <div className="lg:col-span-8 space-y-4">
             <div className="flex items-center space-x-3 text-emerald-500">
-              <Terminal size={20} />
-              <span className="text-xs font-black uppercase tracking-[0.4em]">System Console</span>
+              <div className={cn(
+                "w-2.5 h-2.5 rounded-full animate-pulse",
+                isRunning ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" : 
+                isBlocked ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]" : "bg-zinc-700"
+              )} />
+              <span className="text-[10px] font-black uppercase tracking-[0.4em]">
+                {isRunning ? "Pipeline Active" : isBlocked ? "Pipeline Blocked" : "System Standby"}
+              </span>
             </div>
-            <h1 className="text-5xl font-black tracking-tighter text-white">The Terminal.</h1>
+            <h1 className="text-6xl font-black tracking-tighter text-white">The Terminal.</h1>
+            
+            <div className="pt-6 space-y-4 max-w-2xl">
+               <div className="flex justify-between items-end">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Global Scan Depth</p>
+                    <p className="text-3xl font-black text-white">{currentIdx.toLocaleString()} <span className="text-zinc-700 text-base font-bold">/ {totalItems.toLocaleString()} items</span></p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">Coverage</p>
+                    <p className="text-4xl font-black text-emerald-500 tracking-tighter">{progressPercent}%</p>
+                  </div>
+               </div>
+               <div className="h-4 w-full bg-zinc-900 rounded-2xl border border-white/5 overflow-hidden p-1">
+                  <div 
+                    className={cn(
+                      "h-full rounded-xl transition-all duration-1000 ease-out",
+                      isBlocked ? "bg-red-500" : "bg-gradient-to-r from-blue-600 to-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                    )}
+                    style={{ width: `${progressPercent}%` }} 
+                  />
+               </div>
+            </div>
           </div>
-          <div className="flex space-x-3">
+          
+          <div className="lg:col-span-4 flex justify-end space-x-3 pt-10">
              <button 
                onClick={handleRestartCrawler}
                disabled={isProcessing}
-               className="flex items-center space-x-2 bg-emerald-500 text-black px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-400 transition-all disabled:opacity-50"
+               className="flex items-center space-x-2 bg-emerald-500 text-black px-8 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-emerald-400 transition-all disabled:opacity-50"
              >
                <Play size={14} fill="currentColor" />
-               <span>Resume Pipeline</span>
+               <span>Resume</span>
              </button>
              <button 
                onClick={handleRestartAll}
                disabled={isProcessing}
-               className="flex items-center space-x-2 bg-zinc-900 border border-white/10 px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all disabled:opacity-50"
+               className="flex items-center space-x-2 bg-zinc-900 border border-white/10 px-8 py-4 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all disabled:opacity-50"
              >
                <RefreshCcw size={14} />
-               <span>Restart Nodes</span>
+               <span>Restart</span>
              </button>
           </div>
         </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-           {nodeHealth.map((node) => (
-             <div key={node.name} className="glass p-6 rounded-[32px] border-white/[0.03] space-y-6">
-                <div className="flex justify-between items-start">
-                   <div className="p-3 bg-zinc-900 rounded-2xl border border-white/5 text-zinc-400">
-                      <node.icon size={20} />
-                   </div>
-                   <span className={cn(
-                     "text-[9px] font-black px-2 py-0.5 rounded-full border uppercase tracking-widest",
-                     node.color === 'emerald' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                     node.color === 'red' ? "bg-red-500/10 text-red-500 border-red-500/20" :
-                     "bg-zinc-500/10 text-zinc-500 border-zinc-500/20"
-                   )}>
-                     {node.status}
-                   </span>
-                </div>
-                <div>
-                   <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-1">{node.name}</p>
-                   <p className="text-xl font-black text-white">{node.load}</p>
-                </div>
-                <div className="pt-4 border-t border-white/5 flex items-center justify-between">
-                   <div className="flex items-center space-x-2 text-[10px] font-bold text-zinc-500">
-                      <Clock size={10} />
-                      <span>{node.uptime}</span>
-                   </div>
-                   <Activity size={14} className={cn(
-                     node.color === 'emerald' ? "text-emerald-500 animate-pulse" : "text-zinc-700"
-                   )} />
-                </div>
-             </div>
-           ))}
-        </div>
-
-        {/* --- [Progress Hub] --- */}
-        <div className="glass p-8 rounded-[40px] border-white/[0.03] bg-zinc-900/20">
-           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-              <div className="space-y-1">
-                 <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Global Collection Progress</h3>
-                 <p className="text-3xl font-black text-white tabular-nums">{progressPercent}%</p>
-              </div>
-              <div className="text-right">
-                 <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Estimated Completion</p>
-                 <p className="text-sm font-bold text-zinc-400">Calculated via Live Telemetry</p>
-              </div>
-           </div>
-           <div className="h-4 w-full bg-zinc-900 rounded-full overflow-hidden border border-white/5 p-1">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-600 to-emerald-500 rounded-full transition-all duration-1000 relative"
-                style={{ width: `${progressPercent}%` }}
-              >
-              </div>
-           </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+        {/* Console Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
            
-           <div className="lg:col-span-8 space-y-6">
-              <div className="bg-zinc-900/80 border border-white/5 rounded-[40px] overflow-hidden flex flex-col h-[600px] shadow-2xl">
-                 <div className="bg-zinc-900 px-8 py-5 border-b border-white/5 flex justify-between items-center">
+           {/* Terminal Output */}
+           <div className="lg:col-span-8">
+              <div className="glass rounded-[40px] border-white/5 bg-zinc-900/30 overflow-hidden flex flex-col h-[650px] relative">
+                 <div className="bg-zinc-950/80 px-8 py-4 border-b border-white/5 flex justify-between items-center backdrop-blur-md">
                     <div className="flex items-center space-x-3">
                        <div className="flex space-x-1.5">
-                          <div className="w-2.5 h-2.5 rounded-full bg-red-500/50" />
-                          <div className="w-2.5 h-2.5 rounded-full bg-amber-500/50" />
-                          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/50" />
+                          <div className="w-3 h-3 rounded-full bg-red-500/20 border border-red-500/40" />
+                          <div className="w-3 h-3 rounded-full bg-amber-500/20 border border-amber-500/40" />
+                          <div className="w-3 h-3 rounded-full bg-emerald-500/20 border border-emerald-500/40" />
                        </div>
-                       <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-4">root@univwatch:~# tail -f /logs/system.log</span>
+                       <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-4 font-mono">root@univwatch:~# live_telemetry_feed</span>
                     </div>
-                    <button className="text-[10px] font-black text-zinc-600 hover:text-white transition-colors uppercase tracking-widest">Clear Logs</button>
+                    <button 
+                      onClick={() => setLocalLogs([])}
+                      className="text-[10px] font-black text-zinc-600 hover:text-white transition-colors uppercase tracking-widest"
+                    >
+                      Clear
+                    </button>
                  </div>
-                 <div className="flex-1 p-8 font-mono text-sm space-y-3 overflow-y-auto">
-                    {/* Local dynamic logs (command output) */}
+
+                 <div className="flex-1 p-8 font-mono text-sm space-y-3 overflow-y-auto custom-scrollbar">
+                    {/* Local dynamic logs */}
                     {localLogs.map((log) => (
-                      <div key={log.id} className="flex space-x-4 text-emerald-500/80 animate-in fade-in slide-in-from-left-2 duration-300">
+                      <div key={log.id} className="flex space-x-4 text-emerald-400 animate-in fade-in slide-in-from-left-2 duration-300">
                          <span className="text-zinc-700 shrink-0">[{log.time}]</span>
                          <span className="font-black shrink-0 w-16">[{log.type}]</span>
-                         <span className="whitespace-pre-wrap">[{log.service}] {log.message}</span>
+                         <span className="whitespace-pre-wrap">{log.message}</span>
                       </div>
                     ))}
                     
-                    {logs.length > 0 ? logs.map((log) => (
+                    {/* Database logs */}
+                    {dbLogs.length > 0 ? dbLogs.map((log) => (
                       <div key={log.id} className="flex space-x-4 animate-in fade-in slide-in-from-left-2 duration-300">
                          <span className="text-zinc-700 shrink-0">[{log.time}]</span>
                          <span className={cn(
@@ -243,20 +247,21 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
                          <span className="text-zinc-400">[{log.service}] {log.message}</span>
                       </div>
                     )) : (
-                      <div className="text-zinc-700 italic">No system logs recorded yet...</div>
+                      <div className="text-zinc-700 italic">Connecting to live feed...</div>
                     )}
                     <div className="flex items-center space-x-2 text-zinc-500">
                        <span className="animate-pulse">_</span>
                     </div>
                  </div>
-                 <form onSubmit={handleCommand} className="bg-zinc-950 px-8 py-4 border-t border-white/5 flex items-center space-x-4">
-                    <span className="text-emerald-500 font-bold">$</span>
+
+                 <form onSubmit={handleCommand} className="bg-zinc-950 px-8 py-5 border-t border-white/5 flex items-center space-x-4">
+                    <span className="text-emerald-500 font-bold font-mono">$</span>
                     <input 
                       type="text" 
                       value={command}
                       onChange={(e) => setCommand(e.target.value)}
-                      placeholder="Execute system command (e.g. pm2 status)..." 
-                      className="bg-transparent border-none focus:outline-none text-zinc-400 w-full text-sm font-mono"
+                      placeholder="Execute system command (e.g. pm2 list)..." 
+                      className="bg-transparent border-none focus:outline-none text-zinc-300 w-full text-sm font-mono placeholder:text-zinc-700"
                       disabled={isProcessing}
                     />
                     {isProcessing && <Loader2 size={16} className="animate-spin text-zinc-600" />}
@@ -276,7 +281,7 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
                       <div key={issue.id} className="p-3 bg-zinc-950/50 rounded-xl border border-white/5 space-y-1 group hover:border-red-500/30 transition-colors">
                          <div className="flex justify-between text-[10px] font-bold">
                             <span className="text-red-400">{issue.type}</span>
-                            <span className="text-zinc-600 font-mono">ID: {issue.productId}</span>
+                            <span className="text-zinc-600 font-mono text-[9px]">ID: {issue.productId}</span>
                          </div>
                          <p className="text-[11px] text-zinc-400 leading-snug">{issue.message}</p>
                       </div>
@@ -286,21 +291,23 @@ export default function TerminalView({ logs, dataIssues, queueSize, totalProduct
                  </div>
               </div>
 
+              {/* Database Health Section */}
               <div className="glass p-8 rounded-[40px] border-white/[0.03] space-y-8">
                  <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Database Health</h3>
                  <div className="space-y-6">
                     <StatProgressBar label="Index Efficiency" percent={98} color="bg-blue-500" />
                     <StatProgressBar label="Sync Rate" percent={totalProducts > 0 ? 100 : 0} color="bg-emerald-500" />
-                    <StatProgressBar label="Error Rate" percent={logs.filter(l => l.type === 'WARNING').length} color="bg-red-500" />
+                    <StatProgressBar label="Error Rate" percent={dbLogs.filter(l => l.type === 'WARNING').length} color="bg-red-500" />
                  </div>
                  <div className="pt-4 flex items-start space-x-3 text-zinc-500">
                     <Info className="shrink-0 mt-0.5" size={14} />
                     <p className="text-[11px] leading-relaxed italic">
-                      DB 인덱싱이 최적화된 상태입니다. 현재 {totalHistory.toLocaleString()}개의 가격 이력을 실시간으로 조회 가능합니다.
+                      DB 인덱싱이 최적화된 상태입니다. 현재 {liveHistory.toLocaleString()}개의 가격 이력을 실시간으로 조회 가능합니다.
                     </p>
                  </div>
               </div>
 
+              {/* Queue Metrics Section */}
               <div className="glass p-8 rounded-[40px] border-white/[0.03] bg-zinc-100/[0.01] space-y-6">
                  <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center">
                     <Zap size={14} className="mr-2 text-blue-500" />
