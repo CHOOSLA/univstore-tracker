@@ -67,14 +67,23 @@ async function withPrismaRetry(fn, retries = 3) {
 }
 
 async function checkLogin(page) {
-  await page.goto('https://www.univstore.com/user/login');
-  if (await page.isVisible('input[name="userid"]')) {
+  console.log("🔍 세션 상태 확인 중...");
+  await page.goto('https://www.univstore.com/user/login', { waitUntil: 'networkidle' });
+  
+  // 로그인 폼이 있는지 확인 (최대 5초 대기)
+  const loginFormVisible = await page.waitForSelector('input[name="userid"]', { timeout: 5000 }).catch(() => null);
+  
+  if (loginFormVisible) {
     console.log("🔑 로그인 필요 감지. 세션 갱신을 시작합니다...");
     await page.click('.usEverytimeLoginTitle');
+    await page.waitForSelector('input[name="id"]', { timeout: 10000 });
     await page.fill('input[name="id"]', process.env.EVERYTIME_ID);
     await page.fill('input[name="password"]', process.env.EVERYTIME_PW);
     await page.click('input[type="submit"]');
-    await page.waitForURL(url => url.href.includes('univstore.com'), { timeout: 60000 });
+    
+    // 메인으로 리다이렉트될 때까지 대기
+    await page.waitForURL(url => url.href.includes('univstore.com') && !url.href.includes('login'), { timeout: 60000 });
+    await page.waitForTimeout(2000); // 쿠키 안착 대기
     console.log("🎉 로그인 성공!");
   } else {
     console.log("✅ 이미 로그인된 세션입니다.");
