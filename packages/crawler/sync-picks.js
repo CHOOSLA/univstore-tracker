@@ -1,6 +1,9 @@
 const { chromium } = require('playwright');
-const { prisma, redis, Pipeline, CrawlerContext, USER_DATA_DIR, sleep, checkLogin } = require('./lib/engine');
-const { DBStateFilter, NavigationFilter, ExtractionFilter, ValidationFilter, StorageFilter } = require('./lib/filters');
+const { prisma, redis, Pipeline, CrawlerContext, USER_DATA_DIR, sleep, checkLogin, SessionExpiredError } = require('./lib/engine');
+const { 
+  DBStateFilter, NavigationFilter, ExtractionFilter, 
+  ValidationFilter, StorageFilter, SessionCheckFilter 
+} = require('./lib/filters');
 require('dotenv').config();
 
 const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor(Math.random() * (max - min + 1) + min)));
@@ -41,6 +44,7 @@ async function scrapeDailyPicks() {
     const pipeline = new Pipeline([
       new DBStateFilter(),
       new NavigationFilter(),
+      new SessionCheckFilter(),
       new ExtractionFilter(),
       new ValidationFilter(),
       new StorageFilter()
@@ -56,10 +60,17 @@ async function scrapeDailyPicks() {
         await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
         if (ctx.payload) console.log(`✨ [Priority] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title}`);
       } catch (err) {
+        if (err instanceof SessionExpiredError) {
+          console.error("🔄 세션 만료 감지. 재로그인 후 재시도...");
+          await checkLogin(pickPage);
+          i--; // 현재 상품 재시도
+          await pickPage.close();
+          continue;
+        }
         console.error(`❌ [ID ${id}] 수집 실패:`, err.message);
         await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
       } finally {
-        await pickPage.close();
+        if (!pickPage.isClosed()) await pickPage.close();
       }
     }
 
