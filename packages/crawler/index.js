@@ -84,9 +84,9 @@ class DBStateFilter {
 
 class NavigationFilter {
   async process(ctx) {
-    // [안정성 최우선] 차단 방지를 위해 검증된 1초~4초 대기 전략 적용
-    const baseJitter = 1000;
-    const randomWait = Math.floor(Math.random() * 3000); 
+    // 405 차단 빈도가 높아짐에 따라 지터를 더 여유 있게 (1.5초 ~ 5.5초) 조정
+    const baseJitter = 1500;
+    const randomWait = Math.floor(Math.random() * 4000); 
     await sleep(baseJitter + randomWait);
 
     const res = await ctx.page.goto(`https://www.univstore.com/item/${ctx.id}`, { 
@@ -461,7 +461,7 @@ async function run() {
 
     } catch (err) {
       if (err instanceof BlockDetectedError) {
-        const cooldownMins = 10; // 30분에서 10분으로 대기 시간 최적화
+        const cooldownMins = 5; // 10분에서 5분으로 대기 시간 추가 단축
         console.error(`\n🔥 [CRITICAL] ${err.message}. ${cooldownMins}분 대기 모드 진입...`);
         
         await browserContext.close();
