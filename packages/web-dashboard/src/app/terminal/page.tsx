@@ -2,11 +2,12 @@ import React from 'react';
 import { prisma } from "@/lib/prisma";
 import Redis from 'ioredis';
 import TerminalView from "@/components/terminal/TerminalView";
+import { getStorageMetrics } from "./actions";
 
 export const dynamic = 'force-dynamic';
 
 export default async function TerminalPage() {
-  // 1. Redis 큐 사이즈 조회 (객체 기반 연결로 url.parse 경고 원천 차단)
+  // 1. Redis 큐 사이즈 조회
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
   const url = new URL(redisUrl);
   
@@ -16,7 +17,7 @@ export default async function TerminalPage() {
     password: url.password || undefined,
     username: url.username || undefined,
     db: parseInt(url.pathname.split('/')[1] || '0'),
-    lazyConnect: true // 연결 실패 시 서버가 죽지 않도록 설정
+    lazyConnect: true
   });
   
   let queueSize = 0;
@@ -29,20 +30,20 @@ export default async function TerminalPage() {
     await redis.disconnect();
   }
 
-  // 2. DB 메트릭 조회 (모델 존재 여부 안전하게 확인)
-  const totalProducts = await prisma.product.count().catch(() => 0);
-  const totalHistory = await prisma.priceHistory.count().catch(() => 0);
+  // 2. DB 메트릭 및 스토리지 메트릭 조회
+  const [totalProducts, totalHistory, crawlerStatus, storage, dbStats] = await Promise.all([
+    prisma.product.count().catch(() => 0),
+    prisma.priceHistory.count().catch(() => 0),
+    prisma.crawlerStatus.findUnique({ where: { id: 'singleton' } }),
+    getStorageMetrics(),
+    prisma.$queryRaw`SELECT pg_size_pretty(pg_database_size('univstore')) as size`.catch(() => [{ size: '0 MB' }])
+  ]);
 
   // 3. 최신 시스템 로그 조회
-  let rawLogs = [];
-  try {
-    rawLogs = await prisma.systemLog.findMany({
-      orderBy: { time: 'desc' },
-      take: 20,
-    });
-  } catch (err) {
-    console.error("Prisma SystemLog Query Error:", err);
-  }
+  const rawLogs = await prisma.systemLog.findMany({
+    orderBy: { time: 'desc' },
+    take: 20,
+  }).catch(() => []);
 
   const formattedLogs = rawLogs.map(log => ({
     id: log.id,
@@ -53,15 +54,10 @@ export default async function TerminalPage() {
   }));
 
   // 4. 데이터 이슈 조회
-  let rawIssues = [];
-  try {
-    rawIssues = await prisma.dataIssue.findMany({
-      orderBy: { timestamp: 'desc' },
-      take: 10,
-    });
-  } catch (err) {
-    console.error("Prisma DataIssue Query Error:", err);
-  }
+  const rawIssues = await prisma.dataIssue.findMany({
+    orderBy: { timestamp: 'desc' },
+    take: 10,
+  }).catch(() => []);
 
   const formattedIssues = rawIssues.map(issue => ({
     id: issue.id,
@@ -71,11 +67,6 @@ export default async function TerminalPage() {
     timestamp: issue.timestamp.toISOString()
   }));
 
-  // 5. 크롤러 상태 조회 (신설)
-  const crawlerStatus = await prisma.crawlerStatus.findUnique({
-    where: { id: 'singleton' }
-  });
-
   return (
     <TerminalView 
       logs={formattedLogs}
@@ -84,6 +75,12 @@ export default async function TerminalPage() {
       totalProducts={totalProducts}
       totalHistory={totalHistory}
       crawlerStatus={crawlerStatus ? JSON.parse(JSON.stringify(crawlerStatus)) : null}
+      storageMetrics={{
+        diskUsed: storage.diskUsed || '0',
+        diskTotal: storage.diskTotal || '0',
+        diskPercent: storage.diskPercent || 0,
+        dbSize: (dbStats as any)[0]?.size || '0 MB'
+      }}
     />
   );
 }

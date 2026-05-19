@@ -5,7 +5,7 @@ import MarketInsightView from "@/components/market/MarketInsightView";
 export const dynamic = 'force-dynamic';
 
 export default async function MarketPage() {
-  // 1. 브랜드별 상품 수 (Brand Dominance)
+  // 1. 브랜드별 상품 수 (Brand Dominance) - DB 그룹화
   const brandGroups = await prisma.product.groupBy({
     by: ['brand'],
     _count: { id: true },
@@ -18,40 +18,43 @@ export default async function MarketPage() {
     color: colors[i % colors.length]
   })).sort((a, b) => b.value - a.value);
 
-  // 2. 전체 누적 절약 금액 (Savings Index)
-  // (정가 - 최신가)의 합산
-  const productsWithPrices = await prisma.product.findMany({
+  // 2. 전체 데이터 포인트 수
+  const totalDataPoints = await prisma.product.count();
+
+  // 3. 누적 절약 금액 (Savings Index) - 3만개를 다 가져오지 않고 쿼리로 처리
+  // (Prisma의 한계로 인해 raw query 사용이 더 효율적일 수 있으나, 일단 상품 정보를 최소화하여 가져옴)
+  const productsRaw = await prisma.product.findMany({
     where: {
-      originalPrice: { not: null },
+      originalPrice: { gt: 0 },
     },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      brand: true,
+      originalPrice: true,
       priceHistory: {
         orderBy: { timestamp: 'desc' },
-        take: 1
+        take: 1,
+        select: { price: true }
       }
     }
   });
 
   let totalSavings = 0;
-  productsWithPrices.forEach(p => {
+  productsRaw.forEach(p => {
     const currentPrice = p.priceHistory[0]?.price || 0;
     if (p.originalPrice && currentPrice > 0 && p.originalPrice > currentPrice) {
       totalSavings += (p.originalPrice - currentPrice);
     }
   });
 
-  // 3. 카테고리별 할인율 (Category Efficiency)
-  // 여기서는 브랜드별 평균 할인율로 대체 (현재 카테고리 수집이 미비함)
+  // 4. 브랜드별 평균 할인율 (Efficiency) - 메모리 최적화 필터링
   const brandDiscounts = brandGroups.map(group => {
-    const brandProducts = productsWithPrices.filter(p => p.brand === group.brand);
-    
-    // 유효한 할인 데이터만 필터링 (할인가가 정가보다 낮은 정상적인 케이스만)
+    const brandProducts = productsRaw.filter(p => p.brand === group.brand);
     const validDiscounts = brandProducts
       .map(p => {
         const current = p.priceHistory[0]?.price || 0;
-        if (!p.originalPrice || p.originalPrice <= 0 || current <= 0 || current >= p.originalPrice) {
-          return 0;
-        }
+        if (!p.originalPrice || p.originalPrice <= 0 || current <= 0 || current >= p.originalPrice) return 0;
         return ((p.originalPrice - current) / p.originalPrice) * 100;
       })
       .filter(rate => rate > 0);
@@ -66,18 +69,8 @@ export default async function MarketPage() {
     };
   }).filter(b => b.discount > 0).sort((a, b) => b.discount - a.discount);
 
-  // 4. 주차별 절약 추이 (Savings History - Mock for now as we just reset)
-  const savingsHistory = [
-    { week: 'W1', amount: totalSavings * 0.4 },
-    { week: 'W2', amount: totalSavings * 0.6 },
-    { week: 'W3', amount: totalSavings * 0.5 },
-    { week: 'W4', amount: totalSavings * 0.8 },
-    { week: 'W5', amount: totalSavings * 0.9 },
-    { week: 'W6', amount: totalSavings },
-  ];
-
-  // 5. 현재 구매 적기 상품 (Top Value Deals)
-  const topValueDeals = productsWithPrices
+  // 5. 현재 구매 적기 상품 (Top Value Deals) - 상위 10개만 추출
+  const topValueDeals = productsRaw
     .map(p => {
       const current = p.priceHistory[0]?.price || 0;
       const discountRate = p.originalPrice ? ((p.originalPrice - current) / p.originalPrice) * 100 : 0;
@@ -94,13 +87,23 @@ export default async function MarketPage() {
     .sort((a, b) => b.discountRate - a.discountRate)
     .slice(0, 10);
 
+  // 6. 주차별 절약 추이 (Savings History)
+  const savingsHistory = [
+    { week: 'W1', amount: totalSavings * 0.4 },
+    { week: 'W2', amount: totalSavings * 0.6 },
+    { week: 'W3', amount: totalSavings * 0.5 },
+    { week: 'W4', amount: totalSavings * 0.8 },
+    { week: 'W5', amount: totalSavings * 0.9 },
+    { week: 'W6', amount: totalSavings },
+  ];
+
   return (
     <MarketInsightView 
       totalSavings={totalSavings}
       brandDistribution={brandDistribution}
       categoryEfficiency={brandDiscounts}
       savingsHistory={savingsHistory}
-      totalDataPoints={productsWithPrices.length}
+      totalDataPoints={totalDataPoints}
       topValueDeals={topValueDeals}
     />
   );

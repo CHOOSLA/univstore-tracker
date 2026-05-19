@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { 
-  Terminal, 
+  Terminal as TerminalIcon, 
   Activity, 
   Zap, 
   Database, 
@@ -46,6 +46,12 @@ interface TerminalViewProps {
     lastStatus: string;
     lastHeartbeat: string;
   } | null;
+  storageMetrics: {
+    diskUsed: string;
+    diskTotal: string;
+    diskPercent: number;
+    dbSize: string;
+  };
 }
 
 export default function TerminalView({ 
@@ -54,7 +60,8 @@ export default function TerminalView({
   queueSize, 
   totalProducts, 
   totalHistory: initialHistory, 
-  crawlerStatus: initialStatus 
+  crawlerStatus: initialStatus,
+  storageMetrics
 }: TerminalViewProps) {
   const [mounted, setMounted] = useState(false);
   const [command, setCommand] = useState('');
@@ -67,7 +74,7 @@ export default function TerminalView({
   useEffect(() => {
     setMounted(true);
     
-    // Real-time Update Stream (SSE)
+    // SSE 연결 설정
     const eventSource = new EventSource('/api/terminal/stream');
     
     eventSource.onmessage = (event) => {
@@ -77,7 +84,7 @@ export default function TerminalView({
         if (data.crawlerStatus) setLiveStatus(data.crawlerStatus);
         if (data.totalHistory) setLiveHistory(data.totalHistory);
       } catch (e) {
-        console.error("Failed to parse SSE data:", e);
+        console.error("SSE parsing error", e);
       }
     };
 
@@ -131,7 +138,6 @@ export default function TerminalView({
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Initializing Console...</div>;
   }
 
-  // Real-time Progress Logic
   const currentIdx = liveStatus?.currentIndex || 0;
   const totalItems = liveStatus?.totalItems || 32979;
   const progressPercent = totalItems > 0 ? Math.min(Math.round((currentIdx / totalItems) * 100), 100) : 0;
@@ -143,7 +149,7 @@ export default function TerminalView({
     <div className="pb-20 bg-zinc-950" suppressHydrationWarning>
       <main className="max-w-7xl mx-auto px-6 pt-12 space-y-10">
         
-        {/* Real-time Progress Hub */}
+        {/* Progress Hub Section */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
           <div className="lg:col-span-8 space-y-4">
             <div className="flex items-center space-x-3 text-emerald-500">
@@ -201,10 +207,7 @@ export default function TerminalView({
           </div>
         </section>
 
-        {/* Console Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-           
-           {/* Terminal Output */}
            <div className="lg:col-span-8">
               <div className="glass rounded-[40px] border-white/5 bg-zinc-900/30 overflow-hidden flex flex-col h-[650px] relative">
                  <div className="bg-zinc-950/80 px-8 py-4 border-b border-white/5 flex justify-between items-center backdrop-blur-md">
@@ -216,16 +219,10 @@ export default function TerminalView({
                        </div>
                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest ml-4 font-mono">root@univwatch:~# live_telemetry_feed</span>
                     </div>
-                    <button 
-                      onClick={() => setLocalLogs([])}
-                      className="text-[10px] font-black text-zinc-600 hover:text-white transition-colors uppercase tracking-widest"
-                    >
-                      Clear
-                    </button>
+                    <button onClick={() => setLocalLogs([])} className="text-[10px] font-black text-zinc-600 hover:text-white transition-colors uppercase tracking-widest">Clear</button>
                  </div>
 
                  <div className="flex-1 p-8 font-mono text-sm space-y-3 overflow-y-auto custom-scrollbar">
-                    {/* Local dynamic logs */}
                     {localLogs.map((log) => (
                       <div key={log.id} className="flex space-x-4 text-emerald-400 animate-in fade-in slide-in-from-left-2 duration-300">
                          <span className="text-zinc-700 shrink-0">[{log.time}]</span>
@@ -233,8 +230,6 @@ export default function TerminalView({
                          <span className="whitespace-pre-wrap">{log.message}</span>
                       </div>
                     ))}
-                    
-                    {/* Database logs */}
                     {dbLogs.length > 0 ? dbLogs.map((log) => (
                       <div key={log.id} className="flex space-x-4 animate-in fade-in slide-in-from-left-2 duration-300">
                          <span className="text-zinc-700 shrink-0">[{log.time}]</span>
@@ -260,7 +255,7 @@ export default function TerminalView({
                       type="text" 
                       value={command}
                       onChange={(e) => setCommand(e.target.value)}
-                      placeholder="Execute system command (e.g. pm2 list)..." 
+                      placeholder="Execute system command..." 
                       className="bg-transparent border-none focus:outline-none text-zinc-300 w-full text-sm font-mono placeholder:text-zinc-700"
                       disabled={isProcessing}
                     />
@@ -270,28 +265,38 @@ export default function TerminalView({
            </div>
 
            <div className="lg:col-span-4 space-y-6">
-              {/* Data Quality Issues Section */}
-              <div className="glass p-8 rounded-[40px] border-red-500/20 bg-red-500/[0.01] space-y-6">
-                 <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-black text-red-500 uppercase tracking-widest">Data Quality Issues</h3>
-                    <AlertTriangle className="text-red-500" size={16} />
+              {/* Storage Node (Materialized) */}
+              <div className="glass p-8 rounded-[40px] border-white/[0.03] space-y-6">
+                 <div className="flex justify-between items-center px-2">
+                    <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center">
+                       <HardDrive size={14} className="mr-2 text-amber-500" />
+                       Storage Node
+                    </h3>
+                    <span className="text-[10px] font-black text-amber-500/50 uppercase tracking-tighter">SSD Optimized</span>
                  </div>
-                 <div className="space-y-4 max-h-[250px] overflow-y-auto pr-2">
-                    {dataIssues.length > 0 ? dataIssues.map((issue) => (
-                      <div key={issue.id} className="p-3 bg-zinc-950/50 rounded-xl border border-white/5 space-y-1 group hover:border-red-500/30 transition-colors">
-                         <div className="flex justify-between text-[10px] font-bold">
-                            <span className="text-red-400">{issue.type}</span>
-                            <span className="text-zinc-600 font-mono text-[9px]">ID: {issue.productId}</span>
-                         </div>
-                         <p className="text-[11px] text-zinc-400 leading-snug">{issue.message}</p>
-                      </div>
-                    )) : (
-                      <p className="text-[10px] text-zinc-600 italic">No critical data issues detected.</p>
-                    )}
+                 <div className="space-y-6">
+                    <div className="bg-zinc-950/50 p-6 rounded-3xl border border-white/5 space-y-4">
+                       <div className="flex justify-between items-end">
+                          <p className="text-[10px] font-bold text-zinc-600 uppercase">Disk Usage</p>
+                          <p className="text-xl font-black text-white">{storageMetrics.diskUsed} <span className="text-zinc-700 text-xs">/ {storageMetrics.diskTotal}</span></p>
+                       </div>
+                       <div className="h-2 w-full bg-zinc-900 rounded-full overflow-hidden">
+                          <div className={cn("h-full rounded-full transition-all duration-1000", storageMetrics.diskPercent > 90 ? "bg-red-500" : "bg-amber-500")} style={{ width: `${storageMetrics.diskPercent}%` }} />
+                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="bg-zinc-950/50 p-5 rounded-3xl border border-white/5 space-y-1">
+                          <p className="text-[9px] font-bold text-zinc-600 uppercase">Database</p>
+                          <p className="text-base font-black text-white">{storageMetrics.dbSize}</p>
+                       </div>
+                       <div className="bg-zinc-950/50 p-5 rounded-3xl border border-white/5 space-y-1">
+                          <p className="text-[9px] font-bold text-zinc-600 uppercase">Logs Size</p>
+                          <p className="text-base font-black text-emerald-500">Minimal</p>
+                       </div>
+                    </div>
                  </div>
               </div>
 
-              {/* Database Health Section */}
               <div className="glass p-8 rounded-[40px] border-white/[0.03] space-y-8">
                  <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest">Database Health</h3>
                  <div className="space-y-6">
@@ -299,15 +304,8 @@ export default function TerminalView({
                     <StatProgressBar label="Sync Rate" percent={totalProducts > 0 ? 100 : 0} color="bg-emerald-500" />
                     <StatProgressBar label="Error Rate" percent={dbLogs.filter(l => l.type === 'WARNING').length} color="bg-red-500" />
                  </div>
-                 <div className="pt-4 flex items-start space-x-3 text-zinc-500">
-                    <Info className="shrink-0 mt-0.5" size={14} />
-                    <p className="text-[11px] leading-relaxed italic">
-                      DB 인덱싱이 최적화된 상태입니다. 현재 {liveHistory.toLocaleString()}개의 가격 이력을 실시간으로 조회 가능합니다.
-                    </p>
-                 </div>
               </div>
 
-              {/* Queue Metrics Section */}
               <div className="glass p-8 rounded-[40px] border-white/[0.03] bg-zinc-100/[0.01] space-y-6">
                  <h3 className="text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center">
                     <Zap size={14} className="mr-2 text-blue-500" />
@@ -315,9 +313,7 @@ export default function TerminalView({
                  </h3>
                  <div className="aspect-[4/3] w-full bg-zinc-950/50 rounded-2xl border border-white/5 flex items-center justify-center relative overflow-hidden">
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
-                    <span className="text-blue-400 font-black text-4xl tracking-tighter">
-                      {queueSize === 0 ? "Empty" : "Active"}
-                    </span>
+                    <span className="text-blue-400 font-black text-4xl tracking-tighter">{queueSize === 0 ? "Empty" : "Active"}</span>
                  </div>
                  <div className="grid grid-cols-2 gap-4 text-center">
                     <div>
@@ -326,23 +322,14 @@ export default function TerminalView({
                     </div>
                     <div>
                        <p className="text-[10px] font-bold text-zinc-600 uppercase">Buffer State</p>
-                       <p className={cn(
-                         "text-lg font-black",
-                         queueSize === 0 ? "text-emerald-500" :
-                         queueSize < 100 ? "text-blue-500" :
-                         queueSize < 500 ? "text-amber-500" : "text-red-500"
-                       )}>
-                         {queueSize === 0 ? "Empty" : 
-                          queueSize < 100 ? "Stable" : 
-                          queueSize < 500 ? "Busy" : "Backlogged"}
+                       <p className={cn("text-lg font-black", queueSize === 0 ? "text-emerald-500" : queueSize < 100 ? "text-blue-500" : queueSize < 500 ? "text-amber-500" : "text-red-500")}>
+                         {queueSize === 0 ? "Empty" : queueSize < 100 ? "Stable" : queueSize < 500 ? "Busy" : "Backlogged"}
                        </p>
                     </div>
                  </div>
               </div>
            </div>
-
         </div>
-
       </main>
     </div>
   );
