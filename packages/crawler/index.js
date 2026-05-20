@@ -2,7 +2,8 @@ require('dotenv').config();
 const { chromium } = require('playwright');
 const { 
   prisma, redis, CrawlerContext, Pipeline, BlockDetectedError, 
-  withPrismaRetry, sleep, USER_DATA_DIR, checkLogin, SessionExpiredError 
+  withPrismaRetry, sleep, USER_DATA_DIR, checkLogin, SessionExpiredError,
+  enqueueTasks, getNextTasks, finishTask, failTask
 } = require('./lib/engine');
 const { 
   DBStateFilter, NavigationFilter, ExtractionFilter, 
@@ -10,20 +11,17 @@ const {
 } = require('./lib/filters');
 const { XMLParser } = require('fast-xml-parser');
 
-const PRIORITY_KEY = 'univstore:priority_set';
-
 async function discoverAllProductIds(page) {
   console.log("🔍 사이트맵(item.xml) 분석하여 전체 상품 ID 수집 중...");
   try {
     const sitemapUrl = 'https://www.univstore.com/sitemap/item.xml';
-    const response = await page.goto(sitemapUrl, { waitUntil: 'networkidle', timeout: 90000 });
+    const response = await page.goto(sitemapUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
     
     if (response.status() === 403 || response.status() === 429 || response.status() === 405) {
       throw new BlockDetectedError(`사이트맵 접근 차단됨 (HTTP ${response.status()})`, response.status());
     }
 
     const rawContent = await page.content();
-    // [누락 로직 복구] 브라우저가 XML을 텍스트로 렌더링하는 경우 대응
     let xmlData = rawContent;
     if (!rawContent.includes('<urlset')) {
       xmlData = await page.evaluate(() => document.documentElement.textContent);
@@ -76,50 +74,27 @@ async function discoverSpecials(page) {
   }
 }
 
-async function handleBatch(batchIds, i, totalItems, pipeline, browserContext) {
-  await Promise.all(batchIds.map(async (id, idx) => {
-    const batchPage = await browserContext.newPage();
-    const currentIdx = i + idx + 1;
-    const ctx = new CrawlerContext(id, i + idx, totalItems, batchPage, browserContext, USER_DATA_DIR);
-    try { 
-      await pipeline.execute(ctx); 
-      if (ctx.payload) {
-        const statusIcon = ctx.isRecoveryMode ? '✅' : '✨';
-        // [누락 로직 복구] 가격 천단위 콤마 및 통화 기호 추가
-        console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (₩${ctx.payload.price.toLocaleString()})`);
-      } else if (ctx.shouldSkip) {
-        if (ctx.productStatus && ctx.productStatus.priceHistory.length > 0) {
-          if ((i + idx) % 100 === 0) console.log(`⏭️ [${currentIdx}/${totalItems}] 오늘 수집됨 (Skipped)`);
-        } else {
-          console.log(`⏩ [${currentIdx}/${totalItems}] (ID ${id}) 수집 제외됨 (검증 실패 등)`);
-        }
-      }
-    } finally { 
-      await batchPage.close(); 
-    }
-  }));
-}
-
 async function run() {
   const BATCH_SIZE = 3;
-  const PROGRESS_KEY = `univstore:progress:${new Date().toISOString().split('T')[0]}`;
-  let startIndex = parseInt(await redis.get(PROGRESS_KEY) || '0');
-
+  
+  // 1. 초기화 및 작업 발굴
   let initContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
   });
 
-  let allItemIds = [];
-  let totalItems = 0;
-
   try {
     const initPage = await initContext.newPage();
     await checkLogin(initPage);
     await discoverSpecials(initPage);
-    allItemIds = await discoverAllProductIds(initPage);
-    totalItems = allItemIds.length;
+    const allItemIds = await discoverAllProductIds(initPage);
+    
+    // Redis ZSET 큐에 모든 ID 등록 (NX: 기존 항목은 무시)
+    if (allItemIds.length > 0) {
+      console.log(`📥 ${allItemIds.length}개의 작업을 큐에 등록 중...`);
+      await enqueueTasks(allItemIds, false);
+    }
     await initContext.close();
   } catch (err) {
     console.error("❌ 초기화 에러:", err.message);
@@ -127,8 +102,7 @@ async function run() {
     process.exit(1);
   }
 
-  console.log(`\n🚀 파이프라인 병렬 엔진 가동 (배치 크기: ${BATCH_SIZE}, Index: ${startIndex}/${totalItems})`);
-
+  // 2. 파이프라인 구성
   const pipeline = new Pipeline([
     new DBStateFilter(),
     new NavigationFilter(),
@@ -137,22 +111,18 @@ async function run() {
     new StorageFilter()
   ]);
 
-  await withPrismaRetry(() => prisma.crawlerStatus.upsert({
-    where: { id: 'singleton' },
-    update: { totalItems, currentIndex: startIndex, lastStatus: 'RUNNING', lastHeartbeat: new Date() },
-    create: { id: 'singleton', totalItems, currentIndex: startIndex, lastStatus: 'RUNNING' }
-  }));
-
   let browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
   });
 
-  let i = startIndex;
   let processedCount = 0;
-  
-  while (i < totalItems) {
+  console.log(`\n🚀 ZSET 기반 소비자 엔진 가동 (Daemon Mode, Batch: ${BATCH_SIZE})`);
+
+  // 3. 무한 소비자 루프
+  while (true) {
+    // 500개마다 브라우저 재시작
     if (processedCount > 0 && processedCount % 500 === 0) {
       console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
       await browserContext.close();
@@ -164,35 +134,57 @@ async function run() {
       });
     }
 
-    const priorityIds = await redis.spop(PRIORITY_KEY, 10);
-    if (priorityIds.length > 0) {
-      console.log(`🚀 [Priority] 우선순위 아이템 ${priorityIds.length}개 처리 시작...`);
-      for (const pid of priorityIds) {
-        const pPage = await browserContext.newPage();
-        const pCtx = new CrawlerContext(pid, 0, 0, pPage, browserContext, USER_DATA_DIR);
-        try { 
-          await pipeline.execute(pCtx); 
-          if (pCtx.payload) console.log(`✨ [Priority] 수집 완료: [${pCtx.payload.brand}] ${pCtx.payload.title} (₩${pCtx.payload.price.toLocaleString()})`);
-        } catch (err) {
-          if (err instanceof SessionExpiredError) break;
-        } finally { 
-          await pPage.close(); 
-        }
-      }
+    // 큐에서 다음 배치 가져오기
+    const batchIds = await getNextTasks(BATCH_SIZE);
+    if (batchIds.length === 0) {
+      console.log("💤 할 일이 없습니다. 1분 후 다시 확인합니다...");
+      await sleep(60000);
+      continue;
     }
 
-    const batchIds = allItemIds.slice(i, i + BATCH_SIZE);
     try {
-      await handleBatch(batchIds, i, totalItems, pipeline, browserContext);
+      await Promise.all(batchIds.map(async (id) => {
+        const batchPage = await browserContext.newPage();
+        const ctx = new CrawlerContext(id, 0, 0, batchPage, browserContext, USER_DATA_DIR);
+        try { 
+          await pipeline.execute(ctx); 
+          if (ctx.payload) {
+            const statusIcon = ctx.isRecoveryMode ? '✅' : '✨';
+            console.log(`${statusIcon} 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (₩${ctx.payload.price.toLocaleString()})`);
+          } else if (ctx.shouldSkip) {
+            // 이미 최신인 경우에도 finishTask를 호출하여 큐의 맨 뒤로 보냄
+          }
+          // 성공(또는 의도된 스킵) 시 큐의 맨 뒤로 이동
+          await finishTask(id);
+        } catch (err) {
+          // 세션 만료나 차단이 아닌 '상품 페이지 에러' 등은 실패로 간주하고 나중에 다시 시도
+          if (!(err instanceof SessionExpiredError) && !(err instanceof BlockDetectedError)) {
+            console.warn(`⚠️ [ID ${id}] 수집 실패, 나중에 다시 시도:`, err.message);
+            await failTask(id); // 맨 앞으로 보내서 바로 재시도하게 하거나, 혹은 적당한 시간 후로 조절 가능
+          } else {
+            // 세션/차단 에러는 배지 전체 에러로 던져서 catch 블록에서 처리
+            throw err;
+          }
+        } finally { 
+          await batchPage.close(); 
+        }
+      }));
       
       processedCount += batchIds.length;
-      i += batchIds.length;
-      await redis.set(PROGRESS_KEY, i);
-      await prisma.crawlerStatus.update({ where: { id: 'singleton' }, data: { currentIndex: i, lastHeartbeat: new Date() } }).catch(() => {});
       
+      // 텔레메트리 업데이트 (Daemon 모드이므로 index 대신 처리량 등으로 활용 가능)
+      const qLen = await redis.zcard('univstore:task_queue');
+      await prisma.crawlerStatus.update({ 
+        where: { id: 'singleton' }, 
+        data: { currentIndex: processedCount, totalItems: qLen, lastHeartbeat: new Date() } 
+      }).catch(() => {});
+
     } catch (err) {
       if (err instanceof SessionExpiredError) {
         console.error("🔄 세션 만료 감지. 재로그인 시도...");
+        // 실패한 배치 아이템들은 큐에서 빠진 상태이므로 다시 넣어줘야 함 (zpopmin 했으므로)
+        for (const id of batchIds) await failTask(id);
+        
         const loginPage = await browserContext.newPage();
         try { await checkLogin(loginPage); } catch (e) { await sleep(300000); process.exit(1); }
         finally { await loginPage.close(); }
@@ -200,23 +192,23 @@ async function run() {
       }
 
       if (err instanceof BlockDetectedError) {
-        console.error(`🔥 Blocked: ${err.message}. 5분 대기...`);
+        console.error(`🔥 Blocked: ${err.message}. 10분 대기...`);
+        for (const id of batchIds) await failTask(id);
+        
         await browserContext.close();
-        await sleep(300000);
-        browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, { headless: true, args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'] });
+        await sleep(600000);
+        browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, { 
+          headless: true, 
+          args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'] 
+        });
         continue;
       }
 
-      console.error(`❌ Batch Error (Index ${i}):`, err.message);
-      i += batchIds.length;
-      await sleep(2000);
+      console.error(`❌ Batch Error:`, err.message);
+      for (const id of batchIds) await failTask(id);
+      await sleep(5000);
     }
   }
-
-  console.log("\n✨ 파이프라인 전 공정 완료.");
-  await browserContext.close();
-  await prisma.$disconnect();
-  await redis.quit();
 }
 
 run();
