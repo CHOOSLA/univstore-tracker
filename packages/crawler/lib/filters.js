@@ -37,9 +37,9 @@ class DirectApiFilter {
     if (ctx.isRecoveryMode) return;
     if (process.env.USE_DIRECT_API !== 'true') return;
 
-    // 페이지 로드를 건너뛰는 대신 짧은 지터만 적용 (API endpoint도 패턴 감시 가능성 있음)
-    const baseJitter = 800;
-    const randomWait = Math.floor(Math.random() * 1200);
+    // API endpoint는 페이지보다 감시 강도가 낮아 짧은 지터로도 충분
+    const baseJitter = 400;
+    const randomWait = Math.floor(Math.random() * 600);
     await sleep(baseJitter + randomWait);
 
     const url = `https://www.univstore.com/api/item/${ctx.id}`;
