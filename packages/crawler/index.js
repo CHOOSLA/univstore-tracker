@@ -16,21 +16,33 @@ async function discoverAllProductIds(page) {
   console.log("🔍 사이트맵(item.xml) 분석하여 전체 상품 ID 수집 중...");
   try {
     const sitemapUrl = 'https://www.univstore.com/sitemap/item.xml';
-    const response = await page.goto(sitemapUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
+    const response = await page.goto(sitemapUrl, { waitUntil: 'networkidle', timeout: 90000 });
     
     if (response.status() === 403 || response.status() === 429 || response.status() === 405) {
       throw new BlockDetectedError(`사이트맵 접근 차단됨 (HTTP ${response.status()})`, response.status());
     }
 
     const rawContent = await page.content();
-    const xmlMatch = rawContent.match(/<\?xml[\s\S]*<\/urlset>/i) || rawContent.match(/<urlset[\s\S]*<\/urlset>/i);
-    const xmlData = xmlMatch ? xmlMatch[0] : rawContent;
+    // [누락 로직 복구] 브라우저가 XML을 텍스트로 렌더링하는 경우 대응
+    let xmlData = rawContent;
+    if (!rawContent.includes('<urlset')) {
+      xmlData = await page.evaluate(() => document.documentElement.textContent);
+    }
+    
+    const xmlMatch = xmlData.match(/<\?xml[\s\S]*<\/urlset>/i) || xmlData.match(/<urlset[\s\S]*<\/urlset>/i);
+    xmlData = xmlMatch ? xmlMatch[0] : xmlData;
     
     const parser = new XMLParser({ ignoreAttributes: false, alwaysCreateTextNode: false });
     const jsonObj = parser.parse(xmlData);
     if (!jsonObj.urlset || !jsonObj.urlset.url) return [];
     const urlArray = Array.isArray(jsonObj.urlset.url) ? jsonObj.urlset.url : [jsonObj.urlset.url];
-    return urlArray.map(u => (typeof u.loc === 'string' ? u.loc : u.loc?.['#text']).match(/\/item\/(\d+)/)?.[1]).filter(id => !!id);
+    const ids = urlArray.map(u => {
+      const loc = typeof u.loc === 'string' ? u.loc : (u.loc?.['#text'] || '');
+      return loc.match(/\/item\/(\d+)/)?.[1];
+    }).filter(id => !!id);
+    
+    console.log(`✅ 총 ${ids.length}개의 상품 ID를 확보했습니다.`);
+    return ids;
   } catch (err) {
     if (err instanceof BlockDetectedError) throw err;
     console.error("❌ 사이트맵 수집 실패:", err.message);
@@ -64,6 +76,30 @@ async function discoverSpecials(page) {
   }
 }
 
+async function handleBatch(batchIds, i, totalItems, pipeline, browserContext) {
+  await Promise.all(batchIds.map(async (id, idx) => {
+    const batchPage = await browserContext.newPage();
+    const currentIdx = i + idx + 1;
+    const ctx = new CrawlerContext(id, i + idx, totalItems, batchPage, browserContext, USER_DATA_DIR);
+    try { 
+      await pipeline.execute(ctx); 
+      if (ctx.payload) {
+        const statusIcon = ctx.isRecoveryMode ? '✅' : '✨';
+        // [누락 로직 복구] 가격 천단위 콤마 및 통화 기호 추가
+        console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (₩${ctx.payload.price.toLocaleString()})`);
+      } else if (ctx.shouldSkip) {
+        if (ctx.productStatus && ctx.productStatus.priceHistory.length > 0) {
+          if ((i + idx) % 100 === 0) console.log(`⏭️ [${currentIdx}/${totalItems}] 오늘 수집됨 (Skipped)`);
+        } else {
+          console.log(`⏩ [${currentIdx}/${totalItems}] (ID ${id}) 수집 제외됨 (검증 실패 등)`);
+        }
+      }
+    } finally { 
+      await batchPage.close(); 
+    }
+  }));
+}
+
 async function run() {
   const BATCH_SIZE = 3;
   const PROGRESS_KEY = `univstore:progress:${new Date().toISOString().split('T')[0]}`;
@@ -91,7 +127,7 @@ async function run() {
     process.exit(1);
   }
 
-  console.log(`📊 총 ${totalItems}개의 상품 수집 공정 시작`);
+  console.log(`\n🚀 파이프라인 병렬 엔진 가동 (배치 크기: ${BATCH_SIZE}, Index: ${startIndex}/${totalItems})`);
 
   const pipeline = new Pipeline([
     new DBStateFilter(),
@@ -117,7 +153,6 @@ async function run() {
   let processedCount = 0;
   
   while (i < totalItems) {
-    // [메모리 및 세션 최적화] 500개마다 브라우저 재시작 (원본 로직)
     if (processedCount > 0 && processedCount % 500 === 0) {
       console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
       await browserContext.close();
@@ -137,7 +172,7 @@ async function run() {
         const pCtx = new CrawlerContext(pid, 0, 0, pPage, browserContext, USER_DATA_DIR);
         try { 
           await pipeline.execute(pCtx); 
-          if (pCtx.payload) console.log(`✨ [Priority] 수집 완료: [${pCtx.payload.brand}] ${pCtx.payload.title}`);
+          if (pCtx.payload) console.log(`✨ [Priority] 수집 완료: [${pCtx.payload.brand}] ${pCtx.payload.title} (₩${pCtx.payload.price.toLocaleString()})`);
         } catch (err) {
           if (err instanceof SessionExpiredError) break;
         } finally { 
@@ -148,26 +183,7 @@ async function run() {
 
     const batchIds = allItemIds.slice(i, i + BATCH_SIZE);
     try {
-      await Promise.all(batchIds.map(async (id, idx) => {
-        const batchPage = await browserContext.newPage();
-        const currentIdx = i + idx + 1;
-        const ctx = new CrawlerContext(id, i + idx, totalItems, batchPage, browserContext, USER_DATA_DIR);
-        try { 
-          await pipeline.execute(ctx); 
-          if (ctx.payload) {
-            const statusIcon = ctx.isRecoveryMode ? '✅' : '✨';
-            console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (${ctx.payload.price}원)`);
-          } else if (ctx.shouldSkip) {
-            if (ctx.productStatus && ctx.productStatus.priceHistory.length > 0) {
-              console.log(`⏭️ [${currentIdx}/${totalItems}] (ID ${id}) 오늘 이미 수집됨 - 스킵`);
-            } else {
-              console.log(`⏩ [${currentIdx}/${totalItems}] (ID ${id}) 수집 제외됨 (검증 실패 등)`);
-            }
-          }
-        } finally { 
-          await batchPage.close(); 
-        }
-      }));
+      await handleBatch(batchIds, i, totalItems, pipeline, browserContext);
       
       processedCount += batchIds.length;
       i += batchIds.length;
@@ -197,7 +213,7 @@ async function run() {
     }
   }
 
-  console.log("🏁 파이프라인 전 공정 완료.");
+  console.log("\n✨ 파이프라인 전 공정 완료.");
   await browserContext.close();
   await prisma.$disconnect();
   await redis.quit();
