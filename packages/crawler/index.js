@@ -1,8 +1,8 @@
 require('dotenv').config();
-const { 
-  prisma, redis, CrawlerContext, Pipeline, BlockDetectedError, 
+const {
+  prisma, redis, CrawlerContext, Pipeline, BlockDetectedError,
   withPrismaRetry, sleep, USER_DATA_DIR, checkLogin, SessionExpiredError,
-  enqueueTasks, getNextTasks, finishTask, failTask, chromium, getExecutablePath 
+  enqueueTasks, getNextTasks, finishTask, failTask, chromium, getExecutablePath, getLaunchOptions
 } = require('./lib/engine');
 const {
   DBStateFilter, NavigationFilter, SessionCheckFilter,
@@ -89,21 +89,7 @@ async function run() {
     console.warn("⚠️ 정식 Chrome을 찾을 수 없어 내장 Chromium으로 실행합니다.");
   }
 
-  let initContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
-    headless: true,
-    executablePath,
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    viewport: { width: 1920, height: 1080 },
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
-      '--use-gl=desktop',
-      '--disable-infobars',
-      '--window-size=1920,1080',
-      '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
-    ]
-  });
+  let initContext = await chromium.launchPersistentContext(USER_DATA_DIR, getLaunchOptions(executablePath));
 
   let totalItems = 0;
   try {
@@ -140,21 +126,7 @@ async function run() {
     create: { id: 'singleton', totalItems, currentIndex: startIndex, lastStatus: 'RUNNING' }
   }));
 
-  let browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
-    headless: true,
-    executablePath,
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    viewport: { width: 1920, height: 1080 },
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
-      '--use-gl=desktop',
-      '--disable-infobars',
-      '--window-size=1920,1080',
-      '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
-    ]
-  });
+  let browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, getLaunchOptions(executablePath));
 
   let i = startIndex;
   let processedCount = 0;
@@ -165,21 +137,7 @@ async function run() {
       console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
       await browserContext.close();
       await sleep(5000);
-      browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
-        headless: true,
-        executablePath,
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        viewport: { width: 1920, height: 1080 },
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-blink-features=AutomationControlled',
-          '--use-gl=desktop',
-          '--disable-infobars',
-          '--window-size=1920,1080',
-          '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
-        ]
-      });
+      browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, getLaunchOptions(executablePath));
     }
 
     // 우선순위 처리 (sync-picks에서 넘어온 것)
@@ -269,21 +227,7 @@ async function run() {
         for (const id of batchIds) await failTask(id);
         await browserContext.close();
         await sleep(600000);
-        browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, { 
-          headless: true, 
-          executablePath,
-          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-          viewport: { width: 1920, height: 1080 },
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-blink-features=AutomationControlled',
-            '--use-gl=desktop',
-            '--disable-infobars',
-            '--window-size=1920,1080',
-            '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
-          ] 
-        });
+        browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, getLaunchOptions(executablePath));
         continue;
       }
 

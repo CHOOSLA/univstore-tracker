@@ -180,6 +180,24 @@ async function getNextTasks(count = 1) {
   return ids;
 }
 
+function getLaunchOptions(executablePath) {
+  return {
+    headless: true,
+    executablePath,
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    viewport: { width: 1920, height: 1080 },
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--use-gl=desktop',
+      '--disable-infobars',
+      '--window-size=1920,1080',
+      '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
+    ]
+  };
+}
+
 module.exports = {
   prisma,
   redis,
@@ -193,6 +211,7 @@ module.exports = {
   sleep: (ms) => new Promise(r => setTimeout(r, ms)),
   USER_DATA_DIR: path.join(__dirname, '../user_data'),
   getExecutablePath,
+  getLaunchOptions,
   TASK_QUEUE_KEY,
   enqueueTasks,
   getNextTasks,

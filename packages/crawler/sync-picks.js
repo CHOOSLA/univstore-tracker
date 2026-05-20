@@ -1,4 +1,4 @@
-const { prisma, redis, sleep, BlockDetectedError, chromium, enqueueTasks } = require('./lib/engine');
+const { prisma, redis, sleep, BlockDetectedError, chromium, enqueueTasks, getLaunchOptions } = require('./lib/engine');
 require('dotenv').config();
 
 const PRIORITY_KEY = 'univstore:priority_set';
@@ -9,25 +9,17 @@ async function scoutDailyPicks() {
   
   const { getExecutablePath } = require('./lib/engine');
   const executablePath = getExecutablePath();
+  const opts = getLaunchOptions(executablePath);
 
-  // 엔진에서 제공하는 스텔스 브라우저 사용
-  const browser = await chromium.launch({ 
-    headless: true,
-    executablePath,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-blink-features=AutomationControlled',
-      '--use-gl=desktop',
-      '--disable-infobars',
-      '--window-size=1920,1080',
-      '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
-    ] 
+  const browser = await chromium.launch({
+    headless: opts.headless,
+    executablePath: opts.executablePath,
+    args: opts.args,
   });
-  
+
   const context = await browser.newContext({
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    viewport: { width: 1920, height: 1080 }
+    userAgent: opts.userAgent,
+    viewport: opts.viewport,
   });
 
   const page = await context.newPage();
