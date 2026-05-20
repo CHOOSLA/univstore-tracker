@@ -1,4 +1,5 @@
 const { prisma, redis, withPrismaRetry, sleep, BlockDetectedError, SessionExpiredError } = require('./engine');
+const { blockGuard } = require('./blockGuard');
 
 class DBStateFilter {
   async process(ctx) {
@@ -33,7 +34,7 @@ class DBStateFilter {
 
 class DirectApiFilter {
   async process(ctx) {
-    if (process.env.USE_DIRECT_API !== 'true') return;
+    if (!blockGuard.isDirectApiActive()) return;
 
     // API endpoint는 페이지보다 감시 강도가 낮아 짧은 지터로도 충분
     const baseJitter = 400;

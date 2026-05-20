@@ -2,7 +2,8 @@ require('dotenv').config();
 const {
   prisma, redis, CrawlerContext, Pipeline, BlockDetectedError,
   withPrismaRetry, sleep, USER_DATA_DIR, checkLogin, SessionExpiredError,
-  enqueueTasks, getNextTasks, finishTask, failTask, chromium, getExecutablePath, getLaunchOptions
+  enqueueTasks, getNextTasks, finishTask, failTask, chromium, getExecutablePath, getLaunchOptions,
+  blockGuard, sendTelegramAlert,
 } = require('./lib/engine');
 const {
   DBStateFilter, DirectApiFilter, NavigationFilter, SessionCheckFilter,
@@ -135,6 +136,13 @@ async function run() {
   let processedCount = 0;
   
   while (true) {
+    // BlockGuard 자동 복귀 체크 (매 루프 시작 시 가벼운 검사)
+    if (blockGuard.maybeRecover()) {
+      const msg = '✅ *DirectApi 자동 복귀*\n\n지정된 안정기 동안 추가 차단이 발생하지 않아 보호 모드를 해제했습니다.';
+      console.log(msg.replace(/\*/g, ''));
+      sendTelegramAlert(msg).catch(() => {});
+    }
+
     // 500개마다 브라우저 재시작 (메모리 관리)
     if (processedCount > 0 && processedCount % 500 === 0) {
       console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
@@ -214,7 +222,18 @@ async function run() {
       }
 
       if (err instanceof BlockDetectedError) {
-        console.error(`🔥 Blocked: ${err.message}. 10분 대기...`);
+        const guardResult = blockGuard.recordBlock();
+        const blockMsg = `🔥 Blocked: ${err.message}. (윈도우 내 ${guardResult.count}회) 10분 대기...`;
+        console.error(blockMsg);
+
+        if (guardResult.action === 'DISABLED') {
+          const alert = `🚨 *DirectApi 자동 비활성화*\n\n임계값(1시간 ${guardResult.count}회) 도달로 페이지 모드로 폴백합니다. 1시간 동안 추가 차단이 없으면 자동 복귀됩니다.`;
+          console.error(alert.replace(/\*/g, ''));
+          sendTelegramAlert(alert).catch(() => {});
+        } else {
+          sendTelegramAlert(`⚠️ 차단 발생 (윈도우 내 ${guardResult.count}회): ${err.message}`).catch(() => {});
+        }
+
         for (const id of batchIds) await failTask(id);
         await browserContext.close();
         await sleep(600000);
