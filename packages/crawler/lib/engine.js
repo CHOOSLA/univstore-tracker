@@ -1,6 +1,11 @@
+const { chromium } = require('playwright-extra');
+const stealth = require('puppeteer-extra-plugin-stealth')();
 const { PrismaClient } = require('@prisma/client');
 const Redis = require('ioredis');
 const path = require('path');
+
+// 스텔스 플러그인 적용
+chromium.use(stealth);
 
 const prisma = new PrismaClient();
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
@@ -109,12 +114,30 @@ async function enqueueTasks(ids, isPriority = false) {
   const pipeline = redis.pipeline();
   for (const id of ids) {
     if (isPriority) {
+      // 우선순위는 기존 점수를 덮어쓰고 맨 앞으로 보냄
       pipeline.zadd(TASK_QUEUE_KEY, score, id);
     } else {
+      // 일반 등록은 기존에 없을 때만 추가 (NX)
       pipeline.zadd(TASK_QUEUE_KEY, 'NX', score, id);
     }
   }
   await pipeline.exec();
+}
+
+/**
+ * 작업을 완료 처리하고 수집 시간을 업데이트합니다. (큐의 맨 뒤로 보냄)
+ */
+async function finishTask(id) {
+  // 현재 시간으로 점수를 업데이트하여 가장 나중에 다시 수집되도록 함
+  await redis.zadd(TASK_QUEUE_KEY, Date.now(), id);
+}
+
+/**
+ * 수집에 실패하거나 나중에 다시 시도해야 할 작업을 다시 큐에 넣습니다. (맨 앞으로 보냄)
+ */
+async function failTask(id) {
+  // 점수를 0으로 하여 다음에 바로 다시 시도되도록 함
+  await redis.zadd(TASK_QUEUE_KEY, 0, id);
 }
 
 /**
@@ -133,6 +156,7 @@ async function getNextTasks(count = 1) {
 module.exports = {
   prisma,
   redis,
+  chromium, // 스텔스 기능이 적용된 전용 브라우저 엔진
   CrawlerContext,
   Pipeline,
   BlockDetectedError,
@@ -143,5 +167,7 @@ module.exports = {
   USER_DATA_DIR: path.join(__dirname, '../user_data'),
   TASK_QUEUE_KEY,
   enqueueTasks,
-  getNextTasks
+  getNextTasks,
+  finishTask,
+  failTask
 };

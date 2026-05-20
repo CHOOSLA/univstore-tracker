@@ -1,17 +1,17 @@
-const { chromium } = require('playwright');
-const { prisma, redis, sleep, BlockDetectedError } = require('./lib/engine');
+const { prisma, redis, sleep, BlockDetectedError, chromium, enqueueTasks } = require('./lib/engine');
 require('dotenv').config();
 
 const PRIORITY_KEY = 'univstore:priority_set';
 const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor(Math.random() * (max - min + 1) + min)));
 
 async function scoutDailyPicks() {
-  console.log('🕵️ [Scout] EVERYUNIV 추천 PICK 탐색 시작 (Incognito Mode)...');
+  console.log('🕵️ [Scout] EVERYUNIV 추천 PICK 탐색 시작 (Incognito + Stealth Mode)...');
+  
   const fs = require('fs');
   const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
   const executablePath = fs.existsSync(CHROME_PATH) ? CHROME_PATH : undefined;
-  
-  // 세션(USER_DATA_DIR)을 사용하지 않고 순수 브라우저로 실행하여 충돌 방지
+
+  // 엔진에서 제공하는 스텔스 브라우저 사용
   const browser = await chromium.launch({ 
     headless: true,
     executablePath,
@@ -68,7 +68,6 @@ async function scoutDailyPicks() {
 
     // 2. Redis Priority Queue에 추가 (ZSET 기반 새치기)
     if (pickIds.length > 0) {
-      const { enqueueTasks } = require('./lib/engine');
       await enqueueTasks(pickIds, true);
     }
 
