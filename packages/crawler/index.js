@@ -76,25 +76,29 @@ async function discoverSpecials(page) {
 
 async function run() {
   const BATCH_SIZE = 3;
-  
-  // 1. 초기화 및 작업 발굴
+  const PROGRESS_KEY = `univstore:progress:${new Date().toISOString().split('T')[0]}`;
+  let startIndex = parseInt(await redis.get(PROGRESS_KEY) || '0');
+
   let initContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
   });
 
+  let allItemIds = [];
+  let totalItems = 0;
+
   try {
     const initPage = await initContext.newPage();
     await checkLogin(initPage);
     await discoverSpecials(initPage);
-    const allItemIds = await discoverAllProductIds(initPage);
+    allItemIds = await discoverAllProductIds(initPage);
     
-    // Redis ZSET 큐에 모든 ID 등록 (NX: 기존 항목은 무시)
     if (allItemIds.length > 0) {
       console.log(`📥 ${allItemIds.length}개의 작업을 큐에 등록 중...`);
       await enqueueTasks(allItemIds, false);
     }
+    totalItems = allItemIds.length;
     await initContext.close();
   } catch (err) {
     console.error("❌ 초기화 에러:", err.message);
@@ -102,7 +106,6 @@ async function run() {
     process.exit(1);
   }
 
-  // 2. 파이프라인 구성
   const pipeline = new Pipeline([
     new DBStateFilter(),
     new NavigationFilter(),
@@ -111,18 +114,22 @@ async function run() {
     new StorageFilter()
   ]);
 
+  await withPrismaRetry(() => prisma.crawlerStatus.upsert({
+    where: { id: 'singleton' },
+    update: { totalItems, currentIndex: startIndex, lastStatus: 'RUNNING', lastHeartbeat: new Date() },
+    create: { id: 'singleton', totalItems, currentIndex: startIndex, lastStatus: 'RUNNING' }
+  }));
+
   let browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
   });
 
+  let i = startIndex;
   let processedCount = 0;
-  console.log(`\n🚀 ZSET 기반 소비자 엔진 가동 (Daemon Mode, Batch: ${BATCH_SIZE})`);
-
-  // 3. 무한 소비자 루프
+  
   while (true) {
-    // 500개마다 브라우저 재시작
     if (processedCount > 0 && processedCount % 500 === 0) {
       console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
       await browserContext.close();
@@ -134,7 +141,23 @@ async function run() {
       });
     }
 
-    // 큐에서 다음 배치 가져오기
+    const priorityIds = await redis.spop('univstore:priority_set', 10);
+    if (priorityIds.length > 0) {
+      console.log(`🚀 [Priority] 우선순위 아이템 ${priorityIds.length}개 처리 시작...`);
+      for (const pid of priorityIds) {
+        const pPage = await browserContext.newPage();
+        const pCtx = new CrawlerContext(pid, 0, 0, pPage, browserContext, USER_DATA_DIR);
+        try { 
+          await pipeline.execute(pCtx); 
+          if (pCtx.payload) console.log(`✨ [Priority] 수집 완료: [${pCtx.payload.brand}] ${pCtx.payload.title} (₩${pCtx.payload.price.toLocaleString()})`);
+        } catch (err) {
+          if (err instanceof SessionExpiredError) break;
+        } finally { 
+          await pPage.close(); 
+        }
+      }
+    }
+
     const batchIds = await getNextTasks(BATCH_SIZE);
     if (batchIds.length === 0) {
       console.log("💤 할 일이 없습니다. 1분 후 다시 확인합니다...");
@@ -143,26 +166,25 @@ async function run() {
     }
 
     try {
-      await Promise.all(batchIds.map(async (id) => {
+      await Promise.all(batchIds.map(async (id, idx) => {
+        // [핵심] 배치 내 아이템 간 엇박자 지연 추가 (1.5초 간격)
+        await sleep(idx * 1500);
+
         const batchPage = await browserContext.newPage();
+        const currentIdx = i + idx + 1;
         const ctx = new CrawlerContext(id, 0, 0, batchPage, browserContext, USER_DATA_DIR);
         try { 
           await pipeline.execute(ctx); 
           if (ctx.payload) {
             const statusIcon = ctx.isRecoveryMode ? '✅' : '✨';
-            console.log(`${statusIcon} 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (₩${ctx.payload.price.toLocaleString()})`);
-          } else if (ctx.shouldSkip) {
-            // 이미 최신인 경우에도 finishTask를 호출하여 큐의 맨 뒤로 보냄
+            console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (₩${ctx.payload.price.toLocaleString()})`);
           }
-          // 성공(또는 의도된 스킵) 시 큐의 맨 뒤로 이동
           await finishTask(id);
         } catch (err) {
-          // 세션 만료나 차단이 아닌 '상품 페이지 에러' 등은 실패로 간주하고 나중에 다시 시도
           if (!(err instanceof SessionExpiredError) && !(err instanceof BlockDetectedError)) {
-            console.warn(`⚠️ [ID ${id}] 수집 실패, 나중에 다시 시도:`, err.message);
-            await failTask(id); // 맨 앞으로 보내서 바로 재시도하게 하거나, 혹은 적당한 시간 후로 조절 가능
+            console.warn(`⚠️ [${currentIdx}/${totalItems}] (ID ${id}) 수집 실패:`, err.message);
+            await failTask(id);
           } else {
-            // 세션/차단 에러는 배지 전체 에러로 던져서 catch 블록에서 처리
             throw err;
           }
         } finally { 
@@ -171,20 +193,19 @@ async function run() {
       }));
       
       processedCount += batchIds.length;
+      i += batchIds.length;
+      await redis.set(PROGRESS_KEY, i);
       
-      // 텔레메트리 업데이트 (Daemon 모드이므로 index 대신 처리량 등으로 활용 가능)
       const qLen = await redis.zcard('univstore:task_queue');
       await prisma.crawlerStatus.update({ 
         where: { id: 'singleton' }, 
-        data: { currentIndex: processedCount, totalItems: qLen, lastHeartbeat: new Date() } 
+        data: { currentIndex: i, totalItems: qLen, lastHeartbeat: new Date() } 
       }).catch(() => {});
-
+      
     } catch (err) {
       if (err instanceof SessionExpiredError) {
         console.error("🔄 세션 만료 감지. 재로그인 시도...");
-        // 실패한 배치 아이템들은 큐에서 빠진 상태이므로 다시 넣어줘야 함 (zpopmin 했으므로)
         for (const id of batchIds) await failTask(id);
-        
         const loginPage = await browserContext.newPage();
         try { await checkLogin(loginPage); } catch (e) { await sleep(300000); process.exit(1); }
         finally { await loginPage.close(); }
@@ -194,7 +215,6 @@ async function run() {
       if (err instanceof BlockDetectedError) {
         console.error(`🔥 Blocked: ${err.message}. 10분 대기...`);
         for (const id of batchIds) await failTask(id);
-        
         await browserContext.close();
         await sleep(600000);
         browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, { 
