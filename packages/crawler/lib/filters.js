@@ -12,18 +12,23 @@ class DBStateFilter {
     }));
 
     const hasBasicInfo = ctx.productStatus && ctx.productStatus.title !== '이름 없음' && ctx.productStatus.title !== `수집 중... (${ctx.id})` && ctx.productStatus.imageUrl;
-    const hasTodayPrice = ctx.productStatus && ctx.productStatus.priceHistory.length > 0;
+    const hasTodayPrice = ctx.productStatus && ctx.productStatus.priceHistory && ctx.productStatus.priceHistory.length > 0;
 
     if (hasBasicInfo && hasTodayPrice) {
       ctx.shouldSkip = true;
       return;
     }
     
+    // 왜 스킵되지 않았는지(또는 왜 복구 모드인지)에 대한 힌트 로깅
     if (!hasBasicInfo) {
-      console.log(`🔍 [ID ${ctx.id}] 데이터 유실 발견 - 정밀 복구 모드 가동`);
+      console.log(`🔍 [ID ${ctx.id}] 정보 미비 - 정밀 복구 모드 (BasicInfo: ${!!hasBasicInfo}, TodayPrice: ${!!hasTodayPrice})`);
       ctx.isRecoveryMode = true;
     } else {
       ctx.isRecoveryMode = false;
+      // 기본 정보는 있지만 오늘 가격이 없는 경우
+      if (!hasTodayPrice) {
+        console.log(`📡 [ID ${ctx.id}] 오늘 가격 데이터 없음 - 수집 시작`);
+      }
     }
   }
 }
