@@ -33,8 +33,9 @@ class DBStateFilter {
 
 class NavigationFilter {
   async process(ctx) {
-    const baseJitter = 1000;
-    const randomWait = Math.floor(Math.random() * 3000); 
+    // 최소 2초 ~ 최대 6초 사이의 랜덤 딜레이 (더 인간적인 패턴)
+    const baseJitter = 2000;
+    const randomWait = Math.floor(Math.random() * 4000); 
     await sleep(baseJitter + randomWait);
 
     const res = await ctx.page.goto(`https://www.univstore.com/item/${ctx.id}`, { 
