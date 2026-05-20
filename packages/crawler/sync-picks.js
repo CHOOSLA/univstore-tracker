@@ -7,15 +7,28 @@ const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor(Math
 
 async function scoutDailyPicks() {
   console.log('🕵️ [Scout] EVERYUNIV 추천 PICK 탐색 시작 (Incognito Mode)...');
+  const fs = require('fs');
+  const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+  const executablePath = fs.existsSync(CHROME_PATH) ? CHROME_PATH : undefined;
   
   // 세션(USER_DATA_DIR)을 사용하지 않고 순수 브라우저로 실행하여 충돌 방지
   const browser = await chromium.launch({ 
     headless: true,
-    args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'] 
+    executablePath,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--use-gl=desktop',
+      '--disable-infobars',
+      '--window-size=1920,1080',
+      '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
+    ] 
   });
   
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    viewport: { width: 1920, height: 1080 }
   });
 
   const page = await context.newPage();

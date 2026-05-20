@@ -81,10 +81,24 @@ async function run() {
   let startIndex = parseInt(await redis.get(PROGRESS_KEY) || '0');
 
   // 1. 초기화 단계
+  const fs = require('fs');
+  const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+  const executablePath = fs.existsSync(CHROME_PATH) ? CHROME_PATH : undefined;
+
   let initContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
+    executablePath,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
+    viewport: { width: 1920, height: 1080 },
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--use-gl=desktop',
+      '--disable-infobars',
+      '--window-size=1920,1080',
+      '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
+    ]
   });
 
   let totalItems = 0;
@@ -123,8 +137,18 @@ async function run() {
 
   let browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
+    executablePath,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
+    viewport: { width: 1920, height: 1080 },
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--use-gl=desktop',
+      '--disable-infobars',
+      '--window-size=1920,1080',
+      '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
+    ]
   });
 
   let i = startIndex;
@@ -138,8 +162,18 @@ async function run() {
       await sleep(5000);
       browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
         headless: true,
+        executablePath,
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
+        viewport: { width: 1920, height: 1080 },
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-blink-features=AutomationControlled',
+          '--use-gl=desktop',
+          '--disable-infobars',
+          '--window-size=1920,1080',
+          '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
+        ]
       });
     }
 
@@ -230,7 +264,18 @@ async function run() {
         await sleep(600000);
         browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, { 
           headless: true, 
-          args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'] 
+          executablePath,
+          userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          viewport: { width: 1920, height: 1080 },
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-blink-features=AutomationControlled',
+            '--use-gl=desktop',
+            '--disable-infobars',
+            '--window-size=1920,1080',
+            '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
+          ] 
         });
         continue;
       }

@@ -6,8 +6,24 @@ const prisma = new PrismaClient();
 const USER_DATA_DIR = './user_data';
 
 async function mapCategories() {
+  const fs = require('fs');
+  const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+  const executablePath = fs.existsSync(CHROME_PATH) ? CHROME_PATH : undefined;
+
   const browser = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
+    executablePath,
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    viewport: { width: 1920, height: 1080 },
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--use-gl=desktop',
+      '--disable-infobars',
+      '--window-size=1920,1080',
+      '--lang=ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7'
+    ]
   });
   const page = await browser.newPage();
 
