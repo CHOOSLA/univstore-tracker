@@ -70,7 +70,15 @@ async function checkLogin(page) {
   console.log("🔍 세션 상태 확인 중...");
   await page.goto('https://www.univstore.com/user/login', { waitUntil: 'networkidle', timeout: 60000 });
   
-  const loginFormVisible = await page.waitForSelector('input[name="userid"]', { timeout: 5000 }).catch(() => null);
+  const loginFormVisible = await page.waitForSelector('input[name="userid"]', { timeout: 10000 }).catch(async () => {
+    const title = await page.title();
+    const content = await page.content();
+    console.error(`⚠️ 로그인 폼을 찾을 수 없습니다. (페이지 제목: ${title})`);
+    if (content.includes('405') || content.includes('Not Allowed')) {
+      console.error("🚫 서버에서 접근을 차단했습니다 (405 detected in HTML)");
+    }
+    return null;
+  });
   
   if (loginFormVisible) {
     console.log("🔑 로그인 필요 감지. 세션 갱신을 시작합니다...");
@@ -82,14 +90,16 @@ async function checkLogin(page) {
     console.log("🖱️ 로그인 버튼 클릭...");
     await Promise.all([
       page.click('input[type="submit"]'),
-      page.waitForNavigation({ waitUntil: 'networkidle', timeout: 60000 }).catch(e => console.warn("⚠️ Navigation 대기 중 경고:", e.message))
+      page.waitForNavigation({ waitUntil: 'networkidle', timeout: 30000 }).catch(() => {})
     ]);
 
-    // 로그인이 완료되었는지 URL 또는 특정 요소로 재검증
+    // 로그인이 완료되었는지 확인하고, 실패 시 스크린샷 저장
     const currentUrl = page.url();
     if (currentUrl.includes('login')) {
-      console.error("❌ 로그인 실패: 여전히 로그인 페이지에 머물러 있습니다.");
-      throw new Error("Login failed (Redirect stuck)");
+      const screenshotPath = path.join(__dirname, '../debug/login_failed.png');
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      console.error(`❌ 로그인 실패: 여전히 로그인 페이지입니다. 스크린샷 저장됨: ${screenshotPath}`);
+      throw new Error("Login failed (Check screenshot)");
     }
     
     await page.waitForTimeout(2000);
