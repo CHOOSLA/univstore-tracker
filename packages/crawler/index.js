@@ -204,20 +204,19 @@ async function run() {
     }
 
     try {
-      await Promise.all(batchIds.map(async (id, idx) => {
-        // [엇박자 지연] 서버 탐지 회피
-        await sleep(idx * 1500);
-
+      // [안정성 최우선] Promise.all 대신 순차 처리를 통해 브라우저 종료 충돌(Race Condition) 방지
+      for (let idx = 0; idx < batchIds.length; idx++) {
+        const id = batchIds[idx];
         const batchPage = await browserContext.newPage();
         const currentIdx = i + idx + 1;
         const ctx = new CrawlerContext(id, 0, totalItems, batchPage, browserContext, USER_DATA_DIR);
+        
         try { 
           await pipeline.execute(ctx); 
           if (ctx.payload) {
             const statusIcon = ctx.isRecoveryMode ? '✅' : '✨';
             console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (₩${ctx.payload.price.toLocaleString()})`);
           } else if (ctx.shouldSkip) {
-            // 상세 스킵 로그 복구
             if (ctx.productStatus && ctx.productStatus.priceHistory.length > 0) {
               if ((i + idx) % 100 === 0) console.log(`⏭️ [${currentIdx}/${totalItems}] 오늘 수집됨 (Skipped)`);
             } else {
@@ -226,16 +225,21 @@ async function run() {
           }
           await finishTask(id);
         } catch (err) {
-          if (!(err instanceof SessionExpiredError) && !(err instanceof BlockDetectedError)) {
-            console.warn(`⚠️ [${currentIdx}/${totalItems}] (ID ${id}) 수집 실패:`, err.message);
-            await failTask(id);
-          } else {
-            throw err;
+          // 세션 만료나 차단 에러는 배지 루프 자체를 중단하고 밖에서 처리하도록 다시 던짐
+          if (err instanceof SessionExpiredError || err instanceof BlockDetectedError) {
+            await batchPage.close();
+            throw err; 
           }
+          
+          console.warn(`⚠️ [${currentIdx}/${totalItems}] (ID ${id}) 수집 실패, 나중에 다시 시도:`, err.message);
+          await failTask(id);
         } finally { 
-          await batchPage.close(); 
+          if (!batchPage.isClosed()) await batchPage.close(); 
         }
-      }));
+
+        // 아이템 간 최소한의 휴식 (스텔스 강화)
+        if (idx < batchIds.length - 1) await sleep(1000);
+      }
       
       processedCount += batchIds.length;
       i += batchIds.length;
