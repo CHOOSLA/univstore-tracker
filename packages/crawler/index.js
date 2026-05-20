@@ -4,9 +4,9 @@ const {
   withPrismaRetry, sleep, USER_DATA_DIR, checkLogin, SessionExpiredError,
   enqueueTasks, getNextTasks, finishTask, failTask, chromium, getExecutablePath 
 } = require('./lib/engine');
-const { 
-  DBStateFilter, NavigationFilter, ExtractionFilter, 
-  ValidationFilter, StorageFilter 
+const {
+  DBStateFilter, NavigationFilter, SessionCheckFilter,
+  ExtractionFilter, ValidationFilter, StorageFilter
 } = require('./lib/filters');
 const { XMLParser } = require('fast-xml-parser');
 
@@ -128,6 +128,7 @@ async function run() {
   const pipeline = new Pipeline([
     new DBStateFilter(),
     new NavigationFilter(),
+    new SessionCheckFilter(),
     new ExtractionFilter(),
     new ValidationFilter(),
     new StorageFilter()

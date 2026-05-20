@@ -35,12 +35,12 @@ class NavigationFilter {
   async process(ctx) {
     // 최소 2초 ~ 최대 6초 사이의 랜덤 딜레이 (더 인간적인 패턴)
     const baseJitter = 2000;
-    const randomWait = Math.floor(Math.random() * 4000); 
+    const randomWait = Math.floor(Math.random() * 4000);
     await sleep(baseJitter + randomWait);
 
-    const res = await ctx.page.goto(`https://www.univstore.com/item/${ctx.id}`, { 
-      waitUntil: 'domcontentloaded', 
-      timeout: 30000 
+    const res = await ctx.page.goto(`https://www.univstore.com/item/${ctx.id}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000
     });
 
     const status = res.status();
@@ -50,6 +50,15 @@ class NavigationFilter {
     if (status === 403 || status === 429 || status === 405 || pageTitle.includes('Verification') || bodyText.includes('confirm you are human')) {
       throw new BlockDetectedError(`Bot detected (HTTP ${status})`, status);
     }
+  }
+}
+
+class SessionCheckFilter {
+  async process(ctx) {
+    const isLoggedIn = await ctx.page.evaluate(() => {
+      return !document.body.innerHTML.includes('학생인증 후 가격 확인');
+    });
+    if (!isLoggedIn) throw new SessionExpiredError();
   }
 }
 
@@ -100,17 +109,12 @@ class ExtractionFilter {
         if (img) imageUrl = img.src;
       }
 
-      return { 
+      return {
         brand, title: name, price, originalPrice, imageUrl, stockStatus, bestBenefit,
         category: apiData?.item_category_name || null,
         subCategory: apiData?.brand_item_category_name || null,
-        isLoggedIn: !html.includes('학생인증 후 가격 확인')
       };
     }, { id: ctx.id, recovery: ctx.isRecoveryMode });
-
-    if (!ctx.itemInfo.isLoggedIn) {
-      throw new SessionExpiredError();
-    }
   }
 }
 
@@ -150,6 +154,7 @@ class StorageFilter {
 module.exports = {
   DBStateFilter,
   NavigationFilter,
+  SessionCheckFilter,
   ExtractionFilter,
   ValidationFilter,
   StorageFilter
