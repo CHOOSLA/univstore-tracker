@@ -158,12 +158,12 @@ async function run() {
       // [안정성 최우선] Promise.all 대신 순차 처리를 통해 브라우저 종료 충돌(Race Condition) 방지
       for (let idx = 0; idx < batchIds.length; idx++) {
         const id = batchIds[idx];
-        const batchPage = await browserContext.newPage();
         const currentIdx = i + idx + 1;
-        const ctx = new CrawlerContext(id, 0, totalItems, batchPage, browserContext, USER_DATA_DIR);
-        
-        try { 
-          await pipeline.execute(ctx); 
+        // page는 lazy 생성. DirectApi 경로로 처리되면 page 객체가 아예 만들어지지 않음
+        const ctx = new CrawlerContext(id, 0, totalItems, null, browserContext, USER_DATA_DIR);
+
+        try {
+          await pipeline.execute(ctx);
           if (ctx.payload) {
             const statusIcon = ctx.isRecoveryMode ? '✅' : '✨';
             console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (₩${ctx.payload.price.toLocaleString()})`);
@@ -177,14 +177,14 @@ async function run() {
           await finishTask(id);
         } catch (err) {
           if (err instanceof SessionExpiredError || err instanceof BlockDetectedError) {
-            await batchPage.close();
-            throw err; 
+            if (ctx.page && !ctx.page.isClosed()) await ctx.page.close();
+            throw err;
           }
-          
+
           console.warn(`⚠️ [${currentIdx}/${totalItems}] (ID ${id}) 수집 실패, 나중에 다시 시도:`, err.message);
           await failTask(id);
-        } finally { 
-          if (!batchPage.isClosed()) await batchPage.close(); 
+        } finally {
+          if (ctx.page && !ctx.page.isClosed()) await ctx.page.close();
         }
 
         // DirectApi 모드에서는 jitter가 이미 spacing 역할을 함. 페이지 모드일 때만 추가 sleep

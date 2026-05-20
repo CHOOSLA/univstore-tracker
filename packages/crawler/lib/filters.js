@@ -99,6 +99,11 @@ class NavigationFilter {
   async process(ctx) {
     if (ctx.apiHandled) return;
 
+    // page는 lazy 생성: DirectApi 경로로 처리되는 경우 page 객체 자체가 만들어지지 않음
+    if (!ctx.page) {
+      ctx.page = await ctx.browserContext.newPage();
+    }
+
     // 최소 2초 ~ 최대 6초 사이의 랜덤 딜레이 (더 인간적인 패턴)
     const baseJitter = 2000;
     const randomWait = Math.floor(Math.random() * 4000);
