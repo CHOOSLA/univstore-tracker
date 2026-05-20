@@ -56,7 +56,13 @@ async function withPrismaRetry(fn, retries = 3) {
     try {
       return await fn();
     } catch (err) {
-      if (err.message.includes('closed') && i < retries - 1) {
+      const isConnectionError = err.message.includes('closed') || 
+                                err.message.includes('connection') || 
+                                err.message.includes('Server has closed') ||
+                                err.message.includes('Broken pipe');
+                                
+      if (isConnectionError && i < retries - 1) {
+        console.log(`⚠️ DB 연결 유실 감지 (시도 ${i + 1}/${retries}). 5초 후 재시도...`);
         await prisma.$disconnect().catch(() => {});
         await new Promise(r => setTimeout(r, 5000));
         continue;
