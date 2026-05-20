@@ -33,8 +33,6 @@ class DBStateFilter {
 
 class DirectApiFilter {
   async process(ctx) {
-    // 복구 모드(이미지 DOM fallback 필요)이거나 feature flag가 꺼져 있으면 패스
-    if (ctx.isRecoveryMode) return;
     if (process.env.USE_DIRECT_API !== 'true') return;
 
     // API endpoint는 페이지보다 감시 강도가 낮아 짧은 지터로도 충분
@@ -70,6 +68,12 @@ class DirectApiFilter {
     const apiData = await res.json();
     if (!apiData || !apiData.id) {
       console.warn(`⚠️ [ID ${ctx.id}] API 응답 형식 불일치 - 페이지 fallback으로 위임`);
+      return;
+    }
+
+    // 복구 모드에서 이미지가 비어 있으면 DOM fallback 필요
+    if (ctx.isRecoveryMode && !apiData.thumbnail_url) {
+      console.warn(`⚠️ [ID ${ctx.id}] recovery 모드인데 API에 이미지 없음 - 페이지 fallback으로 위임`);
       return;
     }
 

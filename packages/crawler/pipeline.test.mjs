@@ -127,10 +127,34 @@ describe('DirectApiFilter', () => {
     expect(mockCtx.apiHandled).toBeUndefined();
   });
 
-  it('isRecoveryMode이면 페이지 fallback으로 위임한다', async () => {
+  it('isRecoveryMode + 이미지 있는 API 응답은 API 경로로 처리한다', async () => {
     mockCtx.isRecoveryMode = true;
+    mockCtx.browserContext.request.get.mockResolvedValue({
+      status: () => 200,
+      json: async () => ({
+        id: 13704,
+        brand_name: 'X', front_name: 'Y',
+        price1: 100, price2: 90,
+        thumbnail_url: 'https://image.univstore.com/x.jpg',
+      })
+    });
     await filter.process(mockCtx);
-    expect(mockCtx.browserContext.request.get).not.toHaveBeenCalled();
+    expect(mockCtx.apiHandled).toBe(true);
+    expect(mockCtx.itemInfo.imageUrl).toBe('https://image.univstore.com/x.jpg');
+  });
+
+  it('isRecoveryMode + 이미지 없는 API 응답은 페이지 fallback으로 위임한다', async () => {
+    mockCtx.isRecoveryMode = true;
+    mockCtx.browserContext.request.get.mockResolvedValue({
+      status: () => 200,
+      json: async () => ({
+        id: 13704,
+        brand_name: 'X', front_name: 'Y',
+        price1: 100, price2: 90,
+        thumbnail_url: null,
+      })
+    });
+    await filter.process(mockCtx);
     expect(mockCtx.apiHandled).toBeUndefined();
   });
 
