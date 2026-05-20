@@ -12,12 +12,12 @@ module.exports = {
       name: "univ-crawler",
       script: "npm",
       args: "run crawler:dev",
-      // ZSET 무한 순환 큐 아키텍처에서는 데몬이 끊기지 않고 돌아가는 것이 가장 효율적.
-      // 사이트맵 재수집/재로그인 같은 startup 오버헤드는 시작 1회로 충분.
-      // crash 시에만 PM2가 자동 재기동.
+      // DirectApi 모드로 6.6h cycle 달성 후, 12시간마다 fresh restart로 fingerprint/세션 재설정.
+      // crash 시 자동 복구도 활성화 (단, 짧은 간격 폭주 방지를 위한 max_restarts 제한).
+      cron_restart: "0 */12 * * *",
       autorestart: true,
-      max_restarts: 10,
-      restart_delay: 30000,
+      max_restarts: 5,
+      restart_delay: 60000,
       env: {
         NODE_ENV: "development",
       }
