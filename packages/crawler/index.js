@@ -187,7 +187,10 @@ async function run() {
           if (!batchPage.isClosed()) await batchPage.close(); 
         }
 
-        if (idx < batchIds.length - 1) await sleep(1000);
+        // DirectApi 모드에서는 jitter가 이미 spacing 역할을 함. 페이지 모드일 때만 추가 sleep
+        if (idx < batchIds.length - 1 && process.env.USE_DIRECT_API !== 'true') {
+          await sleep(1000);
+        }
       }
       
       processedCount += batchIds.length;
