@@ -31,8 +31,74 @@ class DBStateFilter {
   }
 }
 
+class DirectApiFilter {
+  async process(ctx) {
+    // 복구 모드(이미지 DOM fallback 필요)이거나 feature flag가 꺼져 있으면 패스
+    if (ctx.isRecoveryMode) return;
+    if (process.env.USE_DIRECT_API !== 'true') return;
+
+    // 페이지 로드를 건너뛰는 대신 짧은 지터만 적용 (API endpoint도 패턴 감시 가능성 있음)
+    const baseJitter = 800;
+    const randomWait = Math.floor(Math.random() * 1200);
+    await sleep(baseJitter + randomWait);
+
+    const url = `https://www.univstore.com/api/item/${ctx.id}`;
+    const res = await ctx.browserContext.request.get(url, {
+      headers: {
+        'Referer': `https://www.univstore.com/item/${ctx.id}`,
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Dest': 'empty',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json, text/plain, */*',
+      },
+      timeout: 15000,
+    });
+
+    const status = res.status();
+    if (status === 403 || status === 429 || status === 405) {
+      throw new BlockDetectedError(`Bot detected via API (HTTP ${status})`, status);
+    }
+    if (status === 401) {
+      throw new SessionExpiredError();
+    }
+    if (status >= 400) {
+      console.warn(`⚠️ [ID ${ctx.id}] API ${status} - 페이지 fallback으로 위임`);
+      return; // apiHandled를 set하지 않고 빠져나가면 NavigationFilter가 이어받음
+    }
+
+    const apiData = await res.json();
+    if (!apiData || !apiData.id) {
+      console.warn(`⚠️ [ID ${ctx.id}] API 응답 형식 불일치 - 페이지 fallback으로 위임`);
+      return;
+    }
+
+    const price = apiData.price2 ?? apiData.price1 ?? 0;
+    const originalPrice = apiData.price1 ?? price;
+    let stockStatus = 'In Stock';
+    if (typeof apiData.has_stock !== 'undefined') {
+      stockStatus = apiData.has_stock ? 'In Stock' : 'Out of Stock';
+    }
+
+    ctx.itemInfo = {
+      brand: apiData.brand_name || '',
+      title: apiData.front_name || apiData.name || '이름 없음',
+      price: String(price),
+      originalPrice: String(originalPrice),
+      imageUrl: apiData.thumbnail_url || null,
+      stockStatus,
+      bestBenefit: apiData.benefit || null,
+      category: apiData.item_category_name || null,
+      subCategory: apiData.brand_item_category_name || null,
+    };
+    ctx.apiHandled = true;
+  }
+}
+
 class NavigationFilter {
   async process(ctx) {
+    if (ctx.apiHandled) return;
+
     // 최소 2초 ~ 최대 6초 사이의 랜덤 딜레이 (더 인간적인 패턴)
     const baseJitter = 2000;
     const randomWait = Math.floor(Math.random() * 4000);
@@ -55,6 +121,8 @@ class NavigationFilter {
 
 class SessionCheckFilter {
   async process(ctx) {
+    if (ctx.apiHandled) return;
+
     const isLoggedIn = await ctx.page.evaluate(() => {
       return !document.body.innerHTML.includes('학생인증 후 가격 확인');
     });
@@ -64,6 +132,8 @@ class SessionCheckFilter {
 
 class ExtractionFilter {
   async process(ctx) {
+    if (ctx.apiHandled) return;
+
     ctx.itemInfo = await ctx.page.evaluate(async ({ id, recovery }) => {
       const body = document.body.innerText;
       const html = document.body.innerHTML;
@@ -153,6 +223,7 @@ class StorageFilter {
 
 module.exports = {
   DBStateFilter,
+  DirectApiFilter,
   NavigationFilter,
   SessionCheckFilter,
   ExtractionFilter,

@@ -5,7 +5,7 @@ const {
   enqueueTasks, getNextTasks, finishTask, failTask, chromium, getExecutablePath, getLaunchOptions
 } = require('./lib/engine');
 const {
-  DBStateFilter, NavigationFilter, SessionCheckFilter,
+  DBStateFilter, DirectApiFilter, NavigationFilter, SessionCheckFilter,
   ExtractionFilter, ValidationFilter, StorageFilter
 } = require('./lib/filters');
 const { XMLParser } = require('fast-xml-parser');
@@ -111,12 +111,17 @@ async function run() {
   // 2. 엔진 가동
   const pipeline = new Pipeline([
     new DBStateFilter(),
+    new DirectApiFilter(),
     new NavigationFilter(),
     new SessionCheckFilter(),
     new ExtractionFilter(),
     new ValidationFilter(),
     new StorageFilter()
   ]);
+
+  if (process.env.USE_DIRECT_API === 'true') {
+    console.log("⚡ USE_DIRECT_API=true: 페이지 로드 대신 API 직접 호출 모드로 동작합니다.");
+  }
 
   await withPrismaRetry(() => prisma.crawlerStatus.upsert({
     where: { id: 'singleton' },
