@@ -82,8 +82,15 @@ async function run() {
 
   // 1. 초기화 단계
   const fs = require('fs');
-  const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-  const executablePath = fs.existsSync(CHROME_PATH) ? CHROME_PATH : undefined;
+  const WIN_CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+  const LINUX_CHROME = '/usr/bin/google-chrome';
+  const executablePath = fs.existsSync(WIN_CHROME) ? WIN_CHROME : (fs.existsSync(LINUX_CHROME) ? LINUX_CHROME : undefined);
+
+  if (executablePath) {
+    console.log(`🚀 정식 Chrome 브라우저 연결됨: ${executablePath}`);
+  } else {
+    console.warn("⚠️ 정식 Chrome을 찾을 수 없어 내장 Chromium으로 실행합니다.");
+  }
 
   let initContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
