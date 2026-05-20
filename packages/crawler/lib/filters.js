@@ -51,21 +51,8 @@ class NavigationFilter {
   }
 }
 
-class SessionCheckFilter {
-  async process(ctx) {
-    const isLoggedIn = await ctx.page.evaluate(() => {
-      return !document.body.innerText.includes('학생인증 후 가격 확인');
-    });
-
-    if (!isLoggedIn) {
-      throw new SessionExpiredError();
-    }
-  }
-}
-
 class ExtractionFilter {
   async process(ctx) {
-    const html = await ctx.page.content();
     ctx.itemInfo = await ctx.page.evaluate(({ id, recovery }) => {
       const scripts = Array.from(document.querySelectorAll('script'));
       const dataScript = scripts.find(s => s.innerText.includes('window.__INITIAL_STATE__'));
@@ -93,16 +80,24 @@ class ExtractionFilter {
 
       return { 
         brand, title: name, price, originalPrice, imageUrl, stockStatus, bestBenefit,
-        category: apiData?.item_category_name || null
+        category: apiData?.item_category_name || null,
+        isLoggedIn: !document.body.innerText.includes('학생인증 후 가격 확인')
       };
     }, { id: ctx.id, recovery: ctx.isRecoveryMode });
+
+    if (!ctx.itemInfo.isLoggedIn) {
+      throw new SessionExpiredError();
+    }
   }
 }
 
 class ValidationFilter {
   async process(ctx) {
     const priceNum = parseInt(ctx.itemInfo.price);
-    if (isNaN(priceNum) || priceNum <= 0) ctx.shouldSkip = true;
+    if (isNaN(priceNum) || priceNum <= 0) {
+      console.warn(`⚠️ [ID ${ctx.id}] 유효하지 않은 가격(${ctx.itemInfo.price}) - 수집 건너뜀`);
+      ctx.shouldSkip = true;
+    }
   }
 }
 
@@ -130,7 +125,6 @@ class StorageFilter {
 module.exports = {
   DBStateFilter,
   NavigationFilter,
-  SessionCheckFilter,
   ExtractionFilter,
   ValidationFilter,
   StorageFilter
