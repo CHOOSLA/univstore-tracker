@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import engine from './lib/engine.js';
 import filters from './lib/filters.js';
+import { BlockGuard } from './lib/blockGuard.js';
 
 const { Pipeline, SessionExpiredError } = engine;
 const { ExtractionFilter, ValidationFilter, SessionCheckFilter, DirectApiFilter, NavigationFilter } = filters;
@@ -196,6 +197,57 @@ describe('DirectApiFilter', () => {
     mockCtx.browserContext.request.get.mockResolvedValue({ status: () => 404 });
     await filter.process(mockCtx);
     expect(mockCtx.apiHandled).toBeUndefined();
+  });
+});
+
+describe('BlockGuard', () => {
+  const originalEnv = process.env.USE_DIRECT_API;
+
+  beforeEach(() => { process.env.USE_DIRECT_API = 'true'; });
+  afterEach(() => { process.env.USE_DIRECT_API = originalEnv; });
+
+  it('임계값 미만의 차단은 NOTED 상태로 유지된다', () => {
+    const g = new BlockGuard({ threshold: 3, windowMs: 60000, recoveryMs: 60000 });
+    expect(g.recordBlock(1000).action).toBe('NOTED');
+    expect(g.recordBlock(2000).action).toBe('NOTED');
+    expect(g.isDirectApiActive()).toBe(true);
+  });
+
+  it('임계값 도달 시 DISABLED로 전환된다', () => {
+    const g = new BlockGuard({ threshold: 3, windowMs: 60000, recoveryMs: 60000 });
+    g.recordBlock(1000);
+    g.recordBlock(2000);
+    const r = g.recordBlock(3000);
+    expect(r.action).toBe('DISABLED');
+    expect(g.isDirectApiActive()).toBe(false);
+  });
+
+  it('윈도우 밖의 과거 차단은 카운트에서 제거된다', () => {
+    const g = new BlockGuard({ threshold: 3, windowMs: 60000, recoveryMs: 60000 });
+    g.recordBlock(1000);
+    g.recordBlock(2000);
+    // 윈도우(60s) 초과 후 새 차단 → 과거 2건은 cleanup 대상
+    const r = g.recordBlock(70_000);
+    expect(r.count).toBe(1);
+    expect(r.action).toBe('NOTED');
+  });
+
+  it('recoveryMs 후 차단 없으면 자동 복귀한다', () => {
+    const g = new BlockGuard({ threshold: 2, windowMs: 30000, recoveryMs: 60000 });
+    g.recordBlock(1000);
+    g.recordBlock(2000);  // DISABLED
+    expect(g.isDirectApiActive()).toBe(false);
+
+    // recoveryMs 경과 + 윈도우 밖이므로 카운트도 사라짐
+    const recovered = g.maybeRecover(100_000);
+    expect(recovered).toBe(true);
+    expect(g.isDirectApiActive()).toBe(true);
+  });
+
+  it('USE_DIRECT_API=false면 disabled 여부와 무관하게 비활성', () => {
+    process.env.USE_DIRECT_API = 'false';
+    const g = new BlockGuard();
+    expect(g.isDirectApiActive()).toBe(false);
   });
 });
 

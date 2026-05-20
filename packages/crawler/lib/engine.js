@@ -198,6 +198,8 @@ function getLaunchOptions(executablePath) {
   };
 }
 
+const { blockGuard, sendTelegramAlert } = require('./blockGuard');
+
 module.exports = {
   prisma,
   redis,
@@ -216,5 +218,7 @@ module.exports = {
   enqueueTasks,
   getNextTasks,
   finishTask,
-  failTask
+  failTask,
+  blockGuard,
+  sendTelegramAlert,
 };
