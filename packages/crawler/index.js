@@ -114,7 +114,21 @@ async function run() {
   });
 
   let i = startIndex;
+  let processedCount = 0;
+  
   while (i < totalItems) {
+    // [메모리 및 세션 최적화] 500개마다 브라우저 재시작 (원본 로직)
+    if (processedCount > 0 && processedCount % 500 === 0) {
+      console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
+      await browserContext.close();
+      await sleep(5000);
+      browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
+        headless: true,
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
+      });
+    }
+
     const priorityIds = await redis.spop(PRIORITY_KEY, 10);
     if (priorityIds.length > 0) {
       console.log(`🚀 [Priority] 우선순위 아이템 ${priorityIds.length}개 처리 시작...`);
@@ -125,7 +139,7 @@ async function run() {
           await pipeline.execute(pCtx); 
           if (pCtx.payload) console.log(`✨ [Priority] 수집 완료: [${pCtx.payload.brand}] ${pCtx.payload.title}`);
         } catch (err) {
-          if (err instanceof SessionExpiredError) break; // 세션 만료 시 우선순위 루프 탈출
+          if (err instanceof SessionExpiredError) break;
         } finally { 
           await pPage.close(); 
         }
@@ -147,7 +161,7 @@ async function run() {
             if (ctx.productStatus && ctx.productStatus.priceHistory.length > 0) {
               console.log(`⏭️ [${currentIdx}/${totalItems}] (ID ${id}) 오늘 이미 수집됨 - 스킵`);
             } else {
-              console.log(`⏩ [${currentIdx}/${totalIdx}] (ID ${id}) 수집 제외됨 (검증 실패 등)`);
+              console.log(`⏩ [${currentIdx}/${totalItems}] (ID ${id}) 수집 제외됨 (검증 실패 등)`);
             }
           }
         } finally { 
@@ -155,6 +169,7 @@ async function run() {
         }
       }));
       
+      processedCount += batchIds.length;
       i += batchIds.length;
       await redis.set(PROGRESS_KEY, i);
       await prisma.crawlerStatus.update({ where: { id: 'singleton' }, data: { currentIndex: i, lastHeartbeat: new Date() } }).catch(() => {});
