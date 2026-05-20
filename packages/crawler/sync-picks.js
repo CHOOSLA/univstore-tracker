@@ -53,10 +53,10 @@ async function scoutDailyPicks() {
       await prisma.dailyPick.create({ data: { productId: id } }).catch(() => {});
     }
 
-    // 2. Redis Priority Set에 추가 (Main Crawler 새치기용)
-    // SADD를 사용하여 중복 방지
+    // 2. Redis Priority Queue에 추가 (ZSET 기반 새치기)
     if (pickIds.length > 0) {
-      await redis.sadd(PRIORITY_KEY, ...pickIds);
+      const { enqueueTasks } = require('./lib/engine');
+      await enqueueTasks(pickIds, true);
     }
 
     console.log(`🏁 [Scout] 탐색 공정 완료. (ID 큐 전송 완료)`);
