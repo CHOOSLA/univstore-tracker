@@ -19,13 +19,11 @@ class DBStateFilter {
       return;
     }
     
-    // 왜 스킵되지 않았는지(또는 왜 복구 모드인지)에 대한 힌트 로깅
     if (!hasBasicInfo) {
       console.log(`🔍 [ID ${ctx.id}] 정보 미비 - 정밀 복구 모드 (BasicInfo: ${!!hasBasicInfo}, TodayPrice: ${!!hasTodayPrice})`);
       ctx.isRecoveryMode = true;
     } else {
       ctx.isRecoveryMode = false;
-      // 기본 정보는 있지만 오늘 가격이 없는 경우
       if (!hasTodayPrice) {
         console.log(`📡 [ID ${ctx.id}] 오늘 가격 데이터 없음 - 수집 시작`);
       }
@@ -45,7 +43,10 @@ class NavigationFilter {
     });
 
     const status = res.status();
-    if (status === 403 || status === 429 || status === 405) {
+    const pageTitle = await ctx.page.title();
+    const bodyText = await ctx.page.evaluate(() => document.body.innerText);
+
+    if (status === 403 || status === 429 || status === 405 || pageTitle.includes('Verification') || bodyText.includes('confirm you are human')) {
       throw new BlockDetectedError(`Bot detected (HTTP ${status})`, status);
     }
   }
@@ -53,22 +54,42 @@ class NavigationFilter {
 
 class ExtractionFilter {
   async process(ctx) {
-    ctx.itemInfo = await ctx.page.evaluate(({ id, recovery }) => {
-      const scripts = Array.from(document.querySelectorAll('script'));
-      const dataScript = scripts.find(s => s.innerText.includes('window.__INITIAL_STATE__'));
+    ctx.itemInfo = await ctx.page.evaluate(async ({ id, recovery }) => {
+      const body = document.body.innerText;
+      const html = document.body.innerHTML;
+      if (body.includes('존재하지 않는 상품') || body.includes('판매가 중단')) return { error: 'Not available' };
+
+      // 1. 내부 API를 통한 고품질 메타데이터 추출 시도
       let apiData = null;
-      if (dataScript) {
-        try {
-          const match = dataScript.innerText.match(/window\.__INITIAL_STATE__\s*=\s*(\{.*?\});/);
-          if (match) apiData = JSON.parse(match[1])?.item?.item;
-        } catch (e) {}
+      try {
+        const res = await fetch(`https://www.univstore.com/api/item/${id}`);
+        apiData = await res.json();
+      } catch (e) {}
+
+      // 2. 가격 및 혜택 (DOM)
+      const price = (document.querySelector('.usItemCardInfoPriceCurrent')?.innerText || 
+                     document.querySelector('.usItemCardInfoPrice2')?.innerText || 
+                     document.querySelector('.usItemSumValue')?.innerText || '0').replace(/[^0-9]/g, '');
+      const originalPrice = document.querySelector('.usItemCardInfoPriceOriginal')?.innerText?.replace(/[^0-9]/g, '') || 
+                            document.querySelector('.usItemCardInfoPrice1')?.innerText?.replace(/[^0-9]/g, '') || price;
+      const bestBenefit = document.querySelector('.usItemCardInfoBenefitItemText')?.innerText?.trim() || 
+                          document.querySelector('.usPaymentDiscountSchemeInfo')?.innerText?.trim() || null;
+
+      // 3. 재고 상태 판별 (API 우선)
+      let stockStatus = 'In Stock';
+      if (apiData && typeof apiData.has_stock !== 'undefined') {
+        stockStatus = apiData.has_stock ? 'In Stock' : 'Out of Stock';
+      } else {
+        const infoArea = document.querySelector('.usItemAreaTop')?.innerText || '';
+        const sumArea = document.querySelector('.usItemSumArea')?.innerText || '';
+        const statusText = (infoArea + ' ' + sumArea).replace(/\s+/g, ' ');
+        if (statusText.includes('[품절]') || statusText.includes('일시 품절') || statusText.includes('재고 없음')) {
+          stockStatus = 'Out of Stock';
+        }
       }
+      if (body.includes('남은 수량') || body.includes('품절 임박')) stockStatus = 'Low Stock';
 
-      const price = apiData?.price || document.querySelector('.usItemCardInfoPriceCurrent')?.innerText?.replace(/[^0-9]/g, '') || '0';
-      const originalPrice = apiData?.market_price || document.querySelector('.usItemCardInfoPriceOriginal')?.innerText?.replace(/[^0-9]/g, '') || price;
-      const stockStatus = document.body.innerText.includes('일시품절') ? 'Out of Stock' : 'In Stock';
-      const bestBenefit = document.querySelector('.usItemCardInfoBenefitItemText')?.innerText?.trim() || null;
-
+      // 4. 브랜드, 이름, 이미지 (복구 모드 정밀 추출)
       let brand = apiData?.brand_name || document.querySelector('.usItemCardInfoBrandName')?.innerText?.trim() || '', 
           name = apiData?.front_name || document.querySelector('.usItemCardInfoName')?.innerText?.trim() || '이름 없음', 
           imageUrl = apiData?.thumbnail_url || null;
@@ -81,7 +102,8 @@ class ExtractionFilter {
       return { 
         brand, title: name, price, originalPrice, imageUrl, stockStatus, bestBenefit,
         category: apiData?.item_category_name || null,
-        isLoggedIn: !document.body.innerText.includes('학생인증 후 가격 확인')
+        subCategory: apiData?.brand_item_category_name || null,
+        isLoggedIn: !html.includes('학생인증 후 가격 확인')
       };
     }, { id: ctx.id, recovery: ctx.isRecoveryMode });
 
@@ -115,6 +137,8 @@ class StorageFilter {
       imageUrl: isRecoveryMode ? itemInfo.imageUrl : productStatus.imageUrl,
       stockStatus: itemInfo.stockStatus,
       bestBenefit: itemInfo.bestBenefit || (productStatus ? productStatus.bestBenefit : null),
+      category: itemInfo.category || (productStatus ? productStatus.category : null),
+      subCategory: itemInfo.subCategory || (productStatus ? productStatus.subCategory : null),
       timestamp: new Date().toISOString()
     };
 
