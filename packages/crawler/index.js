@@ -68,7 +68,9 @@ async function handleBatch(batchIds, i, totalItems, pipeline, browserContext) {
   const batchRange = `${i + 1}-${i + batchIds.length}`;
   console.log(`📦 [Batch ${batchRange}/${totalItems}] 수집 시도 중...`);
 
-  await Promise.all(batchIds.map(async (id, idx) => {
+  // [중요] 차단 회피를 위해 Promise.all 대신 순차 처리로 변경
+  for (let idx = 0; idx < batchIds.length; idx++) {
+    const id = batchIds[idx];
     const batchPage = await browserContext.newPage();
     const currentIdx = i + idx + 1;
     const ctx = new CrawlerContext(id, i + idx, totalItems, batchPage, browserContext, USER_DATA_DIR);
@@ -78,14 +80,17 @@ async function handleBatch(batchIds, i, totalItems, pipeline, browserContext) {
         const statusIcon = ctx.isRecoveryMode ? '✅' : '✨';
         console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (${ctx.payload.price}원)`);
       } else if (ctx.shouldSkip) {
-        // 스킵 로그는 너무 많을 수 있으므로 점 형태로 찍거나 10단위로 출력 고려 가능
-        // 일단은 요청하신 대로 '무엇을 하고 있는지' 보이게 한 줄씩 출력
-        console.log(`⏭️ [${currentIdx}/${totalItems}] (ID ${id}) 이미 최신 데이터임 - 스킵`);
+        if (ctx.productStatus && ctx.productStatus.priceHistory.length > 0) {
+          console.log(`⏭️ [${currentIdx}/${totalItems}] (ID ${id}) 오늘 이미 수집됨 - 스킵`);
+        } else {
+          console.log(`⏩ [${currentIdx}/${totalItems}] (ID ${id}) 수집 제외됨 (검증 실패 등)`);
+        }
       }
     } finally { 
       await batchPage.close(); 
+      if (idx < batchIds.length - 1) await sleep(1000); // 아이템 간 짧은 휴식
     }
-  }));
+  }
 }
 
 async function run() {
@@ -111,9 +116,9 @@ async function run() {
     await initContext.close();
   } catch (err) {
     if (err instanceof BlockDetectedError) {
-      console.error(`🔥 초기화 단계 차단 감지: ${err.message}. 10분 대기...`);
+      console.error(`🔥 초기화 단계 차단 감지: ${err.message}. 15분 대기...`);
       await initContext.close();
-      await sleep(600000);
+      await sleep(900000);
       process.exit(1);
     }
     console.error("❌ 초기화 에러:", err.message);
@@ -146,7 +151,6 @@ async function run() {
 
   let i = startIndex;
   while (i < totalItems) {
-    // [Hybrid Priority Interrupt] 매 배치 시작 전 우선순위 큐 체크
     const priorityIds = await redis.spop(PRIORITY_KEY, 10);
     if (priorityIds.length > 0) {
       console.log(`🚀 [Priority] 우선순위 아이템 ${priorityIds.length}개 새치기 처리 시작...`);
@@ -161,6 +165,7 @@ async function run() {
             }
           } finally { 
             await pPage.close(); 
+            await sleep(1500);
           }
         }
         console.log(`✅ [Priority] 처리 완료. 메인 루프(Index ${i})를 재개합니다.`);
@@ -184,15 +189,23 @@ async function run() {
       if (err instanceof SessionExpiredError) {
         console.error("🔄 세션 만료 감지. 재로그인을 시도합니다...");
         const loginPage = await browserContext.newPage();
-        await checkLogin(loginPage);
-        await loginPage.close();
+        try {
+          await checkLogin(loginPage);
+        } catch (lerr) {
+          console.error("❌ 재로그인 실패. 10분 대기 후 프로세스 재시작...");
+          await browserContext.close();
+          await sleep(600000);
+          process.exit(1);
+        } finally {
+          await loginPage.close();
+        }
         continue;
       }
 
       if (err instanceof BlockDetectedError) {
-        console.error(`🔥 Blocked: ${err.message}. Waiting 5 mins...`);
+        console.error(`🔥 Blocked: ${err.message}. Waiting 10 mins...`);
         await browserContext.close();
-        await sleep(300000);
+        await sleep(600000);
         browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, { 
           headless: true,
           args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
@@ -202,7 +215,7 @@ async function run() {
 
       console.error(`❌ Batch Error (Index ${i}):`, err.message);
       i += batchIds.length;
-      await sleep(2000);
+      await sleep(5000);
     }
   }
 
