@@ -65,6 +65,9 @@ async function discoverSpecials(page) {
 }
 
 async function handleBatch(batchIds, i, totalItems, pipeline, browserContext) {
+  const batchRange = `${i + 1}-${i + batchIds.length}`;
+  console.log(`📦 [Batch ${batchRange}/${totalItems}] 수집 시도 중...`);
+
   await Promise.all(batchIds.map(async (id, idx) => {
     const batchPage = await browserContext.newPage();
     const currentIdx = i + idx + 1;
@@ -72,8 +75,12 @@ async function handleBatch(batchIds, i, totalItems, pipeline, browserContext) {
     try { 
       await pipeline.execute(ctx); 
       if (ctx.payload) {
-        const statusIcon = ctx.isRecoveryMode ? '✅' : '📦';
-        console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title}`);
+        const statusIcon = ctx.isRecoveryMode ? '✅' : '✨';
+        console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (${ctx.payload.price}원)`);
+      } else if (ctx.shouldSkip) {
+        // 스킵 로그는 너무 많을 수 있으므로 점 형태로 찍거나 10단위로 출력 고려 가능
+        // 일단은 요청하신 대로 '무엇을 하고 있는지' 보이게 한 줄씩 출력
+        console.log(`⏭️ [${currentIdx}/${totalItems}] (ID ${id}) 이미 최신 데이터임 - 스킵`);
       }
     } finally { 
       await batchPage.close(); 
