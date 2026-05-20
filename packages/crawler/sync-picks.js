@@ -7,9 +7,8 @@ const randomSleep = (min, max) => new Promise(r => setTimeout(r, Math.floor(Math
 async function scoutDailyPicks() {
   console.log('🕵️ [Scout] EVERYUNIV 추천 PICK 탐색 시작 (Incognito + Stealth Mode)...');
   
-  const fs = require('fs');
-  const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-  const executablePath = fs.existsSync(CHROME_PATH) ? CHROME_PATH : undefined;
+  const { getExecutablePath } = require('./lib/engine');
+  const executablePath = getExecutablePath();
 
   // 엔진에서 제공하는 스텔스 브라우저 사용
   const browser = await chromium.launch({ 

@@ -2,7 +2,7 @@ require('dotenv').config();
 const { 
   prisma, redis, CrawlerContext, Pipeline, BlockDetectedError, 
   withPrismaRetry, sleep, USER_DATA_DIR, checkLogin, SessionExpiredError,
-  enqueueTasks, getNextTasks, finishTask, failTask, chromium 
+  enqueueTasks, getNextTasks, finishTask, failTask, chromium, getExecutablePath 
 } = require('./lib/engine');
 const { 
   DBStateFilter, NavigationFilter, ExtractionFilter, 
@@ -81,10 +81,7 @@ async function run() {
   let startIndex = parseInt(await redis.get(PROGRESS_KEY) || '0');
 
   // 1. 초기화 단계
-  const fs = require('fs');
-  const WIN_CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-  const LINUX_CHROME = '/usr/bin/google-chrome';
-  const executablePath = fs.existsSync(WIN_CHROME) ? WIN_CHROME : (fs.existsSync(LINUX_CHROME) ? LINUX_CHROME : undefined);
+  const executablePath = getExecutablePath();
 
   if (executablePath) {
     console.log(`🚀 정식 Chrome 브라우저 연결됨: ${executablePath}`);
@@ -232,7 +229,6 @@ async function run() {
           }
           await finishTask(id);
         } catch (err) {
-          // 세션 만료나 차단 에러는 배지 루프 자체를 중단하고 밖에서 처리하도록 다시 던짐
           if (err instanceof SessionExpiredError || err instanceof BlockDetectedError) {
             await batchPage.close();
             throw err; 
@@ -244,7 +240,6 @@ async function run() {
           if (!batchPage.isClosed()) await batchPage.close(); 
         }
 
-        // 아이템 간 최소한의 휴식 (스텔스 강화)
         if (idx < batchIds.length - 1) await sleep(1000);
       }
       

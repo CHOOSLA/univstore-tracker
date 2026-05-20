@@ -6,9 +6,8 @@ const prisma = new PrismaClient();
 const USER_DATA_DIR = './user_data';
 
 async function mapCategories() {
-  const fs = require('fs');
-  const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-  const executablePath = fs.existsSync(CHROME_PATH) ? CHROME_PATH : undefined;
+  const { getExecutablePath } = require('./lib/engine');
+  const executablePath = getExecutablePath();
 
   const browser = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,

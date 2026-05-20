@@ -7,9 +7,8 @@ const USER_DATA_DIR = './user_data';
 
 async function mapCategoriesHierarchical() {
   console.log("🚀 [Hierarchical Scan] 계층형 카테고리 전수 조사 시작...");
-  const fs = require('fs');
-  const CHROME_PATH = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-  const executablePath = fs.existsSync(CHROME_PATH) ? CHROME_PATH : undefined;
+  const { getExecutablePath } = require('./lib/engine');
+  const executablePath = getExecutablePath();
   
   const browser = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,

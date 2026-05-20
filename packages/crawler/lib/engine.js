@@ -3,9 +3,36 @@ const stealth = require('puppeteer-extra-plugin-stealth')();
 const { PrismaClient } = require('@prisma/client');
 const Redis = require('ioredis');
 const path = require('path');
+const fs = require('fs');
 
 // 스텔스 플러그인 적용
 chromium.use(stealth);
+
+/**
+ * 정식 Google Chrome 실행 경로를 하이브리드 방식으로 탐색합니다.
+ * 1. 환경 변수 CHROME_PATH 확인
+ * 2. 운영체제별 표준 경로 확인
+ * 3. 찾지 못한 경우 undefined 반환 (내장 Chromium 사용)
+ */
+function getExecutablePath() {
+  if (process.env.CHROME_PATH && fs.existsSync(process.env.CHROME_PATH)) {
+    return process.env.CHROME_PATH;
+  }
+
+  const standardPaths = [
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', // Windows
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', // Windows (x86)
+    '/usr/bin/google-chrome', // Linux (Ubuntu/Debian)
+    '/usr/bin/google-chrome-stable', // Linux Stable
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' // macOS
+  ];
+
+  for (const p of standardPaths) {
+    if (fs.existsSync(p)) return p;
+  }
+
+  return undefined;
+}
 
 const prisma = new PrismaClient();
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
@@ -165,6 +192,7 @@ module.exports = {
   checkLogin,
   sleep: (ms) => new Promise(r => setTimeout(r, ms)),
   USER_DATA_DIR: path.join(__dirname, '../user_data'),
+  getExecutablePath,
   TASK_QUEUE_KEY,
   enqueueTasks,
   getNextTasks,
