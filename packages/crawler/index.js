@@ -1,15 +1,16 @@
 require('dotenv').config();
-const { chromium } = require('playwright');
 const { 
   prisma, redis, CrawlerContext, Pipeline, BlockDetectedError, 
   withPrismaRetry, sleep, USER_DATA_DIR, checkLogin, SessionExpiredError,
-  enqueueTasks, getNextTasks, finishTask, failTask
+  enqueueTasks, getNextTasks, finishTask, failTask, chromium 
 } = require('./lib/engine');
 const { 
   DBStateFilter, NavigationFilter, ExtractionFilter, 
   ValidationFilter, StorageFilter 
 } = require('./lib/filters');
 const { XMLParser } = require('fast-xml-parser');
+
+const PRIORITY_KEY = 'univstore:priority_set';
 
 async function discoverAllProductIds(page) {
   console.log("🔍 사이트맵(item.xml) 분석하여 전체 상품 ID 수집 중...");
@@ -79,20 +80,19 @@ async function run() {
   const PROGRESS_KEY = `univstore:progress:${new Date().toISOString().split('T')[0]}`;
   let startIndex = parseInt(await redis.get(PROGRESS_KEY) || '0');
 
+  // 1. 초기화 단계
   let initContext = await chromium.launchPersistentContext(USER_DATA_DIR, {
     headless: true,
     userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     args: ['--no-sandbox', '--disable-blink-features=AutomationControlled']
   });
 
-  let allItemIds = [];
   let totalItems = 0;
-
   try {
     const initPage = await initContext.newPage();
     await checkLogin(initPage);
     await discoverSpecials(initPage);
-    allItemIds = await discoverAllProductIds(initPage);
+    const allItemIds = await discoverAllProductIds(initPage);
     
     if (allItemIds.length > 0) {
       console.log(`📥 ${allItemIds.length}개의 작업을 큐에 등록 중...`);
@@ -106,6 +106,7 @@ async function run() {
     process.exit(1);
   }
 
+  // 2. 엔진 가동
   const pipeline = new Pipeline([
     new DBStateFilter(),
     new NavigationFilter(),
@@ -130,6 +131,7 @@ async function run() {
   let processedCount = 0;
   
   while (true) {
+    // 500개마다 브라우저 재시작 (메모리 관리)
     if (processedCount > 0 && processedCount % 500 === 0) {
       console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
       await browserContext.close();
@@ -141,6 +143,7 @@ async function run() {
       });
     }
 
+    // 우선순위 처리 (sync-picks에서 넘어온 것)
     const priorityIds = await redis.spop('univstore:priority_set', 10);
     if (priorityIds.length > 0) {
       console.log(`🚀 [Priority] 우선순위 아이템 ${priorityIds.length}개 처리 시작...`);
@@ -158,6 +161,7 @@ async function run() {
       }
     }
 
+    // 다음 배치 작업 가져오기
     const batchIds = await getNextTasks(BATCH_SIZE);
     if (batchIds.length === 0) {
       console.log("💤 할 일이 없습니다. 1분 후 다시 확인합니다...");
@@ -167,17 +171,24 @@ async function run() {
 
     try {
       await Promise.all(batchIds.map(async (id, idx) => {
-        // [핵심] 배치 내 아이템 간 엇박자 지연 추가 (1.5초 간격)
+        // [엇박자 지연] 서버 탐지 회피
         await sleep(idx * 1500);
 
         const batchPage = await browserContext.newPage();
         const currentIdx = i + idx + 1;
-        const ctx = new CrawlerContext(id, 0, 0, batchPage, browserContext, USER_DATA_DIR);
+        const ctx = new CrawlerContext(id, 0, totalItems, batchPage, browserContext, USER_DATA_DIR);
         try { 
           await pipeline.execute(ctx); 
           if (ctx.payload) {
             const statusIcon = ctx.isRecoveryMode ? '✅' : '✨';
             console.log(`${statusIcon} [${currentIdx}/${totalItems}] 수집 완료: [${ctx.payload.brand}] ${ctx.payload.title} (₩${ctx.payload.price.toLocaleString()})`);
+          } else if (ctx.shouldSkip) {
+            // 상세 스킵 로그 복구
+            if (ctx.productStatus && ctx.productStatus.priceHistory.length > 0) {
+              if ((i + idx) % 100 === 0) console.log(`⏭️ [${currentIdx}/${totalItems}] 오늘 수집됨 (Skipped)`);
+            } else {
+              console.log(`⏩ [${currentIdx}/${totalItems}] (ID ${id}) 수집 제외됨 (검증 실패 등)`);
+            }
           }
           await finishTask(id);
         } catch (err) {
