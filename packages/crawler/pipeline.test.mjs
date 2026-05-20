@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import engine from './lib/engine.js';
 import filters from './lib/filters.js';
 
 const { Pipeline, SessionExpiredError } = engine;
-const { ExtractionFilter, ValidationFilter, SessionCheckFilter } = filters;
+const { ExtractionFilter, ValidationFilter, SessionCheckFilter, DirectApiFilter, NavigationFilter } = filters;
 
 describe('Crawler Pipeline Engine', () => {
   it('should execute filters in sequence', async () => {
@@ -94,6 +94,97 @@ describe('ExtractionFilter - Stock Logic Validation', () => {
 
     await filter.process(mockCtx);
     expect(mockCtx.itemInfo.stockStatus).toBe('Out of Stock');
+  });
+});
+
+describe('DirectApiFilter', () => {
+  let filter;
+  let mockCtx;
+  const originalEnv = process.env.USE_DIRECT_API;
+
+  beforeEach(() => {
+    filter = new DirectApiFilter();
+    mockCtx = {
+      id: '13704',
+      isRecoveryMode: false,
+      browserContext: {
+        request: {
+          get: vi.fn()
+        }
+      }
+    };
+    process.env.USE_DIRECT_API = 'true';
+  });
+
+  afterEach(() => {
+    process.env.USE_DIRECT_API = originalEnv;
+  });
+
+  it('flag가 꺼져 있으면 아무 동작도 하지 않는다', async () => {
+    process.env.USE_DIRECT_API = 'false';
+    await filter.process(mockCtx);
+    expect(mockCtx.browserContext.request.get).not.toHaveBeenCalled();
+    expect(mockCtx.apiHandled).toBeUndefined();
+  });
+
+  it('isRecoveryMode이면 페이지 fallback으로 위임한다', async () => {
+    mockCtx.isRecoveryMode = true;
+    await filter.process(mockCtx);
+    expect(mockCtx.browserContext.request.get).not.toHaveBeenCalled();
+    expect(mockCtx.apiHandled).toBeUndefined();
+  });
+
+  it('API 응답을 itemInfo로 매핑하고 apiHandled를 set한다', async () => {
+    mockCtx.browserContext.request.get.mockResolvedValue({
+      status: () => 200,
+      json: async () => ({
+        id: 13704,
+        brand_name: '비오엠',
+        front_name: '듀이립밤',
+        price1: 15000,
+        price2: 7700,
+        thumbnail_url: 'https://image.univstore.com/x.jpg',
+        benefit: '무료배송',
+        item_category_name: '뷰티',
+        brand_item_category_name: '뷰티',
+        has_stock: true,
+      })
+    });
+    await filter.process(mockCtx);
+    expect(mockCtx.apiHandled).toBe(true);
+    expect(mockCtx.itemInfo.price).toBe('7700');
+    expect(mockCtx.itemInfo.originalPrice).toBe('15000');
+    expect(mockCtx.itemInfo.brand).toBe('비오엠');
+    expect(mockCtx.itemInfo.stockStatus).toBe('In Stock');
+  });
+
+  it('403/405/429는 BlockDetectedError를 던진다', async () => {
+    mockCtx.browserContext.request.get.mockResolvedValue({ status: () => 405 });
+    await expect(filter.process(mockCtx)).rejects.toMatchObject({ name: 'BlockDetectedError' });
+  });
+
+  it('401은 SessionExpiredError를 던진다', async () => {
+    mockCtx.browserContext.request.get.mockResolvedValue({ status: () => 401 });
+    await expect(filter.process(mockCtx)).rejects.toMatchObject({ name: 'SessionExpiredError' });
+  });
+
+  it('기타 4xx는 apiHandled를 set하지 않고 페이지 fallback으로 위임한다', async () => {
+    mockCtx.browserContext.request.get.mockResolvedValue({ status: () => 404 });
+    await filter.process(mockCtx);
+    expect(mockCtx.apiHandled).toBeUndefined();
+  });
+});
+
+describe('NavigationFilter - apiHandled 가드', () => {
+  it('ctx.apiHandled가 true면 page.goto를 호출하지 않는다', async () => {
+    const filter = new NavigationFilter();
+    const mockCtx = {
+      id: '123',
+      apiHandled: true,
+      page: { goto: vi.fn() }
+    };
+    await filter.process(mockCtx);
+    expect(mockCtx.page.goto).not.toHaveBeenCalled();
   });
 });
 
