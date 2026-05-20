@@ -10,8 +10,6 @@ const {
 } = require('./lib/filters');
 const { XMLParser } = require('fast-xml-parser');
 
-const PRIORITY_KEY = 'univstore:priority_set';
-
 async function discoverAllProductIds(page) {
   console.log("🔍 사이트맵(item.xml) 분석하여 전체 상품 ID 수집 중...");
   try {
@@ -140,25 +138,10 @@ async function run() {
       browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, getLaunchOptions(executablePath));
     }
 
-    // 우선순위 처리 (sync-picks에서 넘어온 것)
-    const priorityIds = await redis.spop('univstore:priority_set', 10);
-    if (priorityIds.length > 0) {
-      console.log(`🚀 [Priority] 우선순위 아이템 ${priorityIds.length}개 처리 시작...`);
-      for (const pid of priorityIds) {
-        const pPage = await browserContext.newPage();
-        const pCtx = new CrawlerContext(pid, 0, 0, pPage, browserContext, USER_DATA_DIR);
-        try { 
-          await pipeline.execute(pCtx); 
-          if (pCtx.payload) console.log(`✨ [Priority] 수집 완료: [${pCtx.payload.brand}] ${pCtx.payload.title} (₩${pCtx.payload.price.toLocaleString()})`);
-        } catch (err) {
-          if (err instanceof SessionExpiredError) break;
-        } finally { 
-          await pPage.close(); 
-        }
-      }
-    }
-
     // 다음 배치 작업 가져오기
+    // sync-picks의 우선순위 아이템은 task_queue ZSET에 score=0으로 들어와
+    // getNextTasks()에서 자연스럽게 가장 먼저 pop됨
+
     const batchIds = await getNextTasks(BATCH_SIZE);
     if (batchIds.length === 0) {
       console.log("💤 할 일이 없습니다. 1분 후 다시 확인합니다...");
