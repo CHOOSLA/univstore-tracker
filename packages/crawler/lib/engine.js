@@ -91,6 +91,45 @@ async function checkLogin(page) {
   }
 }
 
+// Redis 키 상수
+const TASK_QUEUE_KEY = 'univstore:task_queue';
+
+/**
+ * 작업을 큐에 추가합니다. (Sorted Set 기반)
+ * @param {string[]} ids 상품 ID 배열
+ * @param {boolean} isPriority 우선순위 여부 (true면 가장 먼저 처리됨)
+ */
+async function enqueueTasks(ids, isPriority = false) {
+  if (!ids || ids.length === 0) return;
+  
+  // 우선순위 아이템은 Score를 0으로 설정하여 큐의 맨 앞으로 보냄
+  // 일반 아이템은 현재 타임스탬프를 사용하여 '가장 오래된 것'부터 나오게 함
+  const score = isPriority ? 0 : Date.now();
+  
+  const pipeline = redis.pipeline();
+  for (const id of ids) {
+    if (isPriority) {
+      pipeline.zadd(TASK_QUEUE_KEY, score, id);
+    } else {
+      pipeline.zadd(TASK_QUEUE_KEY, 'NX', score, id);
+    }
+  }
+  await pipeline.exec();
+}
+
+/**
+ * 가장 우선순위가 높거나(Score 0) 수집한 지 오래된 작업을 가져옵니다.
+ */
+async function getNextTasks(count = 1) {
+  // ZPOPMIN: 가장 작은 Score를 가진 원소를 꺼내고 큐에서 제거
+  const results = await redis.zpopmin(TASK_QUEUE_KEY, count);
+  const ids = [];
+  for (let i = 0; i < results.length; i += 2) {
+    ids.push(results[i]);
+  }
+  return ids;
+}
+
 module.exports = {
   prisma,
   redis,
@@ -101,5 +140,8 @@ module.exports = {
   withPrismaRetry,
   checkLogin,
   sleep: (ms) => new Promise(r => setTimeout(r, ms)),
-  USER_DATA_DIR: path.join(__dirname, '../user_data')
+  USER_DATA_DIR: path.join(__dirname, '../user_data'),
+  TASK_QUEUE_KEY,
+  enqueueTasks,
+  getNextTasks
 };
