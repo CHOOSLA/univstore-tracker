@@ -66,7 +66,13 @@ class DirectApiFilter {
       return; // apiHandled를 set하지 않고 빠져나가면 NavigationFilter가 이어받음
     }
 
-    const apiData = await res.json();
+    let apiData;
+    try {
+      apiData = await res.json();
+    } catch (e) {
+      console.warn(`⚠️ [ID ${ctx.id}] API JSON 파싱 실패 (${e.message}) - 페이지 fallback으로 위임`);
+      return;
+    }
     if (!apiData || !apiData.id) {
       console.warn(`⚠️ [ID ${ctx.id}] API 응답 형식 불일치 - 페이지 fallback으로 위임`);
       return;
