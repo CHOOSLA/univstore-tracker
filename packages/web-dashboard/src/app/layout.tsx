@@ -7,8 +7,28 @@ import { Navbar } from "@/components/Navbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "UnivWatch - Smart Price Tracker",
-  description: "Next-gen price tracking dashboard for students",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  title: {
+    default: 'UnivWatch — Real-Time Price Intelligence',
+    template: '%s | UnivWatch',
+  },
+  description: '33,000+ 대학생 전용 폐쇄몰 상품의 가격 변동을 실시간 추적하는 마켓 인텔리전스 플랫폼.',
+  openGraph: {
+    type: 'website',
+    siteName: 'UnivWatch',
+    title: 'UnivWatch — Real-Time Price Intelligence',
+    description: '33,000+ 대학생 전용 폐쇄몰 상품의 가격 변동을 실시간 추적하는 마켓 인텔리전스 플랫폼.',
+    url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
+    locale: 'ko_KR',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'UnivWatch — Real-Time Price Intelligence',
+    description: '33,000+ 대학생 전용 폐쇄몰 상품의 가격 변동을 실시간 추적하는 마켓 인텔리전스 플랫폼.',
+  },
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({
