@@ -19,6 +19,7 @@ import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { getStorageMetrics } from "./terminal/actions";
+import HomeSearchBar from "@/components/HomeSearchBar";
 
 export const dynamic = 'force-dynamic';
 
@@ -93,6 +94,11 @@ export default async function HomePage() {
              <MetricCard key={i} title={m.title} value={String(m.value)} sub={m.sub} icon={m.icon} accent={m.accent} />
            ))}
         </div>
+
+        {/* --- [Search Bar] --- */}
+        <section>
+          <HomeSearchBar />
+        </section>
 
         {/* --- [EVERYUNIV 추천 PICK: Full Display Without Link] --- */}
         <section className="space-y-8">
