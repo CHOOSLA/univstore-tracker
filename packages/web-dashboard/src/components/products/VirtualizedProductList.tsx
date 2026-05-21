@@ -213,44 +213,67 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
     );
   }
 
-  // ── 카드 뷰 ──
+  // ── 카드 뷰 (PICK 카드와 동일한 포맷) ──
   return (
     <div className="space-y-3">
       <div className="flex justify-end">
         <ViewToggle />
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {items.map((item) => {
           const currentPrice = item.priceHistory[0]?.price || 0;
           const oldPrice = item.originalPrice || currentPrice;
-          const dropRate = oldPrice > 0 ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100) : 0;
+          const discountRate = oldPrice > 0 && oldPrice > currentPrice
+            ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100)
+            : 0;
           const historyData = item.priceHistory.map(h => h.price).reverse();
           return (
-            <Link key={item.id} href={`/product/${item.id}`} className="glass p-4 rounded-[32px] flex flex-col space-y-4 group glass-hover border-white/[0.03]">
+            <Link key={item.id} href={`/product/${item.id}`} className="glass p-6 rounded-[40px] flex flex-col space-y-5 group glass-hover border-white/[0.03]">
               {/* 이미지 */}
-              <div className="w-full aspect-square bg-zinc-950 rounded-2xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-300">
+              <div className="w-full aspect-square bg-zinc-950 rounded-3xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
                 <img src={item.imageUrl!} alt={item.title} className="w-full h-full object-cover" />
               </div>
-              {/* 정보 */}
-              <div className="space-y-2 flex-1">
-                <p className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
-                <p className="text-xs font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors">{item.title}</p>
-                <div>
-                  {dropRate > 0 && (
-                    <div className="flex items-center space-x-1.5">
-                      <span className="text-red-500 text-[10px] font-black">{dropRate}%</span>
-                      <span className="text-[9px] text-zinc-600 line-through">₩{oldPrice.toLocaleString()}</span>
+              {/* 이름 & 가격 */}
+              <div className="space-y-3 flex-1">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
+                  <p className="text-base font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[3rem]">
+                    {item.title}
+                  </p>
+                </div>
+                <div className="flex flex-col">
+                  {discountRate > 0 && (
+                    <div className="flex items-center space-x-2">
+                      <span className="text-red-500 text-sm font-black">{discountRate}%</span>
+                      <span className="text-xs text-zinc-600 line-through font-bold">₩{oldPrice.toLocaleString()}</span>
                     </div>
                   )}
-                  <p className="text-base font-black text-white">₩{currentPrice > 0 ? currentPrice.toLocaleString() : '---'}</p>
+                  <p className="text-2xl font-black text-white leading-tight">
+                    ₩{currentPrice > 0 ? currentPrice.toLocaleString() : '---'}
+                  </p>
                 </div>
               </div>
-              {/* 스파크라인 */}
-              {historyData.length > 1 && (
-                <div className="pt-3 border-t border-white/5">
-                  <Sparkline data={historyData} color="#3b82f6" height={32} />
+              {/* 트렌드 */}
+              <div className="pt-4 border-t border-white/5 space-y-4">
+                <div className="flex justify-between items-end">
+                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">7D Trend Feed</p>
+                  {historyData.length > 1 && (
+                    <div className="flex items-center space-x-1">
+                      <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-[8px] font-black text-emerald-500 uppercase">Live</span>
+                    </div>
+                  )}
                 </div>
-              )}
+                <div className="h-12 w-full">
+                  {historyData.length > 1 ? (
+                    <Sparkline data={historyData} color="#3b82f6" height={48} fullWidth />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center border border-dashed border-zinc-800 rounded-xl">
+                      <p className="text-[9px] font-black text-zinc-700 uppercase tracking-widest">Awaiting Data</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </Link>
           );
         })}

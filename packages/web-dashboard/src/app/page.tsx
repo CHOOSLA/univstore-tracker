@@ -137,7 +137,7 @@ export default async function HomePage() {
                     <div className="space-y-3 flex-1">
                        <div className="space-y-1">
                           <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
-                          <p className="text-sm font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[2.5rem]">
+                          <p className="text-base font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[3rem]">
                             {item.title}
                           </p>
                        </div>
@@ -145,11 +145,11 @@ export default async function HomePage() {
                        <div className="flex flex-col">
                           {discountRate > 0 && (
                             <div className="flex items-center space-x-2">
-                              <span className="text-red-500 text-xs font-black">{discountRate}%</span>
-                              <span className="text-[10px] text-zinc-600 line-through font-bold">₩{originalPrice.toLocaleString()}</span>
+                              <span className="text-red-500 text-sm font-black">{discountRate}%</span>
+                              <span className="text-xs text-zinc-600 line-through font-bold">₩{originalPrice.toLocaleString()}</span>
                             </div>
                           )}
-                          <p className="text-xl font-black text-white leading-tight">
+                          <p className="text-2xl font-black text-white leading-tight">
                             ₩{currentPrice > 0 ? currentPrice.toLocaleString() : '---'}
                           </p>
                        </div>
@@ -168,7 +168,7 @@ export default async function HomePage() {
                        </div>
                        <div className="h-12 w-full">
                           {historyData.length > 1 ? (
-                            <Sparkline data={historyData} color="#3b82f6" height={40} />
+                            <Sparkline data={historyData} color="#3b82f6" height={48} fullWidth />
                           ) : (
                             <div className="h-full w-full flex items-center justify-center border border-dashed border-zinc-800 rounded-xl">
                                <p className="text-[9px] font-black text-zinc-700 uppercase tracking-widest">Awaiting Data</p>

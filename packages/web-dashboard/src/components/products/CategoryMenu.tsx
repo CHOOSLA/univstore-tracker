@@ -56,14 +56,14 @@ export default function CategoryMenu({ counts }: Props) {
 
   return (
     <div className="relative" ref={menuRef}>
-      <nav className="flex items-center gap-1 bg-zinc-900/30 p-2 rounded-2xl border border-white/5 backdrop-blur-md overflow-x-auto scrollbar-hide">
+      <nav className="flex items-center gap-1.5 bg-zinc-900/30 p-2 rounded-2xl border border-white/5 backdrop-blur-md overflow-x-auto scrollbar-hide">
         <button
           onClick={() => handleSelect(null, null)}
           className={cn(
-            "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border whitespace-nowrap",
+            "px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border whitespace-nowrap",
             !currentMain
               ? "bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/20"
-              : "bg-zinc-950 text-zinc-500 border-white/5 hover:border-white/20 hover:text-white"
+              : "bg-zinc-950 text-zinc-400 border-white/5 hover:border-white/20 hover:text-white"
           )}
         >
           All
@@ -78,25 +78,25 @@ export default function CategoryMenu({ counts }: Props) {
               key={slug}
               onClick={() => setOpenSlug(isOpen ? null : slug)}
               className={cn(
-                "px-4 py-2 rounded-xl text-[11px] font-black tracking-wide transition-all border whitespace-nowrap flex items-center gap-1.5",
+                "px-4 py-2.5 rounded-xl text-sm font-black tracking-wide transition-all border whitespace-nowrap flex items-center gap-2",
                 isActive
                   ? "bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/20"
                   : isOpen
                   ? "bg-white text-black border-white"
-                  : "bg-zinc-950 text-zinc-400 border-white/5 hover:border-white/20 hover:text-white"
+                  : "bg-zinc-950 text-zinc-300 border-white/5 hover:border-white/20 hover:text-white"
               )}
             >
               <span>{m.name}</span>
               <span
                 className={cn(
-                  "font-mono text-[9px]",
-                  isActive ? "text-white/70" : isOpen ? "text-black/50" : "text-zinc-600"
+                  "font-mono text-[10px]",
+                  isActive ? "text-white/70" : isOpen ? "text-black/50" : "text-zinc-500"
                 )}
               >
                 {cnt.toLocaleString()}
               </span>
               <ChevronDown
-                size={11}
+                size={12}
                 className={cn("transition-transform", isOpen && "rotate-180")}
               />
             </button>
@@ -115,7 +115,7 @@ export default function CategoryMenu({ counts }: Props) {
 
       {openSlug && (
         <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl z-50 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-6 gap-y-8">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-8 gap-y-8">
             {Object.entries(taxonomy[openSlug].subs).map(([code, sub]) => {
               const mainName = taxonomy[openSlug].name;
               const subCnt = counts.bySub[`${mainName}|${sub.name}`] || 0;
@@ -125,22 +125,21 @@ export default function CategoryMenu({ counts }: Props) {
                   <button
                     onClick={() => handleSelect(mainName, sub.name)}
                     className={cn(
-                      "block text-left text-sm font-black mb-3 transition-colors w-full",
+                      "block text-left text-base font-black mb-3 transition-colors w-full",
                       isActive ? "text-blue-400" : "text-white hover:text-blue-400"
                     )}
                   >
                     {sub.name}
-                    <span className="text-zinc-600 font-mono text-[10px] ml-1.5">
+                    <span className="text-zinc-500 font-mono text-xs ml-1.5">
                       {subCnt}
                     </span>
                   </button>
-                  <ul className="space-y-1.5">
+                  <ul className="space-y-2">
                     {Object.values(sub.thirds).map((thirdName, i) => (
                       <li key={i}>
                         <button
                           onClick={() => handleSelect(mainName, sub.name)}
-                          className="text-xs text-zinc-500 hover:text-white transition-colors text-left"
-                          title={`'${sub.name}' 카테고리로 필터링`}
+                          className="text-sm text-zinc-400 hover:text-white transition-colors text-left"
                         >
                           {thirdName}
                         </button>

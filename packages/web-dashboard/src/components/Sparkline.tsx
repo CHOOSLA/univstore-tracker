@@ -1,28 +1,47 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import { LineChart, Line, ResponsiveContainer, YAxis } from 'recharts';
+import React, { useEffect, useRef, useState } from 'react';
+import { LineChart, Line, YAxis } from 'recharts';
 
 interface SparklineProps {
   data: number[];
   color?: string;
+  height?: number;
+  fullWidth?: boolean;
 }
 
-export function Sparkline({ data, color = "#ef4444" }: SparklineProps) {
+export function Sparkline({ data, color = "#ef4444", height = 40, fullWidth = false }: SparklineProps) {
   const [mounted, setMounted] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(96);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => setMounted(true), []);
 
-  if (!mounted || !data || data.length === 0) return <div className="w-24 h-10" />;
+  useEffect(() => {
+    if (!fullWidth || !containerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      setContainerWidth(entries[0].contentRect.width || 96);
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [fullWidth]);
+
+  const chartWidth = fullWidth ? containerWidth : 96;
+  const placeholder = fullWidth
+    ? <div className="w-full" style={{ height }} />
+    : <div className="w-24" style={{ height }} />;
+
+  if (!mounted || !data || data.length === 0) return placeholder;
 
   const chartData = data.map((val, i) => ({ value: val, index: i }));
-  
+
   return (
-    <div className="w-24 h-10">
-      {/* 
-        ResponsiveContainer의 width(-1) 에러를 방지하기 위해 
-        부모 div에 고정 크기를 주고, 내부 차트에도 명시적인 크기를 지정합니다.
-      */}
-      <LineChart width={96} height={40} data={chartData}>
+    <div
+      ref={containerRef}
+      className={fullWidth ? "w-full" : "w-24"}
+      style={{ height }}
+    >
+      <LineChart width={chartWidth} height={height} data={chartData}>
         <Line
           type="monotone"
           dataKey="value"
