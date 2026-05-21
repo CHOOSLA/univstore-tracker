@@ -44,6 +44,7 @@ export default async function HomePage() {
       take: 24 // 추천 PICK 전체 노출 (24개)
     }),
     prisma.product.findMany({
+      where: { imageUrl: { not: null } },
       take: 5,
       orderBy: { updatedAt: 'desc' },
       include: {

@@ -16,6 +16,7 @@ export async function GET(request: Request) {
 
   const where: any = {
     AND: [
+      { imageUrl: { not: null } },
       brand ? { brand } : {},
       menuCategory ? { menuCategory } : {},
       menuSubCategory ? { menuSubCategory } : {},

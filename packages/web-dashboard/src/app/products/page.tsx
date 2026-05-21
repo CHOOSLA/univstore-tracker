@@ -24,6 +24,7 @@ export default async function ProductsPage({
   // 1. 기본 필터 정의
   const whereClause = {
     AND: [
+      { imageUrl: { not: null } },
       brandFilter ? { brand: brandFilter } : {},
       menuCategory ? { menuCategory } : {},
       menuSubCategory ? { menuSubCategory } : {},
