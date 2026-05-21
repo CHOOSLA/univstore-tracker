@@ -226,11 +226,11 @@ export default async function HomePage() {
                     </div>
 
                     <div className="shrink-0 flex items-center justify-between md:justify-end space-x-8 mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0 border-white/5">
-                      <div className="hidden sm:block">
+                      <div className="hidden sm:block w-24 shrink-0">
                         <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest text-right mb-2">Trend</p>
                         <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color={parseFloat(dropRate) > 10 ? "#ef4444" : "#3b82f6"} />
                       </div>
-                      <div className="text-right min-w-[120px]">
+                      <div className="text-right w-[148px] shrink-0">
                         <div className="flex items-baseline justify-end space-x-2">
                           <span className="text-xs text-zinc-500 line-through">₩{oldPrice.toLocaleString()}</span>
                           <span className="text-red-500 font-black text-lg">-{dropRate}%</span>
