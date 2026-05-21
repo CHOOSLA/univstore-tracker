@@ -9,7 +9,6 @@ const NAV_ITEMS = [
   { name: 'Dashboard', href: '/' },
   { name: 'Explorer', href: '/products' },
   { name: 'Market', href: '/market' },
-  { name: 'Specials', href: '/specials' },
   { name: 'Terminal', href: '/terminal' },
   { name: 'Alerts', href: '/alerts' },
   { name: 'Settings', href: '/settings/benefits' },

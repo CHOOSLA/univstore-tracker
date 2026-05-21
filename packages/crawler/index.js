@@ -94,7 +94,8 @@ async function run() {
   try {
     const initPage = await initContext.newPage();
     await checkLogin(initPage);
-    await discoverSpecials(initPage);
+    // [DISABLED] specials 수집 - 홈 배너 텍스트만 잡혀 실질적 데이터 없음
+    // await discoverSpecials(initPage);
     const allItemIds = await discoverAllProductIds(initPage);
     
     if (allItemIds.length > 0) {

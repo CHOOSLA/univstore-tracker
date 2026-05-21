@@ -32,9 +32,10 @@ async function processQueue() {
 
       if (queueName === 'univstore:price_updates') {
         await handlePriceUpdate(payload);
-      } else if (queueName === 'univstore:specials_updates') {
-        await handleSpecialsUpdate(payload.data);
-      }
+      // [DISABLED] specials_updates - 수집 데이터 품질 이슈로 비활성화
+      // } else if (queueName === 'univstore:specials_updates') {
+      //   await handleSpecialsUpdate(payload.data);
+      // }
 
     } catch (err) {
       console.error("❌ Worker 처리 도중 에러 발생:", err.message);

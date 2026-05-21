@@ -1,3 +1,5 @@
+// [DISABLED] 네비게이션에서 제거됨 - 홈 배너 텍스트(가족결합특가 등)만 수집되어 실질적 데이터 없음
+// 향후 구조화된 특가/래플 데이터 소스 확보 시 복구 가능
 import React from 'react';
 import { prisma } from "@/lib/prisma";
 import SpecialsView from "@/components/specials/SpecialsView";
