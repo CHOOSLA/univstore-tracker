@@ -165,7 +165,7 @@ export default async function ProductsPage({
                 "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
                 !brandFilter ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
               )}>All</Link>
-              {['Apple', 'Samsung'].map(b => (
+              {['Apple', '삼성'].map(b => (
                 <Link
                   key={b}
                   href={{
