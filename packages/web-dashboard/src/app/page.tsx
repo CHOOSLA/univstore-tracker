@@ -39,7 +39,7 @@ export default async function HomePage() {
           }
         }
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'asc' },
       take: 24 // 추천 PICK 전체 노출 (24개)
     }),
     prisma.product.findMany({
