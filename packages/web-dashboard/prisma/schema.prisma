@@ -9,21 +9,25 @@ datasource db {
 }
 
 model Product {
-  id            String         @id
-  title         String
-  brand         String?
-  originalPrice Int?
-  imageUrl      String?
-  stockStatus   String?
-  bestBenefit   String?
-  category      String?
-  subCategory   String?
-  thirdCategory String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  priceHistory  PriceHistory[]
-  priceAlerts   PriceAlert[]
-  dailyPick     DailyPick?
+  id              String         @id
+  title           String
+  brand           String?
+  originalPrice   Int?
+  imageUrl        String?
+  stockStatus     String?
+  bestBenefit     String?
+  category        String?        // /api/item 응답의 item_category_name (내부 분류, 일관성 낮음)
+  subCategory     String?        // /api/item 응답의 brand_item_category_name
+  thirdCategory   String?
+  menuCategory    String?        // univstore 공식 메뉴 1단계 (디지털/컴퓨터/가전/...)
+  menuSubCategory String?        // univstore 공식 메뉴 2단계 (태블릿PC/음향기기/...)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  priceHistory    PriceHistory[]
+  priceAlerts     PriceAlert[]
+  dailyPick       DailyPick?
+
+  @@index([menuCategory, menuSubCategory])
 }
 
 model PriceHistory {
