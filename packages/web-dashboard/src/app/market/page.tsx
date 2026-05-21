@@ -31,26 +31,31 @@ export default async function MarketPage() {
   const totalDataPoints = await prisma.product.count();
 
   // 3. 누적 절약 금액 (Savings Index)
+  // Prisma 5.22가 32k+ 결과셋의 nested select에서 패닉하는 이슈가 있어 priceHistory를 별도 쿼리로 분리
   const productsRaw = await prisma.product.findMany({
-    where: {
-      originalPrice: { gt: 0 },
-    },
+    where: { originalPrice: { gt: 0 } },
     select: {
       id: true,
       title: true,
       brand: true,
       originalPrice: true,
-      priceHistory: {
-        orderBy: { timestamp: 'desc' },
-        take: 1,
-        select: { price: true }
-      }
-    }
+    },
   });
+
+  // Postgres DISTINCT ON으로 product당 최신 가격 1건씩 효율적으로 가져옴
+  // (Prisma 5.22의 priceHistory.findMany는 32k+ 결과 + distinct에서 패닉함)
+  const latestPrices = await prisma.$queryRaw<{ productId: string; price: number }[]>`
+    SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
+    FROM "PriceHistory" ph
+    INNER JOIN "Product" p ON p.id = ph."productId"
+    WHERE p."originalPrice" > 0
+    ORDER BY ph."productId", ph.timestamp DESC
+  `;
+  const priceMap = new Map(latestPrices.map(lp => [lp.productId, lp.price]));
 
   let totalSavings = 0;
   productsRaw.forEach(p => {
-    const currentPrice = p.priceHistory[0]?.price || 0;
+    const currentPrice = priceMap.get(p.id) || 0;
     if (p.originalPrice && currentPrice > 0 && p.originalPrice > currentPrice) {
       totalSavings += (p.originalPrice - currentPrice);
     }
@@ -61,7 +66,7 @@ export default async function MarketPage() {
     const brandProducts = productsRaw.filter(p => p.brand === group.brand);
     const validDiscounts = brandProducts
       .map(p => {
-        const current = p.priceHistory[0]?.price || 0;
+        const current = priceMap.get(p.id) || 0;
         if (!p.originalPrice || p.originalPrice <= 0 || current <= 0 || current >= p.originalPrice) return 0;
         return ((p.originalPrice - current) / p.originalPrice) * 100;
       })
