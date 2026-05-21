@@ -40,6 +40,7 @@ services:
       - LETSENCRYPT_EMAIL=juebug4027@gmail.com
       - TELEGRAM_BOT_TOKEN=8939869039:AAFXFmUQU3IzZt6hWgOGNsXfJ1HHVDc84C8
       - TELEGRAM_CHAT_ID=7968628859
+      - NEXT_PUBLIC_SITE_URL=https://choouniv.duckdns.org
     depends_on:
       - postgres
       - redis

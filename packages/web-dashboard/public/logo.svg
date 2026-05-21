@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- Background -->
+  <rect width="32" height="32" fill="#0d0d0d"/>
+
+  <!-- Blue U: left bar -->
+  <rect x="3" y="2" width="6" height="18" fill="#3b7de8"/>
+  <!-- Blue U: right bar -->
+  <rect x="23" y="2" width="6" height="18" fill="#3b7de8"/>
+  <!-- Blue U: bottom curve row 1 -->
+  <rect x="3" y="20" width="26" height="4" fill="#3b7de8"/>
+  <!-- Blue U: bottom curve row 2 (1px indent) -->
+  <rect x="5" y="24" width="22" height="3" fill="#3b7de8"/>
+  <!-- Blue U: bottom curve row 3 (2px indent) -->
+  <rect x="7" y="27" width="18" height="3" fill="#3b7de8"/>
+
+  <!-- Red zigzag arrow -->
+  <!-- segment 1: down-right -->
+  <rect x="13" y="14" width="3" height="3" fill="#e03030"/>
+  <rect x="16" y="17" width="3" height="3" fill="#e03030"/>
+  <!-- segment 2: back up-left (zigzag) -->
+  <rect x="13" y="20" width="3" height="3" fill="#e03030"/>
+  <!-- segment 3: down-right to arrowhead -->
+  <rect x="16" y="23" width="3" height="3" fill="#e03030"/>
+  <rect x="19" y="26" width="3" height="3" fill="#e03030"/>
+  <!-- arrowhead (bottom-right) -->
+  <rect x="22" y="27" width="3" height="2" fill="#e03030"/>
+  <rect x="24" y="25" width="2" height="2" fill="#e03030"/>
+  <rect x="22" y="29" width="5" height="2" fill="#e03030"/>
+</svg>

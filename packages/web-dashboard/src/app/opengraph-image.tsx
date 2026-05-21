@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
-export const alt = 'UnivWatch — Real-Time Price Intelligence';
+export const alt = 'UnivWatch — 대학생 폐쇄몰 실시간 가격 트래커';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 

@@ -9,25 +9,25 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   title: {
-    default: 'UnivWatch — Real-Time Price Intelligence',
+    default: 'UnivWatch — 대학생 폐쇄몰 실시간 가격 트래커',
     template: '%s | UnivWatch',
   },
-  description: '33,000+ 대학생 전용 폐쇄몰 상품의 가격 변동을 실시간 추적하는 마켓 인텔리전스 플랫폼.',
+  description: '33,000개 이상의 대학생 전용 폐쇄몰 상품 가격을 자동 수집하고, 가격 하락 알림과 구매 타이밍 분석을 제공하는 마켓 인텔리전스 플랫폼.',
   openGraph: {
     type: 'website',
     siteName: 'UnivWatch',
-    title: 'UnivWatch — Real-Time Price Intelligence',
-    description: '33,000+ 대학생 전용 폐쇄몰 상품의 가격 변동을 실시간 추적하는 마켓 인텔리전스 플랫폼.',
+    title: 'UnivWatch — 대학생 폐쇄몰 실시간 가격 트래커',
+    description: '33,000개 이상의 대학생 전용 폐쇄몰 상품 가격을 자동 수집하고, 가격 하락 알림과 구매 타이밍 분석을 제공하는 마켓 인텔리전스 플랫폼.',
     url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
     locale: 'ko_KR',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'UnivWatch — Real-Time Price Intelligence',
-    description: '33,000+ 대학생 전용 폐쇄몰 상품의 가격 변동을 실시간 추적하는 마켓 인텔리전스 플랫폼.',
+    title: 'UnivWatch — 대학생 폐쇄몰 실시간 가격 트래커',
+    description: '33,000개 이상의 대학생 전용 폐쇄몰 상품 가격을 자동 수집하고, 가격 하락 알림과 구매 타이밍 분석을 제공하는 마켓 인텔리전스 플랫폼.',
   },
   icons: {
-    icon: '/icon.svg',
+    icon: '/logo.svg',
   },
 };
 
