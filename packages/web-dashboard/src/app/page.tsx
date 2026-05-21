@@ -208,24 +208,24 @@ export default async function HomePage() {
 
                 return (
                   <Link key={item.id} href={`/product/${item.id}`} className="glass glass-hover p-5 rounded-[32px] flex flex-col md:flex-row md:items-center justify-between group cursor-pointer border-white/[0.05]">
-                    <div className="flex items-center space-x-6">
-                      <div className="relative w-20 h-20 bg-zinc-900 rounded-2xl flex items-center justify-center border border-white/5 overflow-hidden group-hover:scale-105 transition-transform">
+                    <div className="flex items-center space-x-6 flex-1 min-w-0">
+                      <div className="relative w-20 h-20 shrink-0 bg-zinc-900 rounded-2xl flex items-center justify-center border border-white/5 overflow-hidden group-hover:scale-105 transition-transform">
                         {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <div className="text-[10px] text-zinc-700 uppercase font-black tracking-tighter px-1 text-center">NO IMAGE</div>}
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-1 min-w-0">
                         <div className="flex items-center space-x-2">
-                          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 uppercase">Active</span>
+                          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest truncate">{item.brand}</span>
+                          <span className="shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 uppercase">Active</span>
                         </div>
                         <p className="text-white font-black text-xl group-hover:text-blue-400 transition-colors line-clamp-1">{item.title}</p>
-                        <div className="flex items-center space-x-1 text-xs text-emerald-400 font-bold">
-                           <CreditCard size={12} />
-                           <span>{item.bestBenefit || '기본 혜택 적용'}</span>
+                        <div className="flex items-center space-x-1 text-xs text-emerald-400 font-bold truncate">
+                           <CreditCard size={12} className="shrink-0" />
+                           <span className="truncate">{item.bestBenefit || '기본 혜택 적용'}</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between md:justify-end space-x-8 mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0 border-white/5">
+                    <div className="shrink-0 flex items-center justify-between md:justify-end space-x-8 mt-6 md:mt-0 pt-6 md:pt-0 border-t md:border-t-0 border-white/5">
                       <div className="hidden sm:block">
                         <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest text-right mb-2">Trend</p>
                         <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color={parseFloat(dropRate) > 10 ? "#ef4444" : "#3b82f6"} />
