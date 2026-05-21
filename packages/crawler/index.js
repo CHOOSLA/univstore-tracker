@@ -124,6 +124,11 @@ async function run() {
     console.log("⚡ USE_DIRECT_API=true: 페이지 로드 대신 API 직접 호출 모드로 동작합니다.");
   }
 
+  // ZSET 자연 순환 큐에서 i는 cycle 안의 위치를 의미하므로 totalItems 단위로 wrap
+  if (totalItems > 0 && startIndex >= totalItems) {
+    startIndex = startIndex % totalItems;
+  }
+
   await withPrismaRetry(() => prisma.crawlerStatus.upsert({
     where: { id: 'singleton' },
     update: { totalItems, currentIndex: startIndex, lastStatus: 'RUNNING', lastHeartbeat: new Date() },
@@ -166,7 +171,8 @@ async function run() {
       // [안정성 최우선] Promise.all 대신 순차 처리를 통해 브라우저 종료 충돌(Race Condition) 방지
       for (let idx = 0; idx < batchIds.length; idx++) {
         const id = batchIds[idx];
-        const currentIdx = i + idx + 1;
+        // ZSET 순환 큐에서 i는 cycle 내 위치이므로 표시는 totalItems 단위로 wrap
+        const currentIdx = totalItems > 0 ? ((i + idx) % totalItems) + 1 : i + idx + 1;
         // page는 lazy 생성. DirectApi 경로로 처리되면 page 객체가 아예 만들어지지 않음
         const ctx = new CrawlerContext(id, 0, totalItems, null, browserContext, USER_DATA_DIR);
 
@@ -203,12 +209,16 @@ async function run() {
       
       processedCount += batchIds.length;
       i += batchIds.length;
+      // cycle 경계에 도달하면 wrap
+      if (totalItems > 0 && i >= totalItems) {
+        i = i % totalItems;
+      }
       await redis.set(PROGRESS_KEY, i);
-      
+
       const qLen = await redis.zcard('univstore:task_queue');
-      await prisma.crawlerStatus.update({ 
-        where: { id: 'singleton' }, 
-        data: { currentIndex: i, totalItems: qLen, lastHeartbeat: new Date() } 
+      await prisma.crawlerStatus.update({
+        where: { id: 'singleton' },
+        data: { currentIndex: i, totalItems: qLen, lastHeartbeat: new Date() }
       }).catch(() => {});
       
     } catch (err) {
