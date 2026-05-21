@@ -38,8 +38,8 @@ services:
       - VIRTUAL_PORT=3000
       - LETSENCRYPT_HOST=choouniv.duckdns.org
       - LETSENCRYPT_EMAIL=juebug4027@gmail.com
-      - TELEGRAM_BOT_TOKEN=8939869039:AAFXFmUQU3IzZt6hWgOGNsXfJ1HHVDc84C8
-      - TELEGRAM_CHAT_ID=7968628859
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
       - NEXT_PUBLIC_SITE_URL=https://choouniv.duckdns.org
     depends_on:
       - postgres
