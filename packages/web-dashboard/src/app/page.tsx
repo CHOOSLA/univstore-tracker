@@ -109,30 +109,46 @@ export default async function HomePage() {
               {dailyPicks.length > 0 ? dailyPicks.map((pick) => {
                 const item = pick.product;
                 const currentPrice = item.priceHistory[0]?.price || 0;
+                const originalPrice = item.originalPrice || currentPrice;
+                const discountRate = originalPrice > 0 && originalPrice > currentPrice
+                  ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+                  : 0;
                 const historyData = item.priceHistory.map(h => h.price).reverse();
                 
                 return (
-                  <Link key={item.id} href={`/product/${item.id}`} className="glass p-6 rounded-[40px] flex flex-col space-y-6 group glass-hover border-white/[0.03]">
-                    <div className="flex justify-between items-start">
-                       <div className="w-20 h-20 bg-zinc-950 rounded-3xl border border-white/5 overflow-hidden group-hover:scale-105 transition-transform duration-500 shrink-0">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-800 font-black">NO IMG</div>
+                  <Link key={item.id} href={`/product/${item.id}`} className="glass p-6 rounded-[40px] flex flex-col space-y-5 group glass-hover border-white/[0.03]">
+                    {/* 상단: 사진 (단독) */}
+                    <div className="w-full aspect-square bg-zinc-950 rounded-3xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-800 font-black uppercase tracking-tighter px-1 text-center">NO IMAGE</div>
+                      )}
+                    </div>
+
+                    {/* 중간: 이름 & 가격 */}
+                    <div className="space-y-3 flex-1">
+                       <div className="space-y-1">
+                          <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
+                          <p className="text-sm font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[2.5rem]">
+                            {item.title}
+                          </p>
+                       </div>
+
+                       <div className="flex flex-col">
+                          {discountRate > 0 && (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-red-500 text-xs font-black">{discountRate}%</span>
+                              <span className="text-[10px] text-zinc-600 line-through font-bold">₩{originalPrice.toLocaleString()}</span>
+                            </div>
                           )}
-                       </div>
-                       <div className="text-right">
-                          <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
-                          <p className="text-lg font-black text-white mt-1">₩{currentPrice > 0 ? currentPrice.toLocaleString() : '---'}</p>
+                          <p className="text-xl font-black text-white leading-tight">
+                            ₩{currentPrice > 0 ? currentPrice.toLocaleString() : '---'}
+                          </p>
                        </div>
                     </div>
 
-                    <div className="space-y-2 flex-1">
-                       <p className="text-sm font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors">
-                          {item.title}
-                       </p>
-                    </div>
-
+                    {/* 하단: 트렌드 (유지) */}
                     <div className="pt-4 border-t border-white/5 space-y-4">
                        <div className="flex justify-between items-end">
                           <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">7D Trend Feed</p>
