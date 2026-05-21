@@ -14,14 +14,15 @@ interface Product {
   imageUrl: string | null;
   stockStatus: string | null;
   bestBenefit: string | null;
-  category: string | null;
+  menuCategory: string | null;
+  menuSubCategory: string | null;
   priceHistory: { price: number }[];
 }
 
 interface VirtualizedProductListProps {
   initialItems: Product[];
   initialCursor: string | null;
-  searchParams: { q?: string; brand?: string; category?: string; sort?: string };
+  searchParams: { q?: string; brand?: string; menuCategory?: string; menuSubCategory?: string; sort?: string };
 }
 
 /**
@@ -48,7 +49,8 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
       const params = new URLSearchParams();
       if (searchParams.q) params.set('q', searchParams.q);
       if (searchParams.brand) params.set('brand', searchParams.brand);
-      if (searchParams.category) params.set('category', searchParams.category);
+      if (searchParams.menuCategory) params.set('menuCategory', searchParams.menuCategory);
+      if (searchParams.menuSubCategory) params.set('menuSubCategory', searchParams.menuSubCategory);
       if (searchParams.sort) params.set('sort', searchParams.sort);
       if (cursor) params.set('cursor', cursor);
 
@@ -123,8 +125,8 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center space-x-2">
                     <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest truncate">{item.brand || 'Brand'}</span>
-                    {item.category && (
-                      <span className="text-[8px] font-black bg-zinc-900 text-zinc-500 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-tighter truncate">{item.category}</span>
+                    {(item.menuSubCategory || item.menuCategory) && (
+                      <span className="text-[8px] font-black bg-zinc-900 text-zinc-500 px-1.5 py-0.5 rounded border border-white/5 uppercase tracking-tighter truncate">{item.menuSubCategory || item.menuCategory}</span>
                     )}
                   </div>
                   <p className="text-base font-black text-white group-hover:text-blue-400 transition-colors line-clamp-1">{item.title}</p>

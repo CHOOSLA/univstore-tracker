@@ -1,18 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
-import { 
-  Filter, 
-  CreditCard, 
-  Truck,
-  Zap,
-  Layers,
-  X
-} from "lucide-react";
-import { Sparkline } from "@/components/Sparkline";
+import { Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import SearchBar from "@/components/products/SearchBar";
 import VirtualizedProductList from "@/components/products/VirtualizedProductList";
+import CategoryMenu, { CategoryCounts } from "@/components/products/CategoryMenu";
 import { Suspense } from 'react';
 import { getSearchKeywords } from "@/lib/search-utils";
 
@@ -21,9 +14,9 @@ export const dynamic = 'force-dynamic';
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ brand?: string; q?: string; category?: string; sort?: string }>;
+  searchParams: Promise<{ brand?: string; q?: string; menuCategory?: string; menuSubCategory?: string; sort?: string }>;
 }) {
-  const { brand: brandFilter, q: searchQuery, category: categoryFilter, sort: sortOption = 'latest' } = await searchParams;
+  const { brand: brandFilter, q: searchQuery, menuCategory, menuSubCategory, sort: sortOption = 'latest' } = await searchParams;
 
   // 지능형 검색 키워드 생성 (유사어 지원)
   const searchKeywords = searchQuery ? getSearchKeywords(searchQuery) : [];
@@ -32,13 +25,15 @@ export default async function ProductsPage({
   const whereClause = {
     AND: [
       brandFilter ? { brand: brandFilter } : {},
-      categoryFilter ? { category: categoryFilter } : {},
+      menuCategory ? { menuCategory } : {},
+      menuSubCategory ? { menuSubCategory } : {},
       searchQuery ? {
         OR: searchKeywords.flatMap(kw => [
           { title: { contains: kw, mode: 'insensitive' } },
           { brand: { contains: kw, mode: 'insensitive' } },
           { id: { contains: kw } },
-          { category: { contains: kw, mode: 'insensitive' } },
+          { menuCategory: { contains: kw, mode: 'insensitive' } },
+          { menuSubCategory: { contains: kw, mode: 'insensitive' } },
         ])
       } : {}
     ]
@@ -78,22 +73,24 @@ export default async function ProductsPage({
     productsSorted.sort((a, b) => (a.priceHistory[0]?.price || 0) - (b.priceHistory[0]?.price || 0));
   }
 
-  // 4. DB에 존재하는 실제 카테고리 목록 및 개수 가져오기
-  const dbCategories = await prisma.product.groupBy({
-    by: ['category'],
-    where: { category: { not: null } },
-    _count: { id: true },
-    orderBy: {
-      _count: {
-        id: 'desc'
-      }
-    }
-  });
+  // 4. 메뉴 분류별 상품 수 (CategoryMenu의 count 표시용)
+  const [mainCounts, subCounts] = await Promise.all([
+    prisma.product.groupBy({
+      by: ['menuCategory'],
+      where: { menuCategory: { not: null } },
+      _count: { id: true },
+    }),
+    prisma.product.groupBy({
+      by: ['menuCategory', 'menuSubCategory'],
+      where: { menuCategory: { not: null }, menuSubCategory: { not: null } },
+      _count: { id: true },
+    }),
+  ]);
 
-  const displayCategories = dbCategories.map(c => ({
-    name: c.category!,
-    count: c._count.id
-  }));
+  const categoryCounts: CategoryCounts = {
+    byMain: Object.fromEntries(mainCounts.map(c => [c.menuCategory!, c._count.id])),
+    bySub: Object.fromEntries(subCounts.map(c => [`${c.menuCategory}|${c.menuSubCategory}`, c._count.id])),
+  };
 
   const initialCursor = productsSorted.length === 100 ? productsSorted[productsSorted.length - 1].id : null;
 
@@ -111,7 +108,13 @@ export default async function ProductsPage({
             </div>
             <h1 className="text-6xl font-black tracking-tighter">Explorer.</h1>
             <p className="text-zinc-500 text-lg max-w-2xl">
-              {searchQuery ? `"${searchQuery}" 검색 결과` : (categoryFilter ? `${categoryFilter} 카테고리 분석 센터` : "전국 대학생 복지 스토어 실시간 가격 및 혜택 추적 시스템")}
+              {searchQuery
+                ? `"${searchQuery}" 검색 결과`
+                : menuSubCategory
+                ? `${menuCategory} > ${menuSubCategory} 카테고리 분석 센터`
+                : menuCategory
+                ? `${menuCategory} 카테고리 분석 센터`
+                : "전국 대학생 복지 스토어 실시간 가격 및 혜택 추적 시스템"}
             </p>
           </div>
           <div className="flex items-center space-x-3">
@@ -137,11 +140,11 @@ export default async function ProductsPage({
                 { id: 'discount', label: '% Off' },
                 { id: 'price-asc', label: 'Low Price' }
               ].map((opt) => (
-                <Link 
+                <Link
                   key={opt.id}
                   href={{
                     pathname: '/products',
-                    query: { ... (searchQuery ? { q: searchQuery } : {}), ... (brandFilter ? { brand: brandFilter } : {}), ... (categoryFilter ? { category: categoryFilter } : {}), sort: opt.id }
+                    query: { ...(searchQuery ? { q: searchQuery } : {}), ...(brandFilter ? { brand: brandFilter } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), sort: opt.id }
                   }}
                   className={cn(
                     "px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
@@ -157,18 +160,18 @@ export default async function ProductsPage({
               <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block">Brand</span>
               <Link href={{
                 pathname: '/products',
-                query: { ... (searchQuery ? { q: searchQuery } : {}), ... (categoryFilter ? { category: categoryFilter } : {}), ... (sortOption !== 'latest' ? { sort: sortOption } : {}) }
+                query: { ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}) }
               }} className={cn(
                 "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
                 !brandFilter ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
               )}>All</Link>
               {['Apple', 'Samsung'].map(b => (
-                <Link 
+                <Link
                   key={b}
                   href={{
                     pathname: '/products',
-                    query: { brand: b, ... (searchQuery ? { q: searchQuery } : {}), ... (categoryFilter ? { category: categoryFilter } : {}), ... (sortOption !== 'latest' ? { sort: sortOption } : {}) }
-                  }} 
+                    query: { brand: b, ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}) }
+                  }}
                   className={cn(
                     "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
                     brandFilter === b ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
@@ -180,55 +183,17 @@ export default async function ProductsPage({
             </div>
           </div>
 
-          {/* Dynamic Categories */}
-          <div className="flex items-center space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-            <div className="flex items-center space-x-2 text-zinc-600 mr-2 shrink-0">
-              <Filter size={14} />
-              <span className="text-[10px] font-black uppercase tracking-widest">Categories</span>
-            </div>
-            {displayCategories.map((ctg) => (
-              <Link 
-                key={ctg.name}
-                href={{
-                  pathname: '/products',
-                  query: { 
-                    ... (searchQuery ? { q: searchQuery } : {}), 
-                    ... (brandFilter ? { brand: brandFilter } : {}), 
-                    ... (sortOption !== 'latest' ? { sort: sortOption } : {}),
-                    category: ctg.name 
-                  }
-                }}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all whitespace-nowrap flex items-center space-x-2",
-                  categoryFilter === ctg.name 
-                    ? "bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/20" 
-                    : "bg-zinc-950 text-zinc-500 border-white/5 hover:border-white/20 hover:text-white"
-                )}
-              >
-                <span>{ctg.name}</span>
-                <span className={cn("opacity-40 font-mono", categoryFilter === ctg.name ? "text-white" : "text-zinc-600")}>{ctg.count}</span>
-              </Link>
-            ))}
-            {categoryFilter && (
-              <Link 
-                href={{
-                  pathname: '/products',
-                  query: { ... (searchQuery ? { q: searchQuery } : {}), ... (brandFilter ? { brand: brandFilter } : {}), ... (sortOption !== 'latest' ? { sort: sortOption } : {}) }
-                }}
-                className="text-zinc-600 hover:text-red-500 text-[10px] font-black uppercase tracking-widest pl-2 transition-colors flex items-center shrink-0"
-              >
-                <X size={12} className="mr-1" />
-                Clear
-              </Link>
-            )}
-          </div>
+          {/* 공식 메뉴 분류 기반 메가메뉴 (univstore 8 × 65 × 444 트리) */}
+          <Suspense fallback={<div className="h-14 bg-zinc-900/30 rounded-2xl animate-pulse" />}>
+            <CategoryMenu counts={categoryCounts} />
+          </Suspense>
         </div>
 
         {/* Virtualized Infinite List */}
-        <VirtualizedProductList 
-          initialItems={safeInitialItems} 
+        <VirtualizedProductList
+          initialItems={safeInitialItems}
           initialCursor={initialCursor}
-          searchParams={{ q: searchQuery, brand: brandFilter, category: categoryFilter, sort: sortOption }}
+          searchParams={{ q: searchQuery, brand: brandFilter, menuCategory, menuSubCategory, sort: sortOption }}
         />
       </main>
     </div>

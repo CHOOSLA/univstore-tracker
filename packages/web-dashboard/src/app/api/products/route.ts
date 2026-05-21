@@ -6,7 +6,8 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q');
   const brand = searchParams.get('brand');
-  const category = searchParams.get('category');
+  const menuCategory = searchParams.get('menuCategory');
+  const menuSubCategory = searchParams.get('menuSubCategory');
   const sort = searchParams.get('sort') || 'latest';
   const cursor = searchParams.get('cursor');
   const limit = 20;
@@ -16,13 +17,15 @@ export async function GET(request: Request) {
   const where: any = {
     AND: [
       brand ? { brand } : {},
-      category ? { category } : {},
+      menuCategory ? { menuCategory } : {},
+      menuSubCategory ? { menuSubCategory } : {},
       q ? {
         OR: searchKeywords.flatMap(kw => [
           { title: { contains: kw, mode: 'insensitive' } },
           { brand: { contains: kw, mode: 'insensitive' } },
           { id: { contains: kw } },
-          { category: { contains: kw, mode: 'insensitive' } },
+          { menuCategory: { contains: kw, mode: 'insensitive' } },
+          { menuSubCategory: { contains: kw, mode: 'insensitive' } },
         ])
       } : {}
     ]
