@@ -155,29 +155,28 @@ async function enqueueTasks(ids, isPriority = false) {
 }
 
 /**
- * 작업을 완료 처리하고 수집 시간을 업데이트합니다. (큐의 맨 뒤로 보냄)
- * 성공 처리되었으므로 retry 카운터를 리셋합니다.
+ * 작업을 완료 처리합니다.
+ * getNextTasks의 zpopmin이 이미 큐에서 제거했으므로 다시 추가하지 않습니다.
+ * → 한 cycle 안에서 모든 item이 1번씩만 처리되고 큐가 자연스럽게 비워집니다.
+ * → 다음 cycle은 PM2 cron_restart가 진입 시 enqueueTasks(NX)로 다시 채웁니다.
  */
 async function finishTask(id) {
-  // 현재 시간으로 점수를 업데이트하여 가장 나중에 다시 수집되도록 함
-  await redis.zadd(TASK_QUEUE_KEY, Date.now(), id);
   await redis.hdel(RETRY_COUNT_KEY, id);
 }
 
 /**
- * 수집에 실패한 작업을 다시 큐에 넣습니다.
- * 연속 실패 횟수가 임계값을 넘으면 score를 미래로 미뤄 무한 루프를 방지합니다.
+ * 수집에 실패한 작업을 큐에 다시 넣습니다.
+ * 임계값 초과 시 큐에 다시 넣지 않고 영구 제외 (다음 cycle에 사이트맵으로 재진입).
  */
 async function failTask(id) {
   const retries = await redis.hincrby(RETRY_COUNT_KEY, id, 1);
 
   if (retries >= MAX_IMMEDIATE_RETRIES) {
-    // 임계값 초과: 1시간 뒤로 미뤄 다른 작업이 먼저 처리되도록 양보
-    const futureScore = Date.now() + PENALTY_DELAY_MS;
-    await redis.zadd(TASK_QUEUE_KEY, futureScore, id);
-    console.warn(`⏳ [ID ${id}] ${retries}회 연속 실패, 1시간 뒤로 미룸`);
+    // 임계값 초과: 큐에 다시 넣지 않고 영구 실패 처리 (다음 cycle에 재시도)
+    await redis.hdel(RETRY_COUNT_KEY, id);
+    console.warn(`⏳ [ID ${id}] ${retries}회 연속 실패, 이번 cycle에서 제외`);
   } else {
-    // 정상 범위: score=0으로 바로 다시 시도
+    // 정상 범위: score=0으로 큐 맨 앞에 다시 추가
     await redis.zadd(TASK_QUEUE_KEY, 0, id);
   }
 }

@@ -12,12 +12,11 @@ module.exports = {
       name: "univ-crawler",
       script: "npm",
       args: "run crawler:dev",
-      // DirectApi 모드로 6.6h cycle 달성 후, 12시간마다 fresh restart로 fingerprint/세션 재설정.
-      // crash 시 자동 복구도 활성화 (단, 짧은 간격 폭주 방지를 위한 max_restarts 제한).
+      // 한 cycle 완료 시 process.exit(0)으로 정상 종료, cron이 다음 시점에 재시작하는 방식.
+      // autorestart: false로 두어야 정상 종료가 즉시 재시작으로 이어지지 않음.
+      // crash 시에도 다음 cron까지 대기 (BlockGuard/retry counter가 1차 안전망 역할).
       cron_restart: "0 */12 * * *",
-      autorestart: true,
-      max_restarts: 5,
-      restart_delay: 60000,
+      autorestart: false,
       env: {
         NODE_ENV: "development",
       }

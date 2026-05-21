@@ -162,9 +162,16 @@ async function run() {
 
     const batchIds = await getNextTasks(BATCH_SIZE);
     if (batchIds.length === 0) {
-      console.log("💤 할 일이 없습니다. 1분 후 다시 확인합니다...");
-      await sleep(60000);
-      continue;
+      console.log(`\n✅ 큐 소진 - 이번 cycle 완료 (${processedCount}건 처리). 다음 cron까지 대기합니다.`);
+      await prisma.crawlerStatus.update({
+        where: { id: 'singleton' },
+        data: { lastStatus: 'COMPLETED', currentIndex: totalItems, lastHeartbeat: new Date() }
+      }).catch(() => {});
+      sendTelegramAlert(`✅ *Crawler cycle 완료*\n\n${processedCount}건 처리. 다음 cron(12h)에 자동 재시작.`).catch(() => {});
+      await browserContext.close().catch(() => {});
+      await prisma.$disconnect().catch(() => {});
+      await redis.quit().catch(() => {});
+      process.exit(0);
     }
 
     try {
