@@ -125,6 +125,9 @@ async function checkLogin(page) {
 
 // Redis 키 상수
 const TASK_QUEUE_KEY = 'univstore:task_queue';
+const RETRY_COUNT_KEY = 'univstore:retry_count';
+const MAX_IMMEDIATE_RETRIES = 5;
+const PENALTY_DELAY_MS = 60 * 60 * 1000; // 5회 연속 실패 시 1시간 뒤로 미룸
 
 /**
  * 작업을 큐에 추가합니다. (Sorted Set 기반)
@@ -153,18 +156,30 @@ async function enqueueTasks(ids, isPriority = false) {
 
 /**
  * 작업을 완료 처리하고 수집 시간을 업데이트합니다. (큐의 맨 뒤로 보냄)
+ * 성공 처리되었으므로 retry 카운터를 리셋합니다.
  */
 async function finishTask(id) {
   // 현재 시간으로 점수를 업데이트하여 가장 나중에 다시 수집되도록 함
   await redis.zadd(TASK_QUEUE_KEY, Date.now(), id);
+  await redis.hdel(RETRY_COUNT_KEY, id);
 }
 
 /**
- * 수집에 실패하거나 나중에 다시 시도해야 할 작업을 다시 큐에 넣습니다. (맨 앞으로 보냄)
+ * 수집에 실패한 작업을 다시 큐에 넣습니다.
+ * 연속 실패 횟수가 임계값을 넘으면 score를 미래로 미뤄 무한 루프를 방지합니다.
  */
 async function failTask(id) {
-  // 점수를 0으로 하여 다음에 바로 다시 시도되도록 함
-  await redis.zadd(TASK_QUEUE_KEY, 0, id);
+  const retries = await redis.hincrby(RETRY_COUNT_KEY, id, 1);
+
+  if (retries >= MAX_IMMEDIATE_RETRIES) {
+    // 임계값 초과: 1시간 뒤로 미뤄 다른 작업이 먼저 처리되도록 양보
+    const futureScore = Date.now() + PENALTY_DELAY_MS;
+    await redis.zadd(TASK_QUEUE_KEY, futureScore, id);
+    console.warn(`⏳ [ID ${id}] ${retries}회 연속 실패, 1시간 뒤로 미룸`);
+  } else {
+    // 정상 범위: score=0으로 바로 다시 시도
+    await redis.zadd(TASK_QUEUE_KEY, 0, id);
+  }
 }
 
 /**
