@@ -214,8 +214,8 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
         {items.map((item) => {
           const currentPrice = item.priceHistory[0]?.price || 0;
           const oldPrice = item.originalPrice || currentPrice;
-          const discountRate = originalPrice > 0 && originalPrice > currentPrice
-            ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
+          const discountRate = oldPrice > 0 && oldPrice > currentPrice
+            ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100)
             : 0;
           const historyData = item.priceHistory.map(h => h.price).reverse();
           return (

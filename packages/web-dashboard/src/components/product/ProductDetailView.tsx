@@ -56,10 +56,20 @@ interface ProductDetailViewProps {
 
 export default function ProductDetailView({ product, history, benefitRules, existingAlerts }: ProductDetailViewProps) {
   const [mounted, setMounted] = useState(false);
+  const [chartInterval, setChartInterval] = useState(2);
   
   useEffect(() => {
     setMounted(true);
     window.scrollTo(0, 0);
+    
+    // 클라이언트 사이드에서만 화면 너비 측정하여 차트 간격 조절
+    const handleResize = () => {
+      setChartInterval(window.innerWidth < 768 ? 5 : 2);
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   if (!mounted) {
@@ -127,7 +137,7 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                   </h1>
                 </div>
                 <div className="p-3 md:p-4 bg-zinc-900 rounded-2xl md:rounded-3xl border border-white/5 shrink-0 ml-4">
-                  <TrendingDown className={cn(currentPrice < avgPrice ? "text-emerald-500" : "text-zinc-700")} size={24} md:size={32} />
+                  <TrendingDown className={cn("w-6 h-6 md:w-8 md:h-8", currentPrice < avgPrice ? "text-emerald-500" : "text-zinc-700")} />
                 </div>
               </div>
 
@@ -141,14 +151,14 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
-                    <XAxis dataKey="date" stroke="#3f3f46" fontSize={9} tickLine={false} axisLine={false} tickMargin={10} interval={window.innerWidth < 768 ? 5 : 2} />
+                    <XAxis dataKey="date" stroke="#3f3f46" fontSize={9} tickLine={false} axisLine={false} tickMargin={10} interval={chartInterval} />
                     <YAxis hide domain={['dataMin - 10000', 'dataMax + 10000']} />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                       itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
                       formatter={(value: number) => [`₩${value.toLocaleString()}`, 'Price']}
                     />
-                    <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} md:strokeWidth={4} fillOpacity={1} fill="url(#colorPriceDetail)" isAnimationActive={false} />
+                    <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPriceDetail)" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -186,7 +196,7 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                 {product.bestBenefit && (
                   <div className="flex justify-between items-center text-emerald-400">
                     <div className="flex items-center space-x-2 min-w-0">
-                      <CreditCard size={14} md:size={16} className="shrink-0" />
+                      <CreditCard className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
                       <span className="font-bold text-xs md:text-sm truncate">{product.bestBenefit}</span>
                     </div>
                     <span className="font-black font-mono text-sm md:text-base shrink-0">- ₩{cardDiscount.toLocaleString()}</span>
@@ -208,10 +218,10 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                   className="flex items-center justify-center space-x-2 bg-white text-black h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-200 transition-all"
                 >
                   <span>Buy Now</span>
-                  <ExternalLink size={16} md:size={18} />
+                  <ExternalLink className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                 </Link>
                 <button className="flex items-center justify-center space-x-2 bg-zinc-900 border border-white/5 text-white h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-800 transition-all">
-                  <Zap size={16} md:size={18} />
+                  <Zap className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                   <span>Track</span>
                 </button>
               </div>
@@ -221,7 +231,7 @@ export default function ProductDetailView({ product, history, benefitRules, exis
             <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div className="glass p-5 md:p-6 rounded-[24px] md:rounded-[32px] border-white/[0.03]">
                 <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-4 flex items-center">
-                  <History className="mr-1.5" size={10} md:size={12} /> Volatility
+                  <History className="mr-1.5 w-2.5 h-2.5 md:w-3 md:h-3" /> Volatility
                 </p>
                 <div className="h-20 md:h-24 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -242,13 +252,13 @@ export default function ProductDetailView({ product, history, benefitRules, exis
               <div className="glass p-5 md:p-6 rounded-[24px] md:rounded-[32px] border-white/[0.03] flex flex-col justify-between">
                 <div className="space-y-2 md:space-y-4">
                   <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center">
-                    <Percent className="mr-1.5" size={10} md:size={12} /> Perk
+                    <Percent className="mr-1.5 w-2.5 h-2.5 md:w-3 md:h-3" /> Perk
                   </p>
                   <p className="text-xl md:text-2xl font-black text-white leading-none">Exclusive <br/> Benefit</p>
                 </div>
                 <div className="flex items-center text-blue-500 space-x-1 text-[10px] md:text-xs font-black uppercase tracking-tighter cursor-pointer hover:underline pt-2">
                   <span>Policy</span>
-                  <ChevronRight size={12} md:size={14} />
+                  <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5" />
                 </div>
               </div>
             </div>
@@ -262,7 +272,7 @@ export default function ProductDetailView({ product, history, benefitRules, exis
 
             <div className="glass p-6 md:p-10 rounded-[32px] md:rounded-[40px] border-white/[0.03] space-y-4 md:space-y-6">
                <div className="flex items-center space-x-2 text-zinc-400 font-bold text-[10px] md:text-xs uppercase tracking-widest">
-                  <Info size={12} md:size={14} />
+                  <Info className="w-3 h-3 md:w-3.5 md:h-3.5" />
                   <span>Insight</span>
                </div>
                <p className="text-xs md:text-sm text-zinc-300 font-medium leading-relaxed">
