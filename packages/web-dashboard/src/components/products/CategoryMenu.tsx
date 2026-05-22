@@ -60,11 +60,11 @@ export default function CategoryMenu({ counts }: Props) {
 
   return (
     <div className="relative" ref={menuRef}>
-      <nav className="flex items-center gap-1.5 bg-zinc-900/30 p-2 rounded-2xl border border-white/5 backdrop-blur-md overflow-x-auto scrollbar-hide">
+      <nav className="flex items-center gap-1.5 bg-zinc-900/30 p-1.5 md:p-2 rounded-xl md:rounded-2xl border border-white/5 backdrop-blur-md overflow-x-auto no-scrollbar py-2">
         <button
           onClick={() => handleSelect(null, null)}
           className={cn(
-            "px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all border whitespace-nowrap",
+            "px-3 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest transition-all border whitespace-nowrap",
             !currentMain
               ? "bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/20"
               : "bg-zinc-950 text-zinc-400 border-white/5 hover:border-white/20 hover:text-white"
@@ -82,7 +82,7 @@ export default function CategoryMenu({ counts }: Props) {
               key={slug}
               onClick={() => setOpenSlug(isOpen ? null : slug)}
               className={cn(
-                "px-4 py-2.5 rounded-xl text-sm font-black tracking-wide transition-all border whitespace-nowrap flex items-center gap-2",
+                "px-3 md:px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl text-[11px] md:text-sm font-black tracking-wide transition-all border whitespace-nowrap flex items-center gap-1.5 md:gap-2",
                 isActive
                   ? "bg-blue-500 text-white border-blue-400 shadow-lg shadow-blue-500/20"
                   : isOpen
@@ -93,7 +93,7 @@ export default function CategoryMenu({ counts }: Props) {
               <span>{m.name}</span>
               <span
                 className={cn(
-                  "font-mono text-[10px]",
+                  "font-mono text-[9px] md:text-[10px]",
                   isActive ? "text-white/70" : isOpen ? "text-black/50" : "text-zinc-500"
                 )}
               >
@@ -109,17 +109,17 @@ export default function CategoryMenu({ counts }: Props) {
         {(currentMain || currentSub) && (
           <button
             onClick={() => handleSelect(null, null)}
-            className="ml-auto text-zinc-600 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 px-3 whitespace-nowrap"
+            className="ml-auto text-zinc-600 hover:text-red-500 text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 px-3 whitespace-nowrap"
           >
-            <X size={12} />
+            <X size={10} md:size={12} />
             Clear
           </button>
         )}
       </nav>
 
       {openSlug && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl z-50 max-h-[70vh] overflow-y-auto">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-8 gap-y-8">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 md:p-8 shadow-2xl z-50 max-h-[70vh] overflow-y-auto">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-4 md:gap-x-8 gap-y-6 md:gap-y-8">
             {Object.entries(taxonomy[openSlug].subs).map(([code, sub]) => {
               const mainName = taxonomy[openSlug].name;
               const subCnt = counts.bySub[`${mainName}|${sub.name}`] || 0;
@@ -129,16 +129,16 @@ export default function CategoryMenu({ counts }: Props) {
                   <button
                     onClick={() => handleSelect(mainName, sub.name)}
                     className={cn(
-                      "block text-left text-base font-black mb-3 transition-colors w-full",
+                      "block text-left text-sm md:text-base font-black mb-2 md:mb-3 transition-colors w-full",
                       isActive ? "text-blue-400" : "text-white hover:text-blue-400"
                     )}
                   >
                     {sub.name}
-                    <span className="text-zinc-500 font-mono text-xs ml-1.5">
+                    <span className="text-zinc-500 font-mono text-[10px] md:text-xs ml-1 md:ml-1.5">
                       {subCnt}
                     </span>
                   </button>
-                  <ul className="space-y-2">
+                  <ul className="space-y-1.5 md:space-y-2">
                     {Object.values(sub.thirds).map((thirdName, i) => {
                       const thirdCnt = counts.byThird?.[`${mainName}|${sub.name}|${thirdName}`] || 0;
                       const isThirdActive = currentMain === mainName && currentSub === sub.name && currentThird === thirdName;
@@ -147,13 +147,13 @@ export default function CategoryMenu({ counts }: Props) {
                           <button
                             onClick={() => handleSelect(mainName, sub.name, thirdName)}
                             className={cn(
-                              "text-sm transition-colors text-left flex items-center gap-1.5",
+                              "text-xs md:text-sm transition-colors text-left flex items-center gap-1 md:gap-1.5",
                               isThirdActive ? "text-blue-400 font-bold" : "text-zinc-400 hover:text-white"
                             )}
                           >
                             <span>{thirdName}</span>
                             {thirdCnt > 0 && (
-                              <span className="font-mono text-[10px] text-zinc-600">{thirdCnt}</span>
+                              <span className="font-mono text-[9px] md:text-[10px] text-zinc-600">{thirdCnt}</span>
                             )}
                           </button>
                         </li>
