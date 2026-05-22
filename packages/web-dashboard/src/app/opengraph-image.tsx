@@ -47,6 +47,7 @@ export default function OGImage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div
             style={{
+              display: 'flex',
               fontSize: '72px',
               fontWeight: 900,
               color: 'white',
@@ -54,9 +55,18 @@ export default function OGImage() {
               letterSpacing: '-3px',
             }}
           >
-            Real-Time{' '}
+            <span>Real-Time&nbsp;</span>
             <span style={{ color: '#3b82f6', fontStyle: 'italic' }}>Insights</span>
-            <br />
+          </div>
+          <div
+            style={{
+              fontSize: '72px',
+              fontWeight: 900,
+              color: 'white',
+              lineHeight: 1.05,
+              letterSpacing: '-3px',
+            }}
+          >
             From UnivStore.
           </div>
           <div style={{ fontSize: '24px', color: '#71717a', fontWeight: 500, letterSpacing: '-0.5px' }}>
