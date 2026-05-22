@@ -112,12 +112,20 @@ async function map() {
           continue;
         }
 
-        const result = await prisma.product.updateMany({
-          where: { id: { in: ids } },
-          data: { thirdCategory: thirdName },
-        });
-        totalDbMatched += result.count;
-        console.log(`     ✓ ${thirdName.padEnd(18)} API=${String(ids.length).padStart(4)}, DB matched=${String(result.count).padStart(4)}`);
+        // N:M 매핑: array_append으로 중복 없이 추가
+        const result = await prisma.$executeRawUnsafe(`
+          UPDATE "Product"
+          SET
+            "thirdCategories" = (
+              CASE WHEN $1::text = ANY("thirdCategories") THEN "thirdCategories"
+                   ELSE array_append("thirdCategories", $1::text)
+              END
+            ),
+            "thirdCategory" = $1::text
+          WHERE id = ANY($2::text[])
+        `, thirdName, ids);
+        totalDbMatched += result;
+        console.log(`     ✓ ${thirdName.padEnd(18)} API=${String(ids.length).padStart(4)}, DB matched=${String(result).padStart(4)}`);
       }
     }
   }

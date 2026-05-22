@@ -110,11 +110,26 @@ async function map() {
         continue;
       }
 
-      const result = await prisma.product.updateMany({
-        where: { id: { in: ids } },
-        data: { menuCategory: mainData.name, menuSubCategory: subName },
-      });
-      totalDbMatched += result.count;
+      // N:M 매핑: array_append으로 중복 없이 추가 (한 상품이 여러 sub에 속할 수 있음)
+      // 옛 단일 컬럼도 일단 마지막 값으로 갱신 (deprecated 경로 호환)
+      const result = await prisma.$executeRawUnsafe(`
+        UPDATE "Product"
+        SET
+          "menuCategories" = (
+            CASE WHEN $1::text = ANY("menuCategories") THEN "menuCategories"
+                 ELSE array_append("menuCategories", $1::text)
+            END
+          ),
+          "menuSubCategories" = (
+            CASE WHEN $2::text = ANY("menuSubCategories") THEN "menuSubCategories"
+                 ELSE array_append("menuSubCategories", $2::text)
+            END
+          ),
+          "menuCategory" = $1::text,
+          "menuSubCategory" = $2::text
+        WHERE id = ANY($3::text[])
+      `, mainData.name, subName, ids);
+      totalDbMatched += result;
       console.log(`  ✓ ${subName.padEnd(20)} API=${String(ids.length).padStart(4)}건, DB matched=${String(result.count).padStart(4)}건`);
     }
   }
