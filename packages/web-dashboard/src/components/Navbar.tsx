@@ -51,7 +51,7 @@ export function Navbar() {
   );
 
   return (
-    <nav className="sticky top-0 z-[100] glass border-b border-white/5 px-4 md:px-6 py-4 flex justify-between items-center mb-4">
+    <nav className="sticky top-0 z-[100] glass border-b border-white/5 px-4 md:px-6 h-20 flex justify-between items-center mb-4">
       {/* Logo */}
       <Link href="/" className="flex items-center space-x-2 relative z-[110]">
         <img src="/logo.svg" alt="UnivWatch" width={32} height={32} className="rounded-md" />
@@ -98,7 +98,7 @@ export function Navbar() {
 
       {/* Mobile Menu Drawer */}
       <div className={cn(
-        "fixed inset-0 top-[72px] bg-zinc-950/98 backdrop-blur-2xl z-[90] transition-all duration-500 md:hidden flex flex-col items-center justify-start pt-20 space-y-8",
+        "fixed inset-0 top-20 bg-zinc-950 z-[90] transition-all duration-500 md:hidden flex flex-col items-center justify-start pt-20 space-y-8 border-t border-white/10",
         isMenuOpen 
           ? "opacity-100 translate-y-0 visible" 
           : "opacity-0 -translate-y-4 invisible"
