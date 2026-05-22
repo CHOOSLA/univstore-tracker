@@ -73,29 +73,33 @@ export default async function ProductsPage({
     productsSorted.sort((a, b) => (a.priceHistory[0]?.price || 0) - (b.priceHistory[0]?.price || 0));
   }
 
-  // 4. 메뉴 분류별 상품 수 (array 컬럼은 unnest 필요 → raw SQL)
+  // 4. 메뉴 분류별 상품 수 (array는 CROSS JOIN LATERAL UNNEST로 별도 펼침)
+  // 멀티 unnest를 SELECT 절에 같이 쓰면 row-wise 매칭이라 길이 불일치 시 NULL pad 발생
+  // COUNT(DISTINCT id)로 한 상품이 여러 sub/third에 속해도 각 조합당 1번씩만 카운트
   const [mainCounts, subCounts, thirdCounts] = await Promise.all([
     prisma.$queryRaw<{ name: string; cnt: bigint }[]>`
-      SELECT name, COUNT(*) AS cnt FROM (
-        SELECT DISTINCT id, unnest("menuCategories") AS name FROM "Product"
-      ) t GROUP BY name
+      SELECT m AS name, COUNT(DISTINCT p.id) AS cnt
+      FROM "Product" p
+      CROSS JOIN LATERAL UNNEST(p."menuCategories") AS m
+      WHERE p."imageUrl" IS NOT NULL
+      GROUP BY m
     `,
     prisma.$queryRaw<{ main: string; sub: string; cnt: bigint }[]>`
-      SELECT main, sub, COUNT(*) AS cnt FROM (
-        SELECT DISTINCT id,
-          unnest("menuCategories") AS main,
-          unnest("menuSubCategories") AS sub
-        FROM "Product"
-      ) t GROUP BY main, sub
+      SELECT m AS main, s AS sub, COUNT(DISTINCT p.id) AS cnt
+      FROM "Product" p
+      CROSS JOIN LATERAL UNNEST(p."menuCategories") AS m
+      CROSS JOIN LATERAL UNNEST(p."menuSubCategories") AS s
+      WHERE p."imageUrl" IS NOT NULL
+      GROUP BY m, s
     `,
     prisma.$queryRaw<{ main: string; sub: string; third: string; cnt: bigint }[]>`
-      SELECT main, sub, third, COUNT(*) AS cnt FROM (
-        SELECT DISTINCT id,
-          unnest("menuCategories") AS main,
-          unnest("menuSubCategories") AS sub,
-          unnest("thirdCategories") AS third
-        FROM "Product"
-      ) t GROUP BY main, sub, third
+      SELECT m AS main, s AS sub, t AS third, COUNT(DISTINCT p.id) AS cnt
+      FROM "Product" p
+      CROSS JOIN LATERAL UNNEST(p."menuCategories") AS m
+      CROSS JOIN LATERAL UNNEST(p."menuSubCategories") AS s
+      CROSS JOIN LATERAL UNNEST(p."thirdCategories") AS t
+      WHERE p."imageUrl" IS NOT NULL
+      GROUP BY m, s, t
     `,
   ]);
 
