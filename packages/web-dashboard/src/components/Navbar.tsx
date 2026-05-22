@@ -51,7 +51,10 @@ export function Navbar() {
   );
 
   return (
-    <nav className="sticky top-0 z-[100] glass border-b border-white/5 px-4 md:px-6 h-20 flex justify-between items-center mb-4">
+    <nav className={cn(
+      "sticky top-0 z-[100] border-b border-white/5 px-4 md:px-6 h-20 flex justify-between items-center mb-4 transition-all duration-300",
+      isMenuOpen ? "bg-zinc-950" : "glass"
+    )}>
       {/* Logo */}
       <Link href="/" className="flex items-center space-x-2 relative z-[110]">
         <img src="/logo.svg" alt="UnivWatch" width={32} height={32} className="rounded-md" />
