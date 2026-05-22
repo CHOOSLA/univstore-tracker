@@ -107,15 +107,15 @@ export default async function ProductsPage({
 
   return (
     <div className="pb-20 bg-zinc-950 text-zinc-50 min-h-screen">
-      <main className="max-w-7xl mx-auto px-6 pt-12 space-y-12">
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 space-y-8 md:space-y-12">
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-2">
           <div className="space-y-2">
-            <div className="flex items-center space-x-3 text-blue-500 mb-2">
-              <Layers size={18} />
-              <span className="text-xs font-black uppercase tracking-[0.3em]">Market Intelligence</span>
+            <div className="flex items-center space-x-3 text-blue-500 mb-1">
+              <Layers size={16} className="md:w-[18px] md:h-[18px]" />
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em]">Market Intelligence</span>
             </div>
-            <h1 className="text-6xl font-black tracking-tighter">Explorer.</h1>
-            <p className="text-zinc-500 text-lg max-w-2xl">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter">Explorer.</h1>
+            <p className="text-zinc-500 text-base md:text-lg max-w-2xl leading-snug">
               {searchQuery
                 ? `"${searchQuery}" 검색 결과`
                 : thirdCategory
@@ -127,7 +127,7 @@ export default async function ProductsPage({
                 : "전국 대학생 복지 스토어 실시간 가격 및 혜택 추적 시스템"}
             </p>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center">
              <div className="bg-emerald-500/10 text-emerald-500 text-[10px] font-black px-4 py-2 rounded-full border border-emerald-500/20 uppercase tracking-widest">
                {totalCount.toLocaleString()} Intel Points Found
              </div>
@@ -135,16 +135,16 @@ export default async function ProductsPage({
         </header>
 
         {/* --- [Toolbar: Search, Sort & Brands] --- */}
-        <div className="space-y-6">
-          <div className="flex flex-col lg:flex-row gap-4 bg-zinc-900/30 p-3 rounded-[32px] border border-white/5 backdrop-blur-md">
+        <div className="space-y-4 md:space-y-6">
+          <div className="flex flex-col lg:flex-row gap-3 md:gap-4 bg-zinc-900/30 p-2 md:p-3 rounded-2xl md:rounded-[32px] border border-white/5 backdrop-blur-md">
             <Suspense fallback={<div className="flex-1 h-12 bg-zinc-900/50 animate-pulse rounded-2xl" />}>
               <div className="flex-1">
                 <SearchBar />
               </div>
             </Suspense>
             
-            <div className="flex items-center space-x-2 px-4 border-l border-white/5">
-              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block">Sort</span>
+            <div className="flex items-center space-x-2 px-2 md:px-4 lg:border-l border-white/5 overflow-x-auto no-scrollbar py-1 md:py-0">
+              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Sort</span>
               {[
                 { id: 'latest', label: 'Latest' },
                 { id: 'discount', label: '% Off' },
@@ -157,7 +157,7 @@ export default async function ProductsPage({
                     query: { ...(searchQuery ? { q: searchQuery } : {}), ...(brandFilter ? { brand: brandFilter } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), sort: opt.id }
                   }}
                   className={cn(
-                    "px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                    "px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0",
                     sortOption === opt.id ? "bg-white text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
                   )}
                 >
@@ -166,13 +166,13 @@ export default async function ProductsPage({
               ))}
             </div>
 
-            <div className="flex items-center space-x-2 px-4 border-l border-white/5">
-              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block">Brand</span>
+            <div className="flex items-center space-x-2 px-2 md:px-4 lg:border-l border-white/5 overflow-x-auto no-scrollbar py-1 md:py-0">
+              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Brand</span>
               <Link href={{
                 pathname: '/products',
                 query: { ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}) }
               }} className={cn(
-                "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0",
                 !brandFilter ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
               )}>All</Link>
               {['Apple', '삼성'].map(b => (
@@ -183,7 +183,7 @@ export default async function ProductsPage({
                     query: { brand: b, ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}) }
                   }}
                   className={cn(
-                    "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                    "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0",
                     brandFilter === b ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
                   )}
                 >
