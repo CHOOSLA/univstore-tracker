@@ -18,6 +18,9 @@ interface Product {
   bestBenefit: string | null;
   menuCategory: string | null;
   menuSubCategory: string | null;
+  menuCategories?: string[];
+  menuSubCategories?: string[];
+  thirdCategories?: string[];
   priceHistory: { price: number }[];
 }
 

@@ -19,9 +19,9 @@ export async function GET(request: Request) {
     AND: [
       { imageUrl: { not: null } },
       brand ? { brand } : {},
-      menuCategory ? { menuCategory } : {},
-      menuSubCategory ? { menuSubCategory } : {},
-      thirdCategory ? { thirdCategory } : {},
+      menuCategory ? { menuCategories: { has: menuCategory } } : {},
+      menuSubCategory ? { menuSubCategories: { has: menuSubCategory } } : {},
+      thirdCategory ? { thirdCategories: { has: thirdCategory } } : {},
       q ? {
         OR: searchKeywords.flatMap(kw => [
           { title: { contains: kw, mode: 'insensitive' } },

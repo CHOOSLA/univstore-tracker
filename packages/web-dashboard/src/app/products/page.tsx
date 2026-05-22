@@ -21,21 +21,19 @@ export default async function ProductsPage({
   // 지능형 검색 키워드 생성 (유사어 지원)
   const searchKeywords = searchQuery ? getSearchKeywords(searchQuery) : [];
 
-  // 1. 기본 필터 정의
+  // 1. 기본 필터 정의 (array 컬럼은 has 연산자로 N:M 필터링)
   const whereClause = {
     AND: [
       { imageUrl: { not: null } },
       brandFilter ? { brand: brandFilter } : {},
-      menuCategory ? { menuCategory } : {},
-      menuSubCategory ? { menuSubCategory } : {},
-      thirdCategory ? { thirdCategory } : {},
+      menuCategory ? { menuCategories: { has: menuCategory } } : {},
+      menuSubCategory ? { menuSubCategories: { has: menuSubCategory } } : {},
+      thirdCategory ? { thirdCategories: { has: thirdCategory } } : {},
       searchQuery ? {
         OR: searchKeywords.flatMap(kw => [
           { title: { contains: kw, mode: 'insensitive' } },
           { brand: { contains: kw, mode: 'insensitive' } },
           { id: { contains: kw } },
-          { menuCategory: { contains: kw, mode: 'insensitive' } },
-          { menuSubCategory: { contains: kw, mode: 'insensitive' } },
         ])
       } : {}
     ]
@@ -75,29 +73,36 @@ export default async function ProductsPage({
     productsSorted.sort((a, b) => (a.priceHistory[0]?.price || 0) - (b.priceHistory[0]?.price || 0));
   }
 
-  // 4. 메뉴 분류별 상품 수 (CategoryMenu의 count 표시용)
+  // 4. 메뉴 분류별 상품 수 (array 컬럼은 unnest 필요 → raw SQL)
   const [mainCounts, subCounts, thirdCounts] = await Promise.all([
-    prisma.product.groupBy({
-      by: ['menuCategory'],
-      where: { menuCategory: { not: null } },
-      _count: { id: true },
-    }),
-    prisma.product.groupBy({
-      by: ['menuCategory', 'menuSubCategory'],
-      where: { menuCategory: { not: null }, menuSubCategory: { not: null } },
-      _count: { id: true },
-    }),
-    prisma.product.groupBy({
-      by: ['menuCategory', 'menuSubCategory', 'thirdCategory'],
-      where: { menuCategory: { not: null }, menuSubCategory: { not: null }, thirdCategory: { not: null } },
-      _count: { id: true },
-    }),
+    prisma.$queryRaw<{ name: string; cnt: bigint }[]>`
+      SELECT name, COUNT(*) AS cnt FROM (
+        SELECT DISTINCT id, unnest("menuCategories") AS name FROM "Product"
+      ) t GROUP BY name
+    `,
+    prisma.$queryRaw<{ main: string; sub: string; cnt: bigint }[]>`
+      SELECT main, sub, COUNT(*) AS cnt FROM (
+        SELECT DISTINCT id,
+          unnest("menuCategories") AS main,
+          unnest("menuSubCategories") AS sub
+        FROM "Product"
+      ) t GROUP BY main, sub
+    `,
+    prisma.$queryRaw<{ main: string; sub: string; third: string; cnt: bigint }[]>`
+      SELECT main, sub, third, COUNT(*) AS cnt FROM (
+        SELECT DISTINCT id,
+          unnest("menuCategories") AS main,
+          unnest("menuSubCategories") AS sub,
+          unnest("thirdCategories") AS third
+        FROM "Product"
+      ) t GROUP BY main, sub, third
+    `,
   ]);
 
   const categoryCounts: CategoryCounts = {
-    byMain: Object.fromEntries(mainCounts.map(c => [c.menuCategory!, c._count.id])),
-    bySub: Object.fromEntries(subCounts.map(c => [`${c.menuCategory}|${c.menuSubCategory}`, c._count.id])),
-    byThird: Object.fromEntries(thirdCounts.map(c => [`${c.menuCategory}|${c.menuSubCategory}|${c.thirdCategory}`, c._count.id])),
+    byMain: Object.fromEntries(mainCounts.map(c => [c.name, Number(c.cnt)])),
+    bySub: Object.fromEntries(subCounts.map(c => [`${c.main}|${c.sub}`, Number(c.cnt)])),
+    byThird: Object.fromEntries(thirdCounts.map(c => [`${c.main}|${c.sub}|${c.third}`, Number(c.cnt)])),
   };
 
   const initialCursor = productsSorted.length === 100 ? productsSorted[productsSorted.length - 1].id : null;
