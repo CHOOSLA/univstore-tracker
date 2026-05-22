@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, X } from "lucide-react";
+import { Menu, X, Monitor, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -24,21 +24,43 @@ export function Navbar() {
     setMounted(true);
   }, []);
 
-  // 페이지 이동 시 메뉴 닫기
+  // 페이지 이동 시 메뉴 닫기 및 스크롤 고정 해제
   useEffect(() => {
     setIsMenuOpen(false);
+    document.body.style.overflow = 'unset';
   }, [pathname]);
 
+  // 메뉴 열림/닫힘에 따른 스크롤 제어
+  const toggleMenu = () => {
+    const newState = !isMenuOpen;
+    setIsMenuOpen(newState);
+    if (newState) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+  };
+
+  if (!mounted) return (
+    <nav className="sticky top-0 z-50 glass border-b border-white/5 px-4 md:px-6 py-4 flex justify-between items-center mb-4">
+      <div className="flex items-center space-x-2">
+        <div className="w-8 h-8 bg-zinc-900 rounded-md animate-pulse" />
+        <span className="text-xl font-black tracking-tighter text-white">UnivWatch.</span>
+      </div>
+    </nav>
+  );
+
   return (
-    <nav className="sticky top-0 z-50 glass border-b border-white/5 px-4 md:px-6 py-4 flex justify-between items-center mb-4" suppressHydrationWarning>
-      <Link href="/" className="flex items-center space-x-2 relative z-[60]">
+    <nav className="sticky top-0 z-[100] glass border-b border-white/5 px-4 md:px-6 py-4 flex justify-between items-center mb-4">
+      {/* Logo */}
+      <Link href="/" className="flex items-center space-x-2 relative z-[110]">
         <img src="/logo.svg" alt="UnivWatch" width={32} height={32} className="rounded-md" />
         <span className="text-xl font-black tracking-tighter text-white">UnivWatch.</span>
       </Link>
       
       {/* Desktop Navigation */}
       <div className="hidden md:flex items-center space-x-1 bg-zinc-900/50 p-1 rounded-xl border border-white/5">
-        {mounted && NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
           return (
             <Link 
@@ -57,18 +79,17 @@ export function Navbar() {
         })}
       </div>
 
-      <div className="flex items-center space-x-4 relative z-[60]">
-        {mounted && (
-          <div className="hidden sm:flex px-3 py-1.5 bg-zinc-950 border border-white/5 rounded-full items-center space-x-2">
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">System Online</span>
-          </div>
-        )}
+      {/* Right Actions */}
+      <div className="flex items-center space-x-4 relative z-[110]">
+        <div className="hidden sm:flex px-3 py-1.5 bg-zinc-950 border border-white/5 rounded-full items-center space-x-2">
+          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">System Online</span>
+        </div>
 
         {/* Mobile Menu Toggle */}
         <button 
           className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          onClick={toggleMenu}
           aria-label="Toggle Menu"
         >
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -77,30 +98,38 @@ export function Navbar() {
 
       {/* Mobile Menu Drawer */}
       <div className={cn(
-        "fixed inset-x-0 bottom-0 top-[73px] bg-zinc-950/95 backdrop-blur-xl z-[50] transition-all duration-300 md:hidden flex flex-col justify-center items-center space-y-8 border-t border-white/5",
-        isMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+        "fixed inset-0 top-[72px] bg-zinc-950/98 backdrop-blur-2xl z-[90] transition-all duration-500 md:hidden flex flex-col items-center justify-start pt-20 space-y-8",
+        isMenuOpen 
+          ? "opacity-100 translate-y-0 visible" 
+          : "opacity-0 -translate-y-4 invisible"
       )}>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.map((item, i) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
           return (
             <Link 
               key={item.href} 
               href={item.href} 
               className={cn(
-                "text-2xl font-black uppercase tracking-[0.2em] transition-all",
-                isActive ? "text-blue-500" : "text-zinc-500 hover:text-white"
+                "text-3xl font-black uppercase tracking-[0.2em] transition-all duration-300",
+                isActive ? "text-blue-500 scale-110" : "text-zinc-600 hover:text-white",
+                isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0"
               )}
+              style={{ transitionDelay: `${i * 50}ms` }}
             >
               {item.name}
             </Link>
           );
         })}
         
-        <div className="pt-8 border-t border-white/5 w-1/2 flex justify-center">
+        <div className={cn(
+          "pt-12 border-t border-white/5 w-1/2 flex flex-col items-center space-y-4 transition-all duration-700 delay-300",
+          isMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
+        )}>
           <div className="px-4 py-2 bg-zinc-900 border border-white/5 rounded-full flex items-center space-x-2">
             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
             <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">System Online</span>
           </div>
+          <p className="text-[8px] font-bold text-zinc-700 uppercase tracking-[0.4em]">UnivWatch Intel Engine</p>
         </div>
       </div>
     </nav>
