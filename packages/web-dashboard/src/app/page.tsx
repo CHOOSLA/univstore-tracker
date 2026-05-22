@@ -65,7 +65,7 @@ export default async function HomePage() {
     color: group.brand === 'Apple' ? "text-zinc-50" : "text-blue-400"
   })).sort((a, b) => b.count - a.count).slice(0, 4);
 
-  // 상단 4구 매트릭 완벽 복구
+  // 상단 4구 매트릭
   const metrics = [
     { title: "전체 상품", value: totalProductsCount.toLocaleString(), sub: "Data Scale", icon: Package, accent: "text-blue-500" },
     { title: "누적 데이터", value: totalHistoryCount.toLocaleString(), sub: "Price History", icon: Database, accent: "text-purple-500" },
@@ -89,7 +89,7 @@ export default async function HomePage() {
           </p>
         </section>
 
-        {/* --- [Top Tier Metrics: Responsive Grid] --- */}
+        {/* --- [Top Tier Metrics] --- */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
            {metrics.map((m, i) => (
              <MetricCard key={i} title={m.title} value={String(m.value)} sub={m.sub} icon={m.icon} accent={m.accent} />
@@ -101,7 +101,7 @@ export default async function HomePage() {
           <HomeSearchBar />
         </section>
 
-        {/* --- [EVERYUNIV 추천 PICK: Responsive Grid] --- */}
+        {/* --- [EVERYUNIV 추천 PICK] --- */}
         <section className="space-y-6 md:space-y-8">
            <div className="px-2">
               <div className="space-y-1">
@@ -137,7 +137,7 @@ export default async function HomePage() {
                     <div className="space-y-2 md:space-y-3 flex-1">
                        <div className="space-y-1">
                           <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
-                          <p className="text-xs md:text-sm font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[2.5rem]">
+                          <p className="text-xs md:text-base font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[2.5rem] md:h-[3rem]">
                             {item.title}
                           </p>
                        </div>
@@ -145,17 +145,17 @@ export default async function HomePage() {
                        <div className="flex flex-col">
                           {discountRate > 0 && (
                             <div className="flex items-center space-x-2">
-                              <span className="text-red-500 text-[10px] md:text-xs font-black">{discountRate}%</span>
-                              <span className="text-[8px] md:text-[10px] text-zinc-600 line-through font-bold">₩{originalPrice.toLocaleString()}</span>
+                              <span className="text-red-500 text-[10px] md:text-sm font-black">{discountRate}%</span>
+                              <span className="text-[8px] md:text-xs text-zinc-600 line-through font-bold">₩{originalPrice.toLocaleString()}</span>
                             </div>
                           )}
-                          <p className="text-base md:text-xl font-black text-white leading-tight">
+                          <p className="text-base md:text-2xl font-black text-white leading-tight">
                             ₩{currentPrice > 0 ? currentPrice.toLocaleString() : '---'}
                           </p>
                        </div>
                     </div>
 
-                    {/* 하단: 트렌드 */}
+                    {/* 하단: 트렌드 (Full Width 복구) */}
                     <div className="pt-3 md:pt-4 border-t border-white/5 space-y-3 md:space-y-4">
                        <div className="flex justify-between items-end">
                           <p className="text-[8px] md:text-[10px] font-black text-zinc-600 uppercase tracking-widest">7D Trend Feed</p>
@@ -168,7 +168,7 @@ export default async function HomePage() {
                        </div>
                        <div className="h-10 md:h-12 w-full">
                           {historyData.length > 1 ? (
-                            <Sparkline data={historyData} color="#3b82f6" height={32} />
+                            <Sparkline data={historyData} color="#3b82f6" height={48} fullWidth />
                           ) : (
                             <div className="h-full w-full flex items-center justify-center border border-dashed border-zinc-800 rounded-lg">
                                <p className="text-[8px] font-black text-zinc-700 uppercase tracking-widest">Awaiting Data</p>
@@ -187,7 +187,7 @@ export default async function HomePage() {
         {/* --- [Main Layout: Recent Updates + Brand Pulse] --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-full">
           
-          {/* Recent Market Updates (8) */}
+          {/* Recent Market Updates (레이아웃 보호 로직 복구) */}
           <div className="lg:col-span-8 space-y-6">
             <div className="flex justify-between items-end px-2">
               <h2 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center">
@@ -208,6 +208,7 @@ export default async function HomePage() {
 
                 return (
                   <Link key={item.id} href={`/product/${item.id}`} className="glass glass-hover p-4 md:p-5 rounded-[24px] md:rounded-[32px] flex flex-col sm:flex-row sm:items-center justify-between group cursor-pointer border-white/[0.05]">
+                    {/* 왼쪽 블록: 고정 크기 이미지 및 텍스트 보호 */}
                     <div className="flex items-center space-x-4 md:space-x-6 flex-1 min-w-0">
                       <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 bg-zinc-900 rounded-xl md:rounded-2xl flex items-center justify-center border border-white/5 overflow-hidden group-hover:scale-105 transition-transform">
                         {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <div className="text-[10px] text-zinc-700 uppercase font-black tracking-tighter px-1 text-center">NO IMAGE</div>}
@@ -225,6 +226,7 @@ export default async function HomePage() {
                       </div>
                     </div>
 
+                    {/* 오른쪽 블록: 너비 고정으로 레이아웃 보호 */}
                     <div className="shrink-0 flex items-center justify-between sm:justify-end space-x-4 md:space-x-8 mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-white/5">
                       <div className="hidden md:block w-24 shrink-0">
                         <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest text-right mb-2">Trend</p>
@@ -244,7 +246,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Sidebar Insights (4) */}
+          {/* Sidebar Insights */}
           <div className="lg:col-span-4 space-y-6">
             <h2 className="text-xl md:text-2xl font-black text-white px-2 tracking-tight">Brand Pulse</h2>
             <div className="grid grid-cols-2 gap-4">
