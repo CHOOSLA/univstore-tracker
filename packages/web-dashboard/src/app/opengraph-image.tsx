@@ -1,6 +1,12 @@
 import { ImageResponse } from 'next/og';
+import fs from 'node:fs';
+import path from 'node:path';
 
-export const runtime = 'edge';
+// 로고 SVG를 빌드 시점에 base64 data URL로 한 번만 인라인 (런타임 fetch 비용 0)
+const logoSvgBuffer = fs.readFileSync(path.join(process.cwd(), 'public', 'logo.svg'));
+const LOGO_DATA_URL = `data:image/svg+xml;base64,${logoSvgBuffer.toString('base64')}`;
+
+export const runtime = 'nodejs';
 export const alt = 'UnivWatch — 대학생 폐쇄몰 실시간 가격 트래커';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
@@ -22,22 +28,14 @@ export default function OGImage() {
       >
         {/* Top: Logo + Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              backgroundColor: '#3b82f6',
-              borderRadius: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '28px',
-              fontWeight: 900,
-              color: 'white',
-            }}
-          >
-            U
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={LOGO_DATA_URL}
+            width={64}
+            height={64}
+            alt="UnivWatch logo"
+            style={{ borderRadius: '14px' }}
+          />
           <span style={{ fontSize: '28px', fontWeight: 900, color: 'white', letterSpacing: '-1px' }}>
             UnivWatch.
           </span>
