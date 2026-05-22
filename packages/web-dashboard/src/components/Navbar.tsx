@@ -77,8 +77,8 @@ export function Navbar() {
 
       {/* Mobile Menu Drawer */}
       <div className={cn(
-        "fixed inset-0 bg-zinc-950/95 backdrop-blur-xl z-[50] transition-all duration-300 md:hidden flex flex-col justify-center items-center space-y-8",
-        isMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full pointer-events-none"
+        "fixed inset-x-0 bottom-0 top-[73px] bg-zinc-950/95 backdrop-blur-xl z-[50] transition-all duration-300 md:hidden flex flex-col justify-center items-center space-y-8 border-t border-white/5",
+        isMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
       )}>
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
