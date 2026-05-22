@@ -24,7 +24,7 @@ interface Product {
 interface VirtualizedProductListProps {
   initialItems: Product[];
   initialCursor: string | null;
-  searchParams: { q?: string; brand?: string; menuCategory?: string; menuSubCategory?: string; sort?: string };
+  searchParams: { q?: string; brand?: string; menuCategory?: string; menuSubCategory?: string; thirdCategory?: string; sort?: string };
 }
 
 /**
@@ -54,6 +54,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
       if (searchParams.brand) params.set('brand', searchParams.brand);
       if (searchParams.menuCategory) params.set('menuCategory', searchParams.menuCategory);
       if (searchParams.menuSubCategory) params.set('menuSubCategory', searchParams.menuSubCategory);
+      if (searchParams.thirdCategory) params.set('thirdCategory', searchParams.thirdCategory);
       if (searchParams.sort) params.set('sort', searchParams.sort);
       if (cursor) params.set('cursor', cursor);
 

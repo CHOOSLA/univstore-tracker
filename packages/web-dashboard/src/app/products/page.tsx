@@ -14,9 +14,9 @@ export const dynamic = 'force-dynamic';
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ brand?: string; q?: string; menuCategory?: string; menuSubCategory?: string; sort?: string }>;
+  searchParams: Promise<{ brand?: string; q?: string; menuCategory?: string; menuSubCategory?: string; thirdCategory?: string; sort?: string }>;
 }) {
-  const { brand: brandFilter, q: searchQuery, menuCategory, menuSubCategory, sort: sortOption = 'latest' } = await searchParams;
+  const { brand: brandFilter, q: searchQuery, menuCategory, menuSubCategory, thirdCategory, sort: sortOption = 'latest' } = await searchParams;
 
   // 지능형 검색 키워드 생성 (유사어 지원)
   const searchKeywords = searchQuery ? getSearchKeywords(searchQuery) : [];
@@ -28,6 +28,7 @@ export default async function ProductsPage({
       brandFilter ? { brand: brandFilter } : {},
       menuCategory ? { menuCategory } : {},
       menuSubCategory ? { menuSubCategory } : {},
+      thirdCategory ? { thirdCategory } : {},
       searchQuery ? {
         OR: searchKeywords.flatMap(kw => [
           { title: { contains: kw, mode: 'insensitive' } },
@@ -75,7 +76,7 @@ export default async function ProductsPage({
   }
 
   // 4. 메뉴 분류별 상품 수 (CategoryMenu의 count 표시용)
-  const [mainCounts, subCounts] = await Promise.all([
+  const [mainCounts, subCounts, thirdCounts] = await Promise.all([
     prisma.product.groupBy({
       by: ['menuCategory'],
       where: { menuCategory: { not: null } },
@@ -86,11 +87,17 @@ export default async function ProductsPage({
       where: { menuCategory: { not: null }, menuSubCategory: { not: null } },
       _count: { id: true },
     }),
+    prisma.product.groupBy({
+      by: ['menuCategory', 'menuSubCategory', 'thirdCategory'],
+      where: { menuCategory: { not: null }, menuSubCategory: { not: null }, thirdCategory: { not: null } },
+      _count: { id: true },
+    }),
   ]);
 
   const categoryCounts: CategoryCounts = {
     byMain: Object.fromEntries(mainCounts.map(c => [c.menuCategory!, c._count.id])),
     bySub: Object.fromEntries(subCounts.map(c => [`${c.menuCategory}|${c.menuSubCategory}`, c._count.id])),
+    byThird: Object.fromEntries(thirdCounts.map(c => [`${c.menuCategory}|${c.menuSubCategory}|${c.thirdCategory}`, c._count.id])),
   };
 
   const initialCursor = productsSorted.length === 100 ? productsSorted[productsSorted.length - 1].id : null;
@@ -111,6 +118,8 @@ export default async function ProductsPage({
             <p className="text-zinc-500 text-lg max-w-2xl">
               {searchQuery
                 ? `"${searchQuery}" 검색 결과`
+                : thirdCategory
+                ? `${menuCategory} > ${menuSubCategory} > ${thirdCategory} 분석 센터`
                 : menuSubCategory
                 ? `${menuCategory} > ${menuSubCategory} 카테고리 분석 센터`
                 : menuCategory
@@ -145,7 +154,7 @@ export default async function ProductsPage({
                   key={opt.id}
                   href={{
                     pathname: '/products',
-                    query: { ...(searchQuery ? { q: searchQuery } : {}), ...(brandFilter ? { brand: brandFilter } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), sort: opt.id }
+                    query: { ...(searchQuery ? { q: searchQuery } : {}), ...(brandFilter ? { brand: brandFilter } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), sort: opt.id }
                   }}
                   className={cn(
                     "px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
@@ -161,7 +170,7 @@ export default async function ProductsPage({
               <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block">Brand</span>
               <Link href={{
                 pathname: '/products',
-                query: { ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}) }
+                query: { ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}) }
               }} className={cn(
                 "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
                 !brandFilter ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
@@ -171,7 +180,7 @@ export default async function ProductsPage({
                   key={b}
                   href={{
                     pathname: '/products',
-                    query: { brand: b, ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}) }
+                    query: { brand: b, ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}) }
                   }}
                   className={cn(
                     "px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
@@ -194,7 +203,7 @@ export default async function ProductsPage({
         <VirtualizedProductList
           initialItems={safeInitialItems}
           initialCursor={initialCursor}
-          searchParams={{ q: searchQuery, brand: brandFilter, menuCategory, menuSubCategory, sort: sortOption }}
+          searchParams={{ q: searchQuery, brand: brandFilter, menuCategory, menuSubCategory, thirdCategory, sort: sortOption }}
         />
       </main>
     </div>

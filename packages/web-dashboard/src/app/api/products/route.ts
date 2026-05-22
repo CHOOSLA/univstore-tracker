@@ -8,6 +8,7 @@ export async function GET(request: Request) {
   const brand = searchParams.get('brand');
   const menuCategory = searchParams.get('menuCategory');
   const menuSubCategory = searchParams.get('menuSubCategory');
+  const thirdCategory = searchParams.get('thirdCategory');
   const sort = searchParams.get('sort') || 'latest';
   const cursor = searchParams.get('cursor');
   const limit = 20;
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
       brand ? { brand } : {},
       menuCategory ? { menuCategory } : {},
       menuSubCategory ? { menuSubCategory } : {},
+      thirdCategory ? { thirdCategory } : {},
       q ? {
         OR: searchKeywords.flatMap(kw => [
           { title: { contains: kw, mode: 'insensitive' } },

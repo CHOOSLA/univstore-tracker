@@ -14,7 +14,8 @@ const taxonomy = taxonomyJson as Taxonomy;
 
 export type CategoryCounts = {
   byMain: Record<string, number>;
-  bySub: Record<string, number>; // key: `${mainName}|${subName}`
+  bySub: Record<string, number>;   // key: `${mainName}|${subName}`
+  byThird: Record<string, number>; // key: `${mainName}|${subName}|${thirdName}`
 };
 
 interface Props {
@@ -29,6 +30,7 @@ export default function CategoryMenu({ counts }: Props) {
 
   const currentMain = searchParams.get("menuCategory");
   const currentSub = searchParams.get("menuSubCategory");
+  const currentThird = searchParams.get("thirdCategory");
 
   // 메가메뉴 외부 클릭 시 닫기
   useEffect(() => {
@@ -42,12 +44,14 @@ export default function CategoryMenu({ counts }: Props) {
     return () => document.removeEventListener("mousedown", handler);
   }, [openSlug]);
 
-  const handleSelect = (mainName: string | null, subName: string | null) => {
+  const handleSelect = (mainName: string | null, subName: string | null, thirdName: string | null = null) => {
     const params = new URLSearchParams(searchParams);
     if (mainName) params.set("menuCategory", mainName);
     else params.delete("menuCategory");
     if (subName) params.set("menuSubCategory", subName);
     else params.delete("menuSubCategory");
+    if (thirdName) params.set("thirdCategory", thirdName);
+    else params.delete("thirdCategory");
     router.push(`/products?${params.toString()}`);
     setOpenSlug(null);
   };
@@ -135,16 +139,26 @@ export default function CategoryMenu({ counts }: Props) {
                     </span>
                   </button>
                   <ul className="space-y-2">
-                    {Object.values(sub.thirds).map((thirdName, i) => (
-                      <li key={i}>
-                        <button
-                          onClick={() => handleSelect(mainName, sub.name)}
-                          className="text-sm text-zinc-400 hover:text-white transition-colors text-left"
-                        >
-                          {thirdName}
-                        </button>
-                      </li>
-                    ))}
+                    {Object.values(sub.thirds).map((thirdName, i) => {
+                      const thirdCnt = counts.byThird?.[`${mainName}|${sub.name}|${thirdName}`] || 0;
+                      const isThirdActive = currentMain === mainName && currentSub === sub.name && currentThird === thirdName;
+                      return (
+                        <li key={i}>
+                          <button
+                            onClick={() => handleSelect(mainName, sub.name, thirdName)}
+                            className={cn(
+                              "text-sm transition-colors text-left flex items-center gap-1.5",
+                              isThirdActive ? "text-blue-400 font-bold" : "text-zinc-400 hover:text-white"
+                            )}
+                          >
+                            <span>{thirdName}</span>
+                            {thirdCnt > 0 && (
+                              <span className="font-mono text-[10px] text-zinc-600">{thirdCnt}</span>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               );
