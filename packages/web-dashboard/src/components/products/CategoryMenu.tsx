@@ -111,7 +111,7 @@ export default function CategoryMenu({ counts }: Props) {
             onClick={() => handleSelect(null, null)}
             className="ml-auto text-zinc-600 hover:text-red-500 text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center gap-1 px-3 whitespace-nowrap"
           >
-            <X size={10} md:size={12} />
+            <X className="w-2.5 h-2.5 md:w-3 md:h-3" />
             Clear
           </button>
         )}
