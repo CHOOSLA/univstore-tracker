@@ -151,7 +151,16 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
-                    <XAxis dataKey="date" stroke="#3f3f46" fontSize={9} tickLine={false} axisLine={false} tickMargin={10} interval={chartInterval} />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#3f3f46" 
+                      fontSize={9} 
+                      tickLine={false} 
+                      axisLine={false} 
+                      tickMargin={10} 
+                      interval="preserveStartEnd"
+                      minTickGap={20}
+                    />
                     <YAxis hide domain={['dataMin - 10000', 'dataMax + 10000']} />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}

@@ -27,7 +27,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   // 날짜별 최신 가격만 필터링 (차트 가시성 개선)
   const uniqueDays = new Map();
   history.forEach(h => {
-    const dateStr = h.timestamp.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' });
+    // MM/DD 형식으로 통일
+    const month = String(h.timestamp.getMonth() + 1).padStart(2, '0');
+    const day = String(h.timestamp.getDate()).padStart(2, '0');
+    const dateStr = `${month}/${day}`;
+    
     if (!uniqueDays.has(dateStr)) {
       uniqueDays.set(dateStr, h.price);
     }
