@@ -222,7 +222,7 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                       formatter={(value: number) => [`₩${value.toLocaleString()}`, 'Price']}
                       labelStyle={{ color: '#71717a', marginBottom: '4px', fontSize: '10px' }}
                     />
-                    <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} md:strokeWidth={4} fillOpacity={1} fill="url(#colorPriceDetail)" isAnimationActive={false} />
+                    <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPriceDetail)" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
