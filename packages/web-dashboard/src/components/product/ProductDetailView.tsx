@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import PriceAlertControl from "./PriceAlertControl";
 import { 
@@ -23,12 +23,13 @@ import {
   History,
   TrendingDown,
   Percent,
-  ChevronRight
+  ChevronRight,
+  Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PriceHistoryEntry {
-  date: string;
+  date: string; // ISO string
   price: number;
 }
 
@@ -54,23 +55,52 @@ interface ProductDetailViewProps {
   existingAlerts: { id: number, targetPrice: number }[];
 }
 
+type RangeType = '1M' | '3M' | '6M' | 'ALL';
+
 export default function ProductDetailView({ product, history, benefitRules, existingAlerts }: ProductDetailViewProps) {
   const [mounted, setMounted] = useState(false);
-  const [chartInterval, setChartInterval] = useState(2);
+  const [range, setRange] = useState<RangeType>('1M');
   
   useEffect(() => {
     setMounted(true);
     window.scrollTo(0, 0);
-    
-    // 클라이언트 사이드에서만 화면 너비 측정하여 차트 간격 조절
-    const handleResize = () => {
-      setChartInterval(window.innerWidth < 768 ? 5 : 2);
-    };
-    
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // 기간별 데이터 필터링 및 다운샘플링 로직
+  const filteredHistory = useMemo(() => {
+    if (!history.length) return [];
+
+    const now = new Date();
+    let cutoff = new Date();
+    
+    if (range === '1M') cutoff.setMonth(now.getMonth() - 1);
+    else if (range === '3M') cutoff.setMonth(now.getMonth() - 3);
+    else if (range === '6M') cutoff.setMonth(now.getMonth() - 6);
+    else cutoff = new Date(0); // All
+
+    // 1. 기간 필터링
+    const inRange = history.filter(h => new Date(h.date) >= cutoff);
+    
+    // 2. 날짜별 단일화 (이미 DB에서 가져온 데이터가 여러번일 수 있으므로)
+    const dailyMap = new Map<string, number>();
+    inRange.forEach(h => {
+      const d = new Date(h.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (!dailyMap.has(key)) {
+        dailyMap.set(key, h.price);
+      }
+    });
+
+    const dailyData = Array.from(dailyMap.entries()).map(([date, price]) => ({ date, price }));
+    
+    // 3. 기간이 길 경우 다운샘플링 (주 단위 또는 월 단위)
+    // 3개월 이상일 경우 3일 간격, 6개월 이상일 경우 1주일 간격 등으로 조절 가능
+    // 여기서는 가시성을 위해 정렬 후 반환
+    return dailyData.sort((a, b) => a.date.localeCompare(b.date)).map(d => ({
+      ...d,
+      displayDate: d.date.split('-').slice(1).join('/') // MM/DD 형식
+    }));
+  }, [history, range]);
 
   if (!mounted) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Loading Product Intel...</div>;
@@ -123,27 +153,51 @@ export default function ProductDetailView({ product, history, benefitRules, exis
             </div>
 
             <div className="glass p-6 md:p-10 rounded-[32px] md:rounded-[40px] space-y-6 md:space-y-8 border-white/[0.03]">
-              <div className="flex justify-between items-start">
-                <div className="space-y-3 md:space-y-4 flex-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="bg-zinc-900 text-zinc-400 text-[9px] md:text-[10px] font-black px-2 py-1 rounded border border-white/5 uppercase tracking-widest">{product.brand || 'Brand'}</span>
-                    <span className={cn(
-                      "text-[9px] md:text-[10px] font-black px-2 py-1 rounded border uppercase tracking-widest",
-                      product.stockStatus === "Low Stock" || product.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                    )}>{product.stockStatus || 'In Stock'}</span>
+              <div className="flex flex-col space-y-6">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-3 md:space-y-4 flex-1">
+                    <div className="flex items-center space-x-2">
+                      <span className="bg-zinc-900 text-zinc-400 text-[9px] md:text-[10px] font-black px-2 py-1 rounded border border-white/5 uppercase tracking-widest">{product.brand || 'Brand'}</span>
+                      <span className={cn(
+                        "text-[9px] md:text-[10px] font-black px-2 py-1 rounded border uppercase tracking-widest",
+                        product.stockStatus === "Low Stock" || product.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                      )}>{product.stockStatus || 'In Stock'}</span>
+                    </div>
+                    <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter">
+                      {product.title}
+                    </h1>
                   </div>
-                  <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter">
-                    {product.title}
-                  </h1>
+                  <div className="p-3 md:p-4 bg-zinc-900 rounded-2xl md:rounded-3xl border border-white/5 shrink-0 ml-4">
+                    <TrendingDown className={cn("w-6 h-6 md:w-8 md:h-8", currentPrice < avgPrice ? "text-emerald-500" : "text-zinc-700")} />
+                  </div>
                 </div>
-                <div className="p-3 md:p-4 bg-zinc-900 rounded-2xl md:rounded-3xl border border-white/5 shrink-0 ml-4">
-                  <TrendingDown className={cn("w-6 h-6 md:w-8 md:h-8", currentPrice < avgPrice ? "text-emerald-500" : "text-zinc-700")} />
+
+                {/* Range Selector UI */}
+                <div className="flex items-center justify-between border-t border-white/5 pt-6">
+                  <div className="flex items-center space-x-2 text-zinc-500">
+                    <Calendar size={14} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">History Range</span>
+                  </div>
+                  <div className="flex bg-zinc-900/50 p-1 rounded-xl border border-white/5">
+                    {(['1M', '3M', '6M', 'ALL'] as RangeType[]).map((r) => (
+                      <button
+                        key={r}
+                        onClick={() => setRange(r)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                          range === r ? "bg-white text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
+                        )}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="h-[200px] md:h-[300px] w-full pt-4 md:pt-8">
+              <div className="h-[200px] md:h-[300px] w-full pt-4 md:pt-4">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={[...history].reverse()} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                  <AreaChart data={filteredHistory} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorPriceDetail" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
@@ -152,22 +206,23 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#18181b" vertical={false} />
                     <XAxis 
-                      dataKey="date" 
+                      dataKey="displayDate" 
                       stroke="#3f3f46" 
                       fontSize={9} 
                       tickLine={false} 
                       axisLine={false} 
                       tickMargin={10} 
                       interval="preserveStartEnd"
-                      minTickGap={20}
+                      minTickGap={30}
                     />
                     <YAxis hide domain={['dataMin - 10000', 'dataMax + 10000']} />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                       itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
                       formatter={(value: number) => [`₩${value.toLocaleString()}`, 'Price']}
+                      labelStyle={{ color: '#71717a', marginBottom: '4px', fontSize: '10px' }}
                     />
-                    <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPriceDetail)" isAnimationActive={false} />
+                    <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} md:strokeWidth={4} fillOpacity={1} fill="url(#colorPriceDetail)" isAnimationActive={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

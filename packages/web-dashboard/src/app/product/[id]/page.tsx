@@ -21,28 +21,15 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const history = await prisma.priceHistory.findMany({
     where: { productId: id },
     orderBy: { timestamp: 'desc' },
-    take: 100, // 더 넉넉하게 가져와서 필터링
+    // 1000개 정도면 수년간의 일일 데이터로 충분함
+    take: 1000, 
   });
 
-  // 날짜별 최신 가격만 필터링 (차트 가시성 개선)
-  const uniqueDays = new Map();
-  history.forEach(h => {
-    // MM/DD 형식으로 통일
-    const month = String(h.timestamp.getMonth() + 1).padStart(2, '0');
-    const day = String(h.timestamp.getDate()).padStart(2, '0');
-    const dateStr = `${month}/${day}`;
-    
-    if (!uniqueDays.has(dateStr)) {
-      uniqueDays.set(dateStr, h.price);
-    }
-  });
-
-  const formattedHistory = Array.from(uniqueDays.entries())
-    .map(([date, price]) => ({
-      date,
-      price
-    }))
-    .slice(0, 30); // 최종적으로 최근 30일치만 사용
+  // 클라이언트에서 처리하기 편하도록 타임스탬프와 가격만 전달
+  const formattedHistory = history.map(h => ({
+    date: h.timestamp.toISOString(),
+    price: h.price
+  }));
 
   const benefitRules = await prisma.benefitRule.findMany({
     where: { isActive: true },
