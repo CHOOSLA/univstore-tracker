@@ -32,8 +32,9 @@ async function processQueue() {
 
       if (queueName === 'univstore:price_updates') {
         await handlePriceUpdate(payload);
+      }
       // [DISABLED] specials_updates - 수집 데이터 품질 이슈로 비활성화
-      // } else if (queueName === 'univstore:specials_updates') {
+      // else if (queueName === 'univstore:specials_updates') {
       //   await handleSpecialsUpdate(payload.data);
       // }
 
