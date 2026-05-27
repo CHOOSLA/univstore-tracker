@@ -20,8 +20,10 @@ export default function PriceAlertControl({ productId, currentPrice, existingAle
     const price = parseInt(targetPrice);
     if (isNaN(price) || price <= 0) return;
     
+    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('univwatch_subscriber_token') : null;
+    
     setIsLoading(true);
-    const result = await createPriceAlert(productId, price);
+    const result = await createPriceAlert(productId, price, storedToken || undefined);
     setIsLoading(false);
 
     if (result.success) {

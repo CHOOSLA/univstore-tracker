@@ -3,13 +3,14 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-export async function createPriceAlert(productId: string, targetPrice: number) {
+export async function createPriceAlert(productId: string, targetPrice: number, subscriberToken?: string) {
   try {
     await prisma.priceAlert.create({
       data: {
         productId,
         targetPrice,
-        isActive: true
+        isActive: true,
+        subscriberToken
       }
     });
     revalidatePath(`/product/${productId}`);
@@ -58,7 +59,8 @@ export async function getSystemConfig() {
   return {
     TELEGRAM_ENABLED: configMap['TELEGRAM_ENABLED'] || 'true',
     MIN_DROP_RATE: configMap['MIN_DROP_RATE'] || '10',
-    HEALTH_ALERTS_ENABLED: configMap['HEALTH_ALERTS_ENABLED'] || 'true'
+    HEALTH_ALERTS_ENABLED: configMap['HEALTH_ALERTS_ENABLED'] || 'true',
+    TELEGRAM_BOT_USERNAME: process.env.TELEGRAM_BOT_USERNAME || 'UnivWatchBot'
   };
 }
 

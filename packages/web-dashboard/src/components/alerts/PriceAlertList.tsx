@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { Target, Trash2, Bell, Clock, ExternalLink } from "lucide-react";
+import React, { useEffect, useState, useCallback } from 'react';
+import { Target, Trash2, Bell, Clock, ExternalLink, Loader2 } from "lucide-react";
 import Link from 'next/link';
 import { deletePriceAlert } from "@/app/alerts/actions";
 
@@ -18,15 +18,56 @@ interface PriceAlert {
   };
 }
 
-interface PriceAlertListProps {
-  alerts: PriceAlert[];
-}
+export default function PriceAlertList() {
+  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
 
-export default function PriceAlertList({ alerts }: PriceAlertListProps) {
+  const fetchAlerts = useCallback(async (subToken: string) => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(`/api/alerts?token=${subToken}`);
+      const data = await res.json();
+      if (data.alerts) {
+        setAlerts(data.alerts);
+      }
+    } catch (err) {
+      console.error("Failed to load alerts:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('univwatch_subscriber_token');
+      if (storedToken) {
+        setToken(storedToken);
+        fetchAlerts(storedToken);
+      } else {
+        setIsLoading(false);
+      }
+    }
+  }, [fetchAlerts]);
+
   const handleDelete = async (id: number) => {
     if (!confirm('이 알림을 삭제하시겠습니까?')) return;
-    await deletePriceAlert(id);
+    setIsLoading(true);
+    const result = await deletePriceAlert(id);
+    if (result.success && token) {
+      await fetchAlerts(token);
+    } else {
+      setIsLoading(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="py-20 flex justify-center items-center">
+        <Loader2 className="text-blue-500 animate-spin" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -73,13 +114,13 @@ export default function PriceAlertList({ alerts }: PriceAlertListProps) {
                  <Link 
                    href={`https://www.univstore.com/item/${alert.productId}`} 
                    target="_blank"
-                   className="p-3 bg-zinc-900 border border-white/5 text-zinc-500 hover:text-white rounded-xl transition-all"
+                   className="p-3 bg-zinc-900 border border-white/5 text-zinc-500 hover:text-white rounded-xl transition-all relative z-20"
                  >
                    <ExternalLink size={18} />
                  </Link>
                  <button 
                    onClick={() => handleDelete(alert.id)}
-                   className="p-3 bg-zinc-900 border border-white/5 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 rounded-xl transition-all"
+                   className="p-3 bg-zinc-900 border border-white/5 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 hover:border-red-500/20 rounded-xl transition-all relative z-20"
                  >
                    <Trash2 size={18} />
                  </button>
@@ -101,3 +142,4 @@ export default function PriceAlertList({ alerts }: PriceAlertListProps) {
     </div>
   );
 }
+
