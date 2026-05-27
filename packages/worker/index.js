@@ -6,10 +6,33 @@ const TelegramBot = require('node-telegram-bot-api');
 const prisma = new PrismaClient();
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
-// Telegram 봇 초기화
+// Telegram 봇 초기화 (실시간 메시지 수신용 polling 활성화)
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const chatId = process.env.TELEGRAM_CHAT_ID;
-const bot = token ? new TelegramBot(token) : null;
+const bot = token ? new TelegramBot(token, { polling: true }) : null;
+
+// 비회원 1:1 알림 토큰(/start UW-XXXXXX) 매핑 처리 리스너
+if (bot) {
+  bot.onText(/\/start (UW-[A-Z0-9]+)/, async (msg, match) => {
+    const subscriberChatId = msg.chat.id.toString();
+    const subToken = match[1];
+    console.log(`🤖 Telegram subscriber connection requested: token=${subToken}, chatId=${subscriberChatId}`);
+
+    try {
+      await prisma.telegramSubscriber.upsert({
+        where: { token: subToken },
+        update: { chatId: subscriberChatId },
+        create: { token: subToken, chatId: subscriberChatId }
+      });
+      await bot.sendMessage(subscriberChatId, "✅ *UnivWatch 알림 연동 성공*\n\n대시보드에서 설정하신 상품 목표 가격 도달 시 본 채팅방으로 실시간 알림이 발송됩니다.", { parse_mode: 'Markdown' });
+      console.log(`✅ Connection succeeded: token=${subToken} -> chatId=${subscriberChatId}`);
+    } catch (err) {
+      console.error("❌ Connection failed:", err.message);
+      await bot.sendMessage(subscriberChatId, "❌ 연동 처리 도중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    }
+  });
+}
+
 
 /**
  * Redis Queue에서 메시지를 하나씩 꺼내어 DB에 저장하고 분석 로직을 태웁니다.
@@ -112,9 +135,28 @@ async function handlePriceUpdate(payload) {
         const today = new Date(); today.setHours(0, 0, 0, 0);
         if (alert.lastNotifiedAt && new Date(alert.lastNotifiedAt) >= today) continue;
 
-        if (bot && chatId) {
+        let targetChatId = chatId; // 기본은 전역 관리자 chatId
+
+        // 개별 구독자 토큰이 있을 경우, 매핑된 텔레그램 chatId를 쿼리함
+        if (alert.subscriberToken) {
+          const subscriber = await prisma.telegramSubscriber.findUnique({
+            where: { token: alert.subscriberToken }
+          });
+          if (subscriber) {
+            targetChatId = subscriber.chatId;
+          } else {
+            // 매핑되는 텔레그램 chatId가 유실되었으면 발송 스킵
+            continue;
+          }
+        }
+
+        if (bot && targetChatId) {
           const message = `🎯 *목표 가격 도달 알림!*\n\n📦 *상품명*: ${title}\n🔥 *현재 실질 구매가*: ${finalPrice.toLocaleString()}원\n📍 *설정 목표가*: ${alert.targetPrice.toLocaleString()}원 이하\n🎁 *혜택*: ${bestBenefit || '기본'}\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
-          await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+          
+          // API Rate Limits 방지를 위한 40ms Throttling spacing
+          await new Promise(r => setTimeout(r, 40));
+          
+          await bot.sendMessage(targetChatId, message, { parse_mode: 'Markdown' });
           await prisma.priceAlert.update({ where: { id: alert.id }, data: { lastNotifiedAt: new Date() } });
         }
       }
