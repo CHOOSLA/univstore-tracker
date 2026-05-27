@@ -1,34 +1,52 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { 
   AreaChart, 
   Area, 
   XAxis, 
   YAxis, 
-  CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
-  PieChart,
-  Pie,
+  BarChart,
+  Bar,
   Cell,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  Radar
+  ReferenceLine
 } from 'recharts';
 import { 
-  TrendingUp, 
+  TrendingDown, 
   Globe, 
   ShieldCheck, 
   Target,
   BarChart3,
   Activity,
-  ArrowUpRight,
+  Flame,
+  Zap,
+  Coins,
+  ChevronRight,
+  ArrowDownRight,
   Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Sparkline } from "@/components/Sparkline";
 import ReportDownloader from "./ReportDownloader";
+
+interface ProductInsight {
+  id: string;
+  title: string;
+  brand: string;
+  imageUrl: string;
+  currentPrice: number;
+  originalPrice: number | null;
+  avgPrice: number | null;
+  gapAmount: number | null;
+  gapPercent: number | null;
+  prevPrice: number | null;
+  dropAmount: number | null;
+  dropPercent: number | null;
+  targetPrice: number | null;
+}
 
 interface MarketInsightViewProps {
   totalSavings: number;
@@ -37,6 +55,10 @@ interface MarketInsightViewProps {
   savingsHistory: { week: string, amount: number }[];
   totalDataPoints: number;
   totalBrands: number;
+  goldenLows: ProductInsight[];
+  trueDeals: ProductInsight[];
+  flashDrops: ProductInsight[];
+  nearTargets: ProductInsight[];
 }
 
 export default function MarketInsightView({
@@ -45,7 +67,11 @@ export default function MarketInsightView({
   categoryEfficiency,
   savingsHistory,
   totalDataPoints,
-  totalBrands
+  totalBrands,
+  goldenLows,
+  trueDeals,
+  flashDrops,
+  nearTargets
 }: MarketInsightViewProps) {
   
   const [mounted, setMounted] = useState(false);
@@ -57,18 +83,11 @@ export default function MarketInsightView({
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-zinc-700 font-black uppercase tracking-widest text-xs animate-pulse">Initializing Insight Engine...</div>;
   }
 
-  const radarData = categoryEfficiency.map(item => ({
-    subject: item.category,
-    A: item.discount,
-    fullMark: 100
-  }));
-
-  const bestCategory = categoryEfficiency[0];
-
   return (
     <div className="pb-20 bg-zinc-950" suppressHydrationWarning>
       <main className="max-w-7xl mx-auto px-6 pt-12 space-y-12">
         
+        {/* --- [Header] --- */}
         <section className="space-y-4">
           <div className="flex items-center space-x-3 text-blue-500">
             <Globe size={24} />
@@ -80,10 +99,11 @@ export default function MarketInsightView({
           </p>
         </section>
 
+        {/* --- [Hero Metrics] --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="col-span-1 md:col-span-2 glass p-10 rounded-[40px] border-blue-500/20 bg-blue-500/[0.02] flex flex-col justify-between min-h-[320px] relative overflow-hidden group">
              <div className="absolute top-0 right-0 p-10 opacity-5 group-hover:scale-110 transition-transform duration-700">
-                <TrendingUp size={160} strokeWidth={1} className="text-blue-500" />
+                <TrendingDown size={160} strokeWidth={1} className="text-blue-500" />
              </div>
              <div className="flex justify-between items-start z-10">
                <div className="space-y-1">
@@ -91,7 +111,7 @@ export default function MarketInsightView({
                  <p className="text-5xl font-black text-white tracking-tighter">₩{totalSavings.toLocaleString()}+</p>
                  <p className="text-sm text-zinc-500 font-medium">UnivWatch 사용자들이 정가 대비 절약한 총 누적 금액</p>
                </div>
-               <TrendingUp className="text-blue-500" size={32} />
+               <TrendingDown className="text-blue-500" size={32} />
              </div>
              <div className="h-[140px] w-full mt-6 -mx-4 z-10">
                <ResponsiveContainer width="100%" height="100%">
@@ -130,93 +150,193 @@ export default function MarketInsightView({
           </div>
         </div>
 
+        {/* --- [Bento Grid 2.0 Core Row] --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Inventory Mix 개편: Top 5 + Others */}
-          <div className="lg:col-span-5 glass p-10 rounded-[40px] space-y-8 border-white/[0.03]">
-            <div className="flex justify-between items-center px-2">
+          
+          {/* Card 1: Golden Low Tracker (역대 최저가) */}
+          <div className="lg:col-span-6 glass p-8 md:p-10 rounded-[40px] space-y-6 border-white/[0.03] flex flex-col justify-between">
+            <div className="flex justify-between items-center">
               <div className="space-y-1">
-                <h3 className="text-xl font-bold text-white tracking-tight">Inventory Mix</h3>
-                <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Concentration: Top 5 vs Others</p>
+                <div className="flex items-center space-x-2 text-amber-500">
+                  <Flame size={16} className="fill-amber-500/20" />
+                  <h3 className="text-xs font-black uppercase tracking-widest">Golden Low Tracker</h3>
+                </div>
+                <p className="text-2xl font-black text-white tracking-tight">역대 최저가 경신 매물</p>
               </div>
-              <Target className="text-zinc-700" />
+              <span className="bg-amber-500/10 text-amber-500 text-[10px] font-black px-3 py-1.5 rounded-full border border-amber-500/20 uppercase tracking-widest shrink-0">
+                {goldenLows.length} Items Found
+              </span>
             </div>
-            <div className="h-[240px] w-full relative">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={brandDistribution} innerRadius={75} outerRadius={100} paddingAngle={4} dataKey="value" isAnimationActive={false}>
-                    {brandDistribution.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                 <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Total</p>
-                 <p className="text-2xl font-black text-white">{totalBrands}</p>
-                 <p className="text-[8px] font-bold text-zinc-700 uppercase">Brands</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4 px-2">
-               {brandDistribution.map((brand) => (
-                 <div key={brand.name} className="space-y-2">
-                   <div className="flex items-center justify-between">
-                     <div className="flex items-center space-x-2">
-                       <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: brand.color }} />
-                       <span className="text-[11px] font-bold text-zinc-400 truncate max-w-[80px]">{brand.name}</span>
-                     </div>
-                     <span className="text-[10px] font-black text-white">{Math.round((brand.value / totalDataPoints) * 100)}%</span>
-                   </div>
-                   <div className="h-1 w-full bg-zinc-950 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${(brand.value / totalDataPoints) * 100}%`, backgroundColor: brand.color }} />
-                   </div>
-                 </div>
-               ))}
+
+            <div className="divide-y divide-white/5 flex-1 mt-4">
+              {goldenLows.length > 0 ? goldenLows.map((item) => (
+                <Link key={item.id} href={`/product/${item.id}`} className="flex items-center justify-between py-3.5 group relative z-10 transition-colors">
+                  <div className="flex items-center space-x-4 min-w-0">
+                    <div className="w-11 h-11 bg-zinc-900 rounded-xl border border-white/5 overflow-hidden shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+                      <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="min-w-0 space-y-0.5">
+                      <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
+                      <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors truncate pr-4">{item.title}</p>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    {item.originalPrice && item.originalPrice > item.currentPrice && (
+                      <span className="text-[9px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded mr-2">
+                        -{Math.round(((item.originalPrice - item.currentPrice) / item.originalPrice) * 100)}%
+                      </span>
+                    )}
+                    <span className="font-black text-white text-sm font-mono">₩{item.currentPrice.toLocaleString()}</span>
+                  </div>
+                </Link>
+              )) : (
+                <div className="h-full flex items-center justify-center py-20 text-zinc-600 font-bold uppercase text-[10px] tracking-widest italic">Awaiting New Records...</div>
+              )}
             </div>
           </div>
 
-          <div className="lg:col-span-7 glass p-10 rounded-[40px] space-y-8 border-white/[0.03] flex flex-col justify-between">
-             <div className="flex justify-between items-center px-2">
-                <div className="space-y-1">
-                  <h3 className="text-xl font-bold text-white tracking-tight">Market Efficiency</h3>
-                  <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Average Discount Rate by Brand</p>
+          {/* Card 2: True Deal Index (30일 평균가 대비 가격 격차) */}
+          <div className="lg:col-span-6 glass p-8 md:p-10 rounded-[40px] space-y-6 border-white/[0.03] flex flex-col justify-between">
+            <div className="flex justify-between items-center">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2 text-blue-500">
+                  <Coins size={16} />
+                  <h3 className="text-xs font-black uppercase tracking-widest">True Deal Index</h3>
                 </div>
-                <BarChart3 className="text-zinc-700" />
-             </div>
-             
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-                <div className="h-[280px] w-full">
-                   <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                        <PolarGrid stroke="#18181b" />
-                        <PolarAngleAxis dataKey="subject" tick={{ fill: '#3f3f46', fontSize: 10, fontWeight: 'bold' }} />
-                        <Radar name="Efficiency" dataKey="A" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.15} isAnimationActive={false} />
-                      </RadarChart>
-                   </ResponsiveContainer>
-                </div>
-                <div className="space-y-6">
-                   {categoryEfficiency.map((item, idx) => (
-                     <div key={item.category} className="flex items-end justify-between border-b border-white/5 pb-2">
-                        <div className="space-y-1">
-                           <span className="text-[9px] font-black text-zinc-700 uppercase">Rank 0{idx+1}</span>
-                           <p className="text-sm font-bold text-white">{item.category}</p>
-                        </div>
-                        <div className="text-right">
-                           <p className="text-xl font-black text-blue-500 tracking-tighter">-{item.discount}%</p>
-                        </div>
-                     </div>
-                   ))}
-                </div>
-             </div>
+                <p className="text-2xl font-black text-white tracking-tight">30일 평균가 대비 최대 하락</p>
+              </div>
+              <span className="bg-blue-500/10 text-blue-500 text-[10px] font-black px-3 py-1.5 rounded-full border border-blue-500/20 uppercase tracking-widest shrink-0">
+                True Price Gap
+              </span>
+            </div>
 
-             <div className="px-4 py-4 bg-blue-500/[0.03] border border-blue-500/10 rounded-2xl text-center">
-               <p className="text-xs text-zinc-500 font-medium italic">
-                 {bestCategory ? (
-                    <>현재 <span className="text-white font-bold">{bestCategory.category}</span> 브랜드가 평균 {bestCategory.discount}%로 타 브랜드 대비 압도적인 할인 효율을 보이고 있습니다.</>
-                 ) : "데이터 수집 중..."}
-               </p>
-             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center flex-1 mt-4">
+              <div className="h-[200px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={trueDeals.slice(0, 3)} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
+                    <XAxis dataKey="brand" stroke="#3f3f46" fontSize={9} tickLine={false} axisLine={false} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                      itemStyle={{ color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+                      labelStyle={{ color: '#71717a', fontSize: '9px', marginBottom: '4px' }}
+                    />
+                    <Bar dataKey="gapPercent" fill="#3b82f6" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+                      {trueDeals.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={index === 0 ? '#3b82f6' : '#1d4ed8'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="space-y-3.5">
+                {trueDeals.slice(0, 3).map((item, idx) => (
+                  <Link key={item.id} href={`/product/${item.id}`} className="block bg-zinc-950/50 hover:bg-zinc-900/50 transition-all p-3 rounded-2xl border border-white/5 group">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-black text-zinc-500 uppercase">Rank 0{idx + 1}</span>
+                      <span className="text-xs font-black text-red-500">-{item.gapPercent}%</span>
+                    </div>
+                    <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors line-clamp-1 mt-1">{item.title}</p>
+                    <div className="flex justify-between items-center mt-2 text-[10px]">
+                      <span className="text-zinc-600">평균 ₩{item.avgPrice?.toLocaleString()}</span>
+                      <span className="font-bold text-white font-mono">₩{item.currentPrice.toLocaleString()}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* --- [Bento Grid 2.0 Sub Row] --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Card 3: Flash Drops Feed (단기 급락 스트림) */}
+          <div className="lg:col-span-7 glass p-8 md:p-10 rounded-[40px] space-y-6 border-white/[0.03]">
+            <div className="flex justify-between items-center">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2 text-red-500">
+                  <Zap size={16} className="fill-red-500/10" />
+                  <h3 className="text-xs font-black uppercase tracking-widest">Flash Drops</h3>
+                </div>
+                <p className="text-2xl font-black text-white tracking-tight">48시간 단기 급락 피드</p>
+              </div>
+              <Link href="/products?sort=discount" className="text-[9px] font-black text-zinc-500 hover:text-white uppercase tracking-widest flex items-center transition-colors">
+                Explore <ChevronRight size={12} />
+              </Link>
+            </div>
+
+            <div className="grid gap-3 mt-4">
+              {flashDrops.length > 0 ? flashDrops.slice(0, 3).map((item) => (
+                <Link key={item.id} href={`/product/${item.id}`} className="bg-zinc-950/40 hover:bg-zinc-950/80 transition-all p-4 rounded-3xl border border-white/5 flex items-center justify-between group">
+                  <div className="flex items-center space-x-4 min-w-0">
+                    <div className="w-12 h-12 bg-zinc-900 rounded-xl border border-white/5 overflow-hidden shrink-0 flex items-center justify-center">
+                      <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
+                      <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors truncate pr-4">{item.title}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-6 shrink-0">
+                    <div className="w-16 hidden sm:block">
+                      <Sparkline data={[item.prevPrice || 0, item.currentPrice]} color="#ef4444" height={24} />
+                    </div>
+                    <div className="text-right">
+                      <div className="flex items-center justify-end space-x-1.5">
+                        <ArrowDownRight size={12} className="text-red-500" />
+                        <span className="text-[10px] text-red-500 font-bold">-{item.dropPercent}%</span>
+                      </div>
+                      <p className="font-black text-white text-base font-mono leading-none mt-1">₩{item.currentPrice.toLocaleString()}</p>
+                    </div>
+                  </div>
+                </Link>
+              )) : (
+                <div className="py-12 text-center text-zinc-700 font-black uppercase text-[10px] tracking-widest italic">Scanning Flash Sales...</div>
+              )}
+            </div>
+          </div>
+
+          {/* Card 4: Near Target Watchlist (목표가 임박 온점) */}
+          <div className="lg:col-span-5 glass p-8 md:p-10 rounded-[40px] space-y-6 border-white/[0.03] flex flex-col justify-between">
+            <div className="flex justify-between items-center">
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2 text-emerald-500">
+                  <Target size={16} />
+                  <h3 className="text-xs font-black uppercase tracking-widest">Near Target Watchlist</h3>
+                </div>
+                <p className="text-2xl font-black text-white tracking-tight">목표 가격 임박 상품</p>
+              </div>
+              <Link href="/alerts" className="text-[9px] font-black text-zinc-500 hover:text-white uppercase tracking-widest flex items-center transition-colors">
+                Alerts <ChevronRight size={12} />
+              </Link>
+            </div>
+
+            <div className="divide-y divide-white/5 flex-1 mt-4">
+              {nearTargets.length > 0 ? nearTargets.map((item) => (
+                <Link key={item.id} href={`/product/${item.id}`} className="flex items-center justify-between py-3 group">
+                  <div className="min-w-0 pr-4">
+                    <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
+                    <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors truncate">{item.title}</p>
+                  </div>
+                  <div className="flex items-center space-x-4 shrink-0">
+                    <div className="text-right">
+                      <p className="text-[10px] text-zinc-500">목표 ₩{item.targetPrice?.toLocaleString()}</p>
+                      <p className="text-sm font-black text-white font-mono mt-0.5">₩{item.currentPrice.toLocaleString()}</p>
+                    </div>
+                    <span className="bg-red-500/10 text-red-500 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-red-500/20 tracking-tighter shrink-0">
+                      +{item.gapPercent}%
+                    </span>
+                  </div>
+                </Link>
+              )) : (
+                <div className="h-full flex items-center justify-center py-16 text-zinc-700 font-bold uppercase text-[10px] tracking-widest italic text-center">No Targets in Danger Zone</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* --- [Verify Banner] --- */}
         <div className="glass p-10 rounded-[50px] border-emerald-500/20 bg-emerald-500/[0.01] flex flex-col md:flex-row items-center justify-between gap-8">
            <div className="flex items-center space-x-8">
               <div className="p-5 bg-zinc-950 rounded-3xl border border-white/5 shadow-2xl">
@@ -236,3 +356,4 @@ export default function MarketInsightView({
     </div>
   );
 }
+
