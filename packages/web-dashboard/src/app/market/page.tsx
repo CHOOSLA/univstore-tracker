@@ -133,7 +133,7 @@ export default async function MarketPage() {
       FROM "Product" p
       JOIN latest_prices lp ON p.id = lp."productId"
       JOIN avg_prices ap ON p.id = ap."productId"
-      WHERE lp.price < ap.avg_price AND p."imageUrl" IS NOT NULL
+      WHERE lp.price < ap.avg_price AND lp.price >= 10000 AND ROUND(((ap.avg_price - lp.price)::numeric / ap.avg_price::numeric) * 100, 1) < 85.0 AND p."imageUrl" IS NOT NULL
       ORDER BY "gapPercent" DESC
       LIMIT 6
     `,
@@ -156,7 +156,7 @@ export default async function MarketPage() {
       FROM "Product" p
       JOIN latest_prices lp ON p.id = lp."productId"
       JOIN price_48h_ago old ON p.id = old."productId"
-      WHERE lp.price < old.price AND p."imageUrl" IS NOT NULL
+      WHERE lp.price < old.price AND lp.price >= 10000 AND ROUND(((old.price - lp.price)::numeric / old.price::numeric) * 100, 1) < 85.0 AND p."imageUrl" IS NOT NULL
       ORDER BY "dropPercent" DESC
       LIMIT 6
     `,
