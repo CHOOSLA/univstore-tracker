@@ -92,6 +92,109 @@ export default async function MarketPage() {
     { week: 'W6', amount: totalSavings },
   ];
 
+  // 6. Bento Grid 2.0용 미시 분석 데이터 집계 (Postgres Raw SQL 활용)
+  const [goldenLowsRaw, trueDealsRaw, flashDropsRaw, nearTargetsRaw] = await Promise.all([
+    // A. Golden Lows (역대 최저가 도달)
+    prisma.$queryRaw<any[]>`
+      WITH min_prices AS (
+        SELECT "productId", MIN(price) as min_price
+        FROM "PriceHistory"
+        GROUP BY "productId"
+      ),
+      latest_prices AS (
+        SELECT DISTINCT ON (ph."productId") ph."productId", ph.price, ph.timestamp
+        FROM "PriceHistory" ph
+        ORDER BY ph."productId", ph.timestamp DESC
+      )
+      SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice", p."originalPrice"
+      FROM "Product" p
+      JOIN latest_prices lp ON p.id = lp."productId"
+      JOIN min_prices mp ON p.id = mp."productId"
+      WHERE lp.price <= mp.min_price AND p."imageUrl" IS NOT NULL
+      ORDER BY lp.timestamp DESC
+      LIMIT 6
+    `,
+    // B. True Deals (30일 평균가 대비 최대 하락)
+    prisma.$queryRaw<any[]>`
+      WITH avg_prices AS (
+        SELECT "productId", ROUND(AVG(price)) as avg_price
+        FROM "PriceHistory"
+        WHERE timestamp >= NOW() - INTERVAL '30 days'
+        GROUP BY "productId"
+      ),
+      latest_prices AS (
+        SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
+        FROM "PriceHistory" ph
+        ORDER BY ph."productId", ph.timestamp DESC
+      )
+      SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice", ap.avg_price as "avgPrice",
+             (ap.avg_price - lp.price) as "gapAmount",
+             ROUND(((ap.avg_price - lp.price)::numeric / ap.avg_price::numeric) * 100, 1) as "gapPercent"
+      FROM "Product" p
+      JOIN latest_prices lp ON p.id = lp."productId"
+      JOIN avg_prices ap ON p.id = ap."productId"
+      WHERE lp.price < ap.avg_price AND p."imageUrl" IS NOT NULL
+      ORDER BY "gapPercent" DESC
+      LIMIT 6
+    `,
+    // C. Flash Drops (48시간 대비 최근 급하락)
+    prisma.$queryRaw<any[]>`
+      WITH price_48h_ago AS (
+        SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
+        FROM "PriceHistory" ph
+        WHERE ph.timestamp >= NOW() - INTERVAL '48 hours' AND ph.timestamp < NOW() - INTERVAL '24 hours'
+        ORDER BY ph."productId", ph.timestamp ASC
+      ),
+      latest_prices AS (
+        SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
+        FROM "PriceHistory" ph
+        ORDER BY ph."productId", ph.timestamp DESC
+      )
+      SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice", old.price as "prevPrice",
+             (old.price - lp.price) as "dropAmount",
+             ROUND(((old.price - lp.price)::numeric / old.price::numeric) * 100, 1) as "dropPercent"
+      FROM "Product" p
+      JOIN latest_prices lp ON p.id = lp."productId"
+      JOIN price_48h_ago old ON p.id = old."productId"
+      WHERE lp.price < old.price AND p."imageUrl" IS NOT NULL
+      ORDER BY "dropPercent" DESC
+      LIMIT 6
+    `,
+    // D. Near Target (목표가 5% 이내 임박)
+    prisma.$queryRaw<any[]>`
+      WITH latest_prices AS (
+        SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
+        FROM "PriceHistory" ph
+        ORDER BY ph."productId", ph.timestamp DESC
+      )
+      SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice", pa."targetPrice",
+             ROUND(((lp.price - pa."targetPrice")::numeric / pa."targetPrice"::numeric) * 100, 1) as "gapPercent"
+      FROM "PriceAlert" pa
+      JOIN "Product" p ON pa."productId" = p.id
+      JOIN latest_prices lp ON p.id = lp."productId"
+      WHERE pa."isActive" = true AND lp.price > pa."targetPrice" AND lp.price <= pa."targetPrice" * 1.05 AND p."imageUrl" IS NOT NULL
+      ORDER BY "gapPercent" ASC
+      LIMIT 6
+    `
+  ]);
+
+  // 안전한 데이터 매핑 및 JSON 전송 규격 일치화
+  const mapRawItem = (item: any) => ({
+    id: item.id,
+    title: item.title,
+    brand: item.brand || 'Brand',
+    imageUrl: item.imageUrl,
+    currentPrice: Number(item.currentPrice),
+    originalPrice: item.originalPrice ? Number(item.originalPrice) : null,
+    avgPrice: item.avgPrice ? Number(item.avgPrice) : null,
+    gapAmount: item.gapAmount ? Number(item.gapAmount) : null,
+    gapPercent: item.gapPercent ? Number(item.gapPercent) : null,
+    prevPrice: item.prevPrice ? Number(item.prevPrice) : null,
+    dropAmount: item.dropAmount ? Number(item.dropAmount) : null,
+    dropPercent: item.dropPercent ? Number(item.dropPercent) : null,
+    targetPrice: item.targetPrice ? Number(item.targetPrice) : null
+  });
+
   return (
     <MarketInsightView 
       totalSavings={totalSavings}
@@ -100,6 +203,11 @@ export default async function MarketPage() {
       savingsHistory={savingsHistory}
       totalDataPoints={totalDataPoints}
       totalBrands={totalBrands}
+      goldenLows={goldenLowsRaw.map(mapRawItem)}
+      trueDeals={trueDealsRaw.map(mapRawItem)}
+      flashDrops={flashDropsRaw.map(mapRawItem)}
+      nearTargets={nearTargetsRaw.map(mapRawItem)}
     />
   );
 }
+
