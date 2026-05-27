@@ -275,19 +275,21 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 md:gap-4">
+              <div className="flex w-full">
                 <Link 
                   href={`https://www.univstore.com/item/${product.id}`}
                   target="_blank"
-                  className="flex items-center justify-center space-x-2 bg-white text-black h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-200 transition-all"
+                  className="flex w-full items-center justify-center space-x-2 bg-white text-black h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-200 transition-all"
                 >
                   <span>Buy Now</span>
                   <ExternalLink className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                 </Link>
+                {/* Price Target Alert 기능 비활성화로 인한 Track 버튼 주석 처리
                 <button className="flex items-center justify-center space-x-2 bg-zinc-900 border border-white/5 text-white h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-800 transition-all">
                   <Zap className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                   <span>Track</span>
                 </button>
+                */}
               </div>
             </div>
 
@@ -327,12 +329,13 @@ export default function ProductDetailView({ product, history, benefitRules, exis
               </div>
             </div>
 
-            {/* Price Alert Center */}
+            {/* Price Alert Center - 비활성화로 인한 주석 처리
             <PriceAlertControl 
               productId={product.id} 
               currentPrice={finalPrice} 
               existingAlerts={existingAlerts} 
             />
+            */}
 
             <div className="glass p-6 md:p-10 rounded-[32px] md:rounded-[40px] border-white/[0.03] space-y-4 md:space-y-6">
                <div className="flex items-center space-x-2 text-zinc-400 font-bold text-[10px] md:text-xs uppercase tracking-widest">
