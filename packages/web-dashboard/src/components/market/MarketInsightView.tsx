@@ -216,6 +216,7 @@ export default function MarketInsightView({
                   <BarChart data={trueDeals.slice(0, 3)} margin={{ top: 10, right: 0, left: 0, bottom: 0 }}>
                     <XAxis dataKey="brand" stroke="#3f3f46" fontSize={9} tickLine={false} axisLine={false} />
                     <Tooltip 
+                      cursor={false}
                       contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                       itemStyle={{ color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
                       labelStyle={{ color: '#71717a', fontSize: '9px', marginBottom: '4px' }}
@@ -266,33 +267,45 @@ export default function MarketInsightView({
               </Link>
             </div>
 
-            <div className="grid gap-3 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
               {flashDrops.length > 0 ? flashDrops.slice(0, 3).map((item) => (
-                <Link key={item.id} href={`/product/${item.id}`} className="bg-zinc-950/40 hover:bg-zinc-950/80 transition-all p-4 rounded-3xl border border-white/5 flex items-center justify-between group min-w-0 w-full">
-                  <div className="flex items-center space-x-4 min-w-0">
-                    <div className="w-12 h-12 bg-zinc-900 rounded-xl border border-white/5 overflow-hidden shrink-0 flex items-center justify-center">
-                      <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                <Link key={item.id} href={`/product/${item.id}`} className="bg-zinc-950/40 hover:bg-zinc-950/80 transition-all p-6 rounded-[32px] border border-white/5 flex flex-col justify-between group min-w-0 w-full min-h-[220px] relative overflow-hidden">
+                  <div className="absolute -top-3 -right-3 p-6 opacity-[0.03] group-hover:scale-110 group-hover:opacity-5 transition-all duration-500 shrink-0">
+                    <ArrowDownRight size={120} className="text-red-500" />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
+                      <span className="text-[10px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded shrink-0">
+                        -{item.dropPercent}%
+                      </span>
                     </div>
-                    <div className="min-w-0 space-y-1">
-                      <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
-                      <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors truncate pr-4">{item.title}</p>
+
+                    <div className="flex items-start space-x-4 min-w-0">
+                      <div className="w-14 h-14 bg-zinc-900 rounded-2xl border border-white/5 overflow-hidden shrink-0 flex items-center justify-center">
+                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors line-clamp-2 leading-relaxed pr-4">{item.title}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-6 shrink-0">
-                    <div className="w-16 hidden sm:block">
-                      <Sparkline data={[item.prevPrice || 0, item.currentPrice]} color="#ef4444" height={24} />
+
+                  <div className="pt-4 border-t border-white/5 flex items-center justify-between mt-auto">
+                    <div className="w-20">
+                      <Sparkline data={[item.prevPrice || 0, item.currentPrice]} color="#ef4444" height={20} />
                     </div>
                     <div className="text-right">
-                      <div className="flex items-center justify-end space-x-1.5">
-                        <ArrowDownRight size={12} className="text-red-500" />
-                        <span className="text-[10px] text-red-500 font-bold">-{item.dropPercent}%</span>
-                      </div>
+                      {item.prevPrice && (
+                        <p className="text-[10px] text-zinc-600 line-through">₩{item.prevPrice.toLocaleString()}</p>
+                      )}
                       <p className="font-black text-white text-base font-mono leading-none mt-1">₩{item.currentPrice.toLocaleString()}</p>
                     </div>
                   </div>
                 </Link>
               )) : (
-                <div className="py-12 text-center text-zinc-700 font-black uppercase text-[10px] tracking-widest italic">Scanning Flash Sales...</div>
+                <div className="col-span-3 py-12 text-center text-zinc-700 font-black uppercase text-[10px] tracking-widest italic">Scanning Flash Sales...</div>
               )}
             </div>
           </div>
