@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Send, QrCode, RefreshCw, CheckCircle, Clipboard } from 'lucide-react';
 
 interface TelegramConnectorProps {
