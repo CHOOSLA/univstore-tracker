@@ -105,17 +105,20 @@ model FlashSale {
 }
 
 model PriceAlert {
-  id            Int      @id @default(autoincrement())
-  productId     String
-  targetPrice   Int
-  isActive      Boolean  @default(true)
-  lastNotifiedAt DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  product       Product  @relation(fields: [productId], references: [id])
+  id              Int      @id @default(autoincrement())
+  productId       String
+  targetPrice     Int
+  isActive        Boolean  @default(true)
+  subscriberToken String?
+  lastNotifiedAt  DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  product         Product  @relation(fields: [productId], references: [id])
 
   @@index([productId])
+  @@index([subscriberToken])
 }
+
 
 model CrawlerStatus {
   id            String   @id @default("singleton")
@@ -138,3 +141,11 @@ model DailyPick {
   product   Product  @relation(fields: [productId], references: [id])
   createdAt DateTime @default(now())
 }
+
+model TelegramSubscriber {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  chatId    String
+  createdAt DateTime @default(now())
+}
+
