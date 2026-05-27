@@ -252,7 +252,7 @@ export default function MarketInsightView({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* Card 3: Flash Drops Feed (단기 급락 스트림) */}
-          <div className="lg:col-span-7 glass p-8 md:p-10 rounded-[40px] space-y-6 border-white/[0.03]">
+          <div className="lg:col-span-12 glass p-8 md:p-10 rounded-[40px] space-y-6 border-white/[0.03]">
             <div className="flex justify-between items-center">
               <div className="space-y-1">
                 <div className="flex items-center space-x-2 text-red-500">
@@ -268,7 +268,7 @@ export default function MarketInsightView({
 
             <div className="grid gap-3 mt-4">
               {flashDrops.length > 0 ? flashDrops.slice(0, 3).map((item) => (
-                <Link key={item.id} href={`/product/${item.id}`} className="bg-zinc-950/40 hover:bg-zinc-950/80 transition-all p-4 rounded-3xl border border-white/5 flex items-center justify-between group">
+                <Link key={item.id} href={`/product/${item.id}`} className="bg-zinc-950/40 hover:bg-zinc-950/80 transition-all p-4 rounded-3xl border border-white/5 flex items-center justify-between group min-w-0 w-full">
                   <div className="flex items-center space-x-4 min-w-0">
                     <div className="w-12 h-12 bg-zinc-900 rounded-xl border border-white/5 overflow-hidden shrink-0 flex items-center justify-center">
                       <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
@@ -297,7 +297,7 @@ export default function MarketInsightView({
             </div>
           </div>
 
-          {/* Card 4: Near Target Watchlist (목표가 임박 온점) */}
+          {/* Card 4: Near Target Watchlist (목표가 임박 온점) - 알림 기능 비활성화로 인한 주석 처리
           <div className="lg:col-span-5 glass p-8 md:p-10 rounded-[40px] space-y-6 border-white/[0.03] flex flex-col justify-between">
             <div className="flex justify-between items-center">
               <div className="space-y-1">
@@ -334,6 +334,7 @@ export default function MarketInsightView({
               )}
             </div>
           </div>
+          */}
         </div>
 
         {/* --- [Verify Banner] --- */}
