@@ -40,7 +40,7 @@ export default function TelegramConnector({ botUsername }: TelegramConnectorProp
   };
 
   if (!mounted || !token) {
-    return <div className="h-48 bg-zinc-900/30 rounded-[32px] animate-pulse border border-white/5" />;
+    return <div className="h-48 bg-zinc-900/30 rounded-[32px] border border-white/5" />;
   }
 
   const botLink = `https://t.me/${botUsername}?start=${token}`;
@@ -103,19 +103,19 @@ export default function TelegramConnector({ botUsername }: TelegramConnectorProp
             <div className="flex items-start space-x-4">
               <span className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-mono text-xs font-black flex items-center justify-center shrink-0 mt-0.5">1</span>
               <p className="text-sm text-zinc-300 font-medium leading-relaxed">
-                모바일 카메라로 좌측 **QR 코드를 스캔**하거나, 하단의 **텔레그램 연동 시작** 버튼을 탭하여 봇과의 1:1 대화방을 엽니다.
+                모바일 카메라로 좌측 <strong>QR 코드를 스캔</strong>하거나, 하단의 <strong>텔레그램 연동 시작</strong> 버튼을 탭하여 봇과의 1:1 대화방을 엽니다.
               </p>
             </div>
             <div className="flex items-start space-x-4">
               <span className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-mono text-xs font-black flex items-center justify-center shrink-0 mt-0.5">2</span>
               <p className="text-sm text-zinc-300 font-medium leading-relaxed">
-                채팅방 하단의 **[시작 / START]** 버튼을 눌러 고유 식별 코드가 담긴 매핑 인증 메시지를 봇에게 자동 전송합니다.
+                채팅방 하단의 <strong>[시작 / START]</strong> 버튼을 눌러 고유 식별 코드가 담긴 매핑 인증 메시지를 봇에게 자동 전송합니다.
               </p>
             </div>
             <div className="flex items-start space-x-4">
               <span className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 font-mono text-xs font-black flex items-center justify-center shrink-0 mt-0.5">3</span>
               <p className="text-sm text-zinc-300 font-medium leading-relaxed">
-                **"인증 성공"** 텔레그램 답장을 수신한 뒤, 이제 대시보드의 상품 상세 뷰에서 자유롭게 목표가 알림을 생성할 수 있습니다.
+                <strong>&quot;인증 성공&quot;</strong> 텔레그램 답장을 수신한 뒤, 이제 전체 상품에 대한 가격 하락 알림을 실시간으로 본 채팅방에서 받아보실 수 있습니다.
               </p>
             </div>
           </div>
