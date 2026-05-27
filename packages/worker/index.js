@@ -24,7 +24,7 @@ if (bot) {
         update: { chatId: subscriberChatId },
         create: { token: subToken, chatId: subscriberChatId }
       });
-      await bot.sendMessage(subscriberChatId, "✅ *UnivWatch 알림 연동 성공*\n\n대시보드에서 설정하신 상품 목표 가격 도달 시 본 채팅방으로 실시간 알림이 발송됩니다.", { parse_mode: 'Markdown' });
+      await bot.sendMessage(subscriberChatId, "✅ *UnivWatch 알림 연동 성공*\n\n이제 UnivWatch의 모든 실시간 가격 하락 알림을 본 채팅방에서 받아보실 수 있습니다.", { parse_mode: 'Markdown' });
       console.log(`✅ Connection succeeded: token=${subToken} -> chatId=${subscriberChatId}`);
     } catch (err) {
       console.error("❌ Connection failed:", err.message);
@@ -121,6 +121,7 @@ async function handlePriceUpdate(payload) {
     const telegramEnabled = configMap['TELEGRAM_ENABLED'] !== 'false';
     const minDropRate = parseInt(configMap['MIN_DROP_RATE'] || '10');
 
+    /* 개별 목표가 알림 감지 기능 비활성화로 인한 주석 처리
     // 2. 활성화된 알림 중 목표가에 도달한 항목 조회
     if (telegramEnabled) {
       const activeAlerts = await prisma.priceAlert.findMany({
@@ -161,8 +162,9 @@ async function handlePriceUpdate(payload) {
         }
       }
     }
+    */
 
-    // 3. 기존의 단순 가격 하락 알림 로직 (설정한 최소 하락율 이상일 때만 발송)
+    // 3. 기존의 단순 가격 하락 알림 로직 (설정한 최소 하락율 이상일 때만 발송) -> 모든 구독자 대상 브로드캐스트로 확장
     if (lastRecord && price < lastRecord.price) {
       const dropPercent = (((lastRecord.price - price) / lastRecord.price) * 100);
       
@@ -171,9 +173,30 @@ async function handlePriceUpdate(payload) {
           data: { type: 'ALERT', service: 'Worker', message: `가격 하락 감지: [${brand}] ${title} (-${dropPercent.toFixed(1)}%)` }
         });
 
-        if (telegramEnabled && bot && chatId) {
+        if (telegramEnabled && bot) {
           const message = `🚨 *가격 하락 알림 (${minDropRate}% 이상)!*\n\n📦 *상품명*: ${title}\n💰 *현재가*: ${price.toLocaleString()}원\n📉 *하락폭*: -${(lastRecord.price - price).toLocaleString()}원 (${dropPercent.toFixed(1)}%)\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
-          await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+          
+          /* 기존 관리자 단일 알림 전송 (주석 처리 보존)
+          if (chatId) {
+            await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
+          }
+          */
+
+          // 1. 관리자에게 우선 발송
+          if (chatId) {
+            await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' }).catch(err => console.error(`❌ Admin alert failed: ${err.message}`));
+          }
+
+          // 2. 모든 등록 사용자에게 브로드캐스트 발송 (40ms Throttling spacing 적용)
+          const subscribers = await prisma.telegramSubscriber.findMany();
+
+          for (const sub of subscribers) {
+            if (sub.chatId) {
+              await new Promise(r => setTimeout(r, 40));
+              await bot.sendMessage(sub.chatId, message, { parse_mode: 'Markdown' })
+                .catch(err => console.error(`❌ Broadcast alert failed for chatId ${sub.chatId}: ${err.message}`));
+            }
+          }
         }
       }
     }
