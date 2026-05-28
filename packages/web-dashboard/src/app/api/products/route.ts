@@ -28,67 +28,32 @@ export async function GET(request: Request) {
           FROM "PriceHistory" ph
           WHERE ph.timestamp >= NOW() - INTERVAL '48 hours' AND ph.timestamp < NOW() - INTERVAL '24 hours'
           ORDER BY ph."productId", ph.timestamp ASC
-        ),
-        latest_prices AS (
-          SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
-          FROM "PriceHistory" ph
-          ORDER BY ph."productId", ph.timestamp DESC
         )
         SELECT p.id
         FROM "Product" p
-        JOIN latest_prices lp ON p.id = lp."productId"
         JOIN price_48h_ago old ON p.id = old."productId"
-        WHERE lp.price < old.price
-          AND lp.price >= 10000
-          AND ((old.price - lp.price)::numeric / old.price::numeric) < 0.7
+        WHERE p."currentPrice" < old.price
+          AND p."currentPrice" >= 10000
+          AND ((old.price - p."currentPrice")::numeric / old.price::numeric) < 0.7
           AND p."imageUrl" IS NOT NULL
       `;
     } else if (activeFilter === 'true') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
-        WITH median_prices AS (
-          SELECT "productId",
-                 PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY price) AS median_price,
-                 COUNT(*) AS samples
-          FROM "PriceHistory"
-          WHERE timestamp >= NOW() - INTERVAL '30 days'
-          GROUP BY "productId"
-        ),
-        latest_prices AS (
-          SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
-          FROM "PriceHistory" ph
-          ORDER BY ph."productId", ph.timestamp DESC
-        )
-        SELECT p.id
-        FROM "Product" p
-        JOIN latest_prices lp ON p.id = lp."productId"
-        JOIN median_prices mp ON p.id = mp."productId"
-        WHERE mp.samples >= 5
-          AND lp.price < mp.median_price
-          AND lp.price >= 10000
-          AND ((mp.median_price - lp.price)::numeric / mp.median_price::numeric) < 0.6
-          AND p."imageUrl" IS NOT NULL
+        SELECT id
+        FROM "Product"
+        WHERE "currentPrice" < "medianPrice30d"
+          AND "currentPrice" >= 10000
+          AND "medianPrice30d" > 0
+          AND (("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) < 0.6
+          AND "imageUrl" IS NOT NULL
       `;
     } else if (activeFilter === 'golden') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
-        WITH min_prices AS (
-          SELECT "productId", 
-                 MIN(price) as min_price,
-                 MAX(price) as max_price
-          FROM "PriceHistory"
-          GROUP BY "productId"
-        ),
-        latest_prices AS (
-          SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
-          FROM "PriceHistory" ph
-          ORDER BY ph."productId", ph.timestamp DESC
-        )
-        SELECT p.id
-        FROM "Product" p
-        JOIN latest_prices lp ON p.id = lp."productId"
-        JOIN min_prices mp ON p.id = mp."productId"
-        WHERE lp.price <= mp.min_price 
-          AND mp.max_price > mp.min_price
-          AND p."imageUrl" IS NOT NULL
+        SELECT id
+        FROM "Product"
+        WHERE "currentPrice" <= "lowestPrice"
+          AND "originalPrice" > "lowestPrice"
+          AND "imageUrl" IS NOT NULL
       `;
     } else if (activeFilter === 'target') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
@@ -105,23 +70,12 @@ export async function GET(request: Request) {
       `;
     } else if (activeFilter === 'defense') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
-        WITH median_prices AS (
-          SELECT "productId", PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY price) AS median_price
-          FROM "PriceHistory"
-          WHERE timestamp >= NOW() - INTERVAL '30 days'
-          GROUP BY "productId"
-        ),
-        latest_prices AS (
-          SELECT DISTINCT ON (ph."productId") ph."productId", ph.price, ph.timestamp
-          FROM "PriceHistory" ph ORDER BY ph."productId", ph.timestamp DESC
-        )
-        SELECT p.id
-        FROM "Product" p
-        JOIN latest_prices lp ON p.id = lp."productId"
-        JOIN median_prices mp ON p.id = mp."productId"
-        WHERE p.brand IN ('Apple', 'Apple(애플)', 'Samsung', 'Samsung(삼성)', '삼성전자', '삼성', 'LG', 'LG전자', 'Sony', '소니', 'Dell', '델', 'HP', 'Lenovo', '레노버', 'Asus', '에이수스', 'Logitech', '로지텍', 'Intel', 'AMD', 'Nvidia')
-          AND lp.price < mp.median_price * 0.92
-          AND p."imageUrl" IS NOT NULL
+        SELECT id
+        FROM "Product"
+        WHERE brand IN ('Apple', 'Apple(애플)', 'Samsung', 'Samsung(삼성)', '삼성전자', '삼성', 'LG', 'LG전자', 'Sony', '소니', 'Dell', '델', 'HP', 'Lenovo', '레노버', 'Asus', '에이수스', 'Logitech', '로지텍', 'Intel', 'AMD', 'Nvidia')
+          AND "currentPrice" < "medianPrice30d" * 0.92
+          AND "medianPrice30d" > 0
+          AND "imageUrl" IS NOT NULL
       `;
     }
     filteredIds = idsRow.map(r => r.id);

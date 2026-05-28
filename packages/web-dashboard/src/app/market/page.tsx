@@ -9,16 +9,12 @@ import BrandDefenseBanner from "@/components/market/BrandDefenseBanner";
 export const dynamic = 'force-dynamic';
 
 export default async function MarketPage() {
-  // 1. 누적 차익 SQL 연산
+  // 1. 누적 차익 SQL 연산 (역정규화 필드 사용하여 최적화)
   const [savingsRow] = await prisma.$queryRaw<{ sum: number | null }[]>`
-    WITH latest AS (
-      SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
-      FROM "PriceHistory" ph ORDER BY ph."productId", ph.timestamp DESC
-    )
-    SELECT COALESCE(SUM(p."originalPrice" - latest.price), 0)::bigint AS sum
-    FROM "Product" p
-    JOIN latest ON latest."productId" = p.id
-    WHERE p."originalPrice" > latest.price
+    SELECT COALESCE(SUM("originalPrice" - "currentPrice"), 0)::bigint AS sum
+    FROM "Product"
+    WHERE "originalPrice" > "currentPrice"
+      AND "currentPrice" IS NOT NULL
   `;
   const totalSavings = Number(savingsRow?.sum ?? 0);
 
@@ -26,131 +22,79 @@ export default async function MarketPage() {
   const activeAlerts = await prisma.priceAlert.count({ where: { isActive: true } });
   const totalCategories = 8;
 
-  // 2. 프리미엄 브랜드 가격 장벽 붕괴 쿼리 (Apple, Samsung, Sony, LG, Dell 대상 30일 평균 대비 8% 이상 폭락 상품)
+  // 2. 프리미엄 브랜드 가격 장벽 붕괴 쿼리 (역정규화 필드 활용해 무거운 Median 조인 제거)
   const brandDefenseRaw = await prisma.$queryRaw<any[]>`
-    WITH median_prices AS (
-      SELECT "productId", PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY price) AS median_price
-      FROM "PriceHistory"
-      WHERE timestamp >= NOW() - INTERVAL '30 days'
-      GROUP BY "productId"
-    ),
-    latest_prices AS (
-      SELECT DISTINCT ON (ph."productId") ph."productId", ph.price, ph.timestamp
-      FROM "PriceHistory" ph ORDER BY ph."productId", ph.timestamp DESC
-    )
-    SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice",
-           mp.median_price as "avgPrice",
-           ROUND(((mp.median_price - lp.price)::numeric / mp.median_price::numeric) * 100, 1) as "gapPercent"
-    FROM "Product" p
-    JOIN latest_prices lp ON p.id = lp."productId"
-    JOIN median_prices mp ON p.id = mp."productId"
-    WHERE p.brand IN ('Apple', 'Apple(애플)', 'Samsung', 'Samsung(삼성)', '삼성전자', '삼성', 'LG', 'LG전자', 'Sony', '소니', 'Dell', '델', 'HP', 'Lenovo', '레노버', 'Asus', '에이수스', 'Logitech', '로지텍', 'Intel', 'AMD', 'Nvidia')
-      AND lp.price < mp.median_price * 0.92
-      AND p."imageUrl" IS NOT NULL
+    SELECT id, title, brand, "imageUrl", "currentPrice",
+           "medianPrice30d" as "avgPrice",
+           ROUND((("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) * 100, 1) as "gapPercent"
+    FROM "Product"
+    WHERE brand IN ('Apple', 'Apple(애플)', 'Samsung', 'Samsung(삼성)', '삼성전자', '삼성', 'LG', 'LG전자', 'Sony', '소니', 'Dell', '델', 'HP', 'Lenovo', '레노버', 'Asus', '에이수스', 'Logitech', '로지텍', 'Intel', 'AMD', 'Nvidia')
+      AND "currentPrice" < "medianPrice30d" * 0.92
+      AND "medianPrice30d" > 0
+      AND "imageUrl" IS NOT NULL
     ORDER BY "gapPercent" DESC
     LIMIT 12
   `;
 
 
-  // 4. 기존 3대 핵심 핫딜 섹션 및 커뮤니티 공동 저격(Most Hunted) 상품 집계
+  // 3. 기존 3대 핵심 핫딜 섹션 및 커뮤니티 공동 저격(Most Hunted) 상품 집계 (역정규화 필드를 활용한 고성능 인덱싱 쿼리)
   const [goldenLowsRaw, trueDealsRaw, flashDropsRaw, mostHuntedRaw] = await Promise.all([
     // A. Golden Lows (역대 최저가 도달)
     prisma.$queryRaw<any[]>`
-      WITH min_prices AS (
-        SELECT "productId", 
-               MIN(price) as min_price,
-               MAX(price) as max_price
-        FROM "PriceHistory"
-        GROUP BY "productId"
-      ),
-      latest_prices AS (
-        SELECT DISTINCT ON (ph."productId") ph."productId", ph.price, ph.timestamp
-        FROM "PriceHistory" ph
-        ORDER BY ph."productId", ph.timestamp DESC
-      )
-      SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice", p."originalPrice"
-      FROM "Product" p
-      JOIN latest_prices lp ON p.id = lp."productId"
-      JOIN min_prices mp ON p.id = mp."productId"
-      WHERE lp.price <= mp.min_price 
-        AND mp.max_price > mp.min_price
-        AND p."imageUrl" IS NOT NULL
-      ORDER BY lp.timestamp DESC
+      SELECT id, title, brand, "imageUrl", "currentPrice", "originalPrice"
+      FROM "Product"
+      WHERE "currentPrice" <= "lowestPrice"
+        AND "originalPrice" > "lowestPrice"
+        AND "imageUrl" IS NOT NULL
+      ORDER BY "updatedAt" DESC
       LIMIT 12
     `,
     // B. True Deals (30일 중앙값 대비 최대 하락)
     prisma.$queryRaw<any[]>`
-      WITH median_prices AS (
-        SELECT "productId",
-               PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY price) AS median_price,
-               COUNT(*) AS samples
-        FROM "PriceHistory"
-        WHERE timestamp >= NOW() - INTERVAL '30 days'
-        GROUP BY "productId"
-      ),
-      latest_prices AS (
-        SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
-        FROM "PriceHistory" ph
-        ORDER BY ph."productId", ph.timestamp DESC
-      )
-      SELECT p.id, p.title, p.brand, p."imageUrl",
-             lp.price as "currentPrice",
-             mp.median_price as "avgPrice",
-             (mp.median_price - lp.price) as "gapAmount",
-             ROUND(((mp.median_price - lp.price)::numeric / mp.median_price::numeric) * 100, 1) as "gapPercent"
-      FROM "Product" p
-      JOIN latest_prices lp ON p.id = lp."productId"
-      JOIN median_prices mp ON p.id = mp."productId"
-      WHERE mp.samples >= 5
-        AND lp.price < mp.median_price
-        AND lp.price >= 10000
-        AND ((mp.median_price - lp.price)::numeric / mp.median_price::numeric) < 0.6
-        AND p."imageUrl" IS NOT NULL
+      SELECT id, title, brand, "imageUrl",
+             "currentPrice",
+             "medianPrice30d" as "avgPrice",
+             ("medianPrice30d" - "currentPrice") as "gapAmount",
+             ROUND((("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) * 100, 1) as "gapPercent"
+      FROM "Product"
+      WHERE "currentPrice" < "medianPrice30d"
+        AND "currentPrice" >= 10000
+        AND "medianPrice30d" > 0
+        AND (("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) < 0.6
+        AND "imageUrl" IS NOT NULL
       ORDER BY "gapPercent" DESC
       LIMIT 12
     `,
-    // C. Flash Drops (48시간 대비 최근 급하락)
+    // C. Flash Drops (48시간 대비 최근 급하락 - DISTINCT ON 최신 가격 조인 최적화)
     prisma.$queryRaw<any[]>`
       WITH price_48h_ago AS (
         SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
         FROM "PriceHistory" ph
         WHERE ph.timestamp >= NOW() - INTERVAL '48 hours' AND ph.timestamp < NOW() - INTERVAL '24 hours'
         ORDER BY ph."productId", ph.timestamp ASC
-      ),
-      latest_prices AS (
-        SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
-        FROM "PriceHistory" ph
-        ORDER BY ph."productId", ph.timestamp DESC
       )
-      SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice", old.price as "prevPrice",
-             (old.price - lp.price) as "dropAmount",
-             ROUND(((old.price - lp.price)::numeric / old.price::numeric) * 100, 1) as "dropPercent"
+      SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", old.price as "prevPrice",
+             (old.price - p."currentPrice") as "dropAmount",
+             ROUND(((old.price - p."currentPrice")::numeric / old.price::numeric) * 100, 1) as "dropPercent"
       FROM "Product" p
-      JOIN latest_prices lp ON p.id = lp."productId"
       JOIN price_48h_ago old ON p.id = old."productId"
-      WHERE lp.price < old.price
-        AND lp.price >= 10000
-        AND ((old.price - lp.price)::numeric / old.price::numeric) < 0.7
+      WHERE p."currentPrice" < old.price
+        AND p."currentPrice" >= 10000
+        AND ((old.price - p."currentPrice")::numeric / old.price::numeric) < 0.7
         AND p."imageUrl" IS NOT NULL
       ORDER BY "dropPercent" DESC
       LIMIT 12
     `,
-    // D. Most Hunted (전체 사용자 알림 최다 등록 저격 상품)
+    // D. Most Hunted (전체 사용자 알림 최다 등록 저격 상품 - DISTINCT ON 조인 제거)
     prisma.$queryRaw<any[]>`
       WITH alert_counts AS (
         SELECT "productId", COUNT(*)::int as alerts_count
         FROM "PriceAlert"
         WHERE "isActive" = true
         GROUP BY "productId"
-      ),
-      latest_prices AS (
-        SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
-        FROM "PriceHistory" ph
-        ORDER BY ph."productId", ph.timestamp DESC
       )
-      SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice", ac.alerts_count as "targetPrice"
+      SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", ac.alerts_count as "targetPrice"
       FROM "Product" p
-      JOIN latest_prices lp ON p.id = lp."productId"
       JOIN alert_counts ac ON p.id = ac."productId"
       WHERE p."imageUrl" IS NOT NULL
       ORDER BY ac.alerts_count DESC
