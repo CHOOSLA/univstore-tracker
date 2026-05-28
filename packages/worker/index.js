@@ -80,7 +80,7 @@ async function handlePriceUpdate(payload) {
   console.log(`\n[${new Date().toLocaleTimeString()}] 📦 가격 데이터 수신: [${brand || 'Brand'}] ${title}`);
 
   try {
-    // 상품의 기존 가격 이력들을 조회하여 실시간 최저가 및 30일 중간값 산출
+    // 상품의 기존 가격 이력들을 조회하여 실시간 최저가, 최고가 및 30일 중간값 산출
     const allHistory = await prisma.priceHistory.findMany({
       where: { productId: id },
       select: { price: true, timestamp: true }
@@ -88,6 +88,7 @@ async function handlePriceUpdate(payload) {
 
     const priceList = [price, ...allHistory.map(h => h.price)];
     const lowestPrice = Math.min(...priceList);
+    const highestPrice = Math.max(...priceList);
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const recentPrices = [
@@ -111,6 +112,7 @@ async function handlePriceUpdate(payload) {
           subCategory,
           currentPrice: price,
           lowestPrice,
+          highestPrice,
           medianPrice30d
         },
         create: { 
@@ -125,6 +127,7 @@ async function handlePriceUpdate(payload) {
           subCategory,
           currentPrice: price,
           lowestPrice,
+          highestPrice,
           medianPrice30d
         }
       }),
