@@ -19,6 +19,7 @@ model Product {
   currentPrice       Int?
   medianPrice30d     Int?
   lowestPrice        Int?
+  highestPrice       Int?
   category           String?        // /api/item 응답의 item_category_name (내부 분류, 일관성 낮음)
   subCategory        String?        // /api/item 응답의 brand_item_category_name
   thirdCategory      String?        // @deprecated → thirdCategories
