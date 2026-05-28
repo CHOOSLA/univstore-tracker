@@ -4,11 +4,12 @@ import { prisma } from "@/lib/prisma";
 import TodaysPick from "@/components/market/TodaysPick";
 import DealsSection from "@/components/market/DealsSection";
 import MarketPulse from "@/components/market/MarketPulse";
+import BrandDefenseBanner from "@/components/market/BrandDefenseBanner";
 
 export const dynamic = 'force-dynamic';
 
 export default async function MarketPage() {
-  // 누적 차익은 한 번에 SQL로 (Prisma 5.22가 32k+ nested select에서 패닉)
+  // 1. 누적 차익 SQL 연산
   const [savingsRow] = await prisma.$queryRaw<{ sum: number | null }[]>`
     WITH latest AS (
       SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
@@ -23,14 +24,42 @@ export default async function MarketPage() {
 
   const totalProducts = await prisma.product.count();
   const activeAlerts = await prisma.priceAlert.count({ where: { isActive: true } });
-  const totalCategories = 8; // taxonomy.json의 main 카테고리 수
+  const totalCategories = 8;
 
-  // 4가지 deal 섹션 데이터 동시 집계
-  const [goldenLowsRaw, trueDealsRaw, flashDropsRaw, nearTargetsRaw] = await Promise.all([
+  // 2. 프리미엄 브랜드 가격 장벽 붕괴 쿼리 (Apple, Samsung, Sony, LG, Dell 대상 30일 평균 대비 8% 이상 폭락 상품)
+  const brandDefenseRaw = await prisma.$queryRaw<any[]>`
+    WITH median_prices AS (
+      SELECT "productId", PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY price) AS median_price
+      FROM "PriceHistory"
+      WHERE timestamp >= NOW() - INTERVAL '30 days'
+      GROUP BY "productId"
+    ),
+    latest_prices AS (
+      SELECT DISTINCT ON (ph."productId") ph."productId", ph.price, ph.timestamp
+      FROM "PriceHistory" ph ORDER BY ph."productId", ph.timestamp DESC
+    )
+    SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice",
+           mp.median_price as "avgPrice",
+           ROUND(((mp.median_price - lp.price)::numeric / mp.median_price::numeric) * 100, 1) as "gapPercent"
+    FROM "Product" p
+    JOIN latest_prices lp ON p.id = lp."productId"
+    JOIN median_prices mp ON p.id = mp."productId"
+    WHERE p.brand IN ('Apple', 'Apple(애플)', 'Samsung', 'Samsung(삼성)', '삼성전자', '삼성', 'LG', 'LG전자', 'Sony', '소니', 'Dell', '델', 'HP', 'Lenovo', '레노버', 'Asus', '에이수스', 'Logitech', '로지텍', 'Intel', 'AMD', 'Nvidia')
+      AND lp.price < mp.median_price * 0.92
+      AND p."imageUrl" IS NOT NULL
+    ORDER BY "gapPercent" DESC
+    LIMIT 12
+  `;
+
+
+  // 4. 기존 3대 핵심 핫딜 섹션 및 커뮤니티 공동 저격(Most Hunted) 상품 집계
+  const [goldenLowsRaw, trueDealsRaw, flashDropsRaw, mostHuntedRaw] = await Promise.all([
     // A. Golden Lows (역대 최저가 도달)
     prisma.$queryRaw<any[]>`
       WITH min_prices AS (
-        SELECT "productId", MIN(price) as min_price
+        SELECT "productId", 
+               MIN(price) as min_price,
+               MAX(price) as max_price
         FROM "PriceHistory"
         GROUP BY "productId"
       ),
@@ -43,13 +72,13 @@ export default async function MarketPage() {
       FROM "Product" p
       JOIN latest_prices lp ON p.id = lp."productId"
       JOIN min_prices mp ON p.id = mp."productId"
-      WHERE lp.price <= mp.min_price AND p."imageUrl" IS NOT NULL
+      WHERE lp.price <= mp.min_price 
+        AND mp.max_price > mp.min_price
+        AND p."imageUrl" IS NOT NULL
       ORDER BY lp.timestamp DESC
-      LIMIT 6
+      LIMIT 12
     `,
-    // B. True Deals (30일 중앙가 대비 최대 하락)
-    // AVG → PERCENTILE_DISC(0.5)로 변경: outlier에 휘둘리지 않음
-    // 추가 가드: 표본 3건 이상, 하락폭 70% 미만 (그 이상은 잘못된 originalPrice 케이스)
+    // B. True Deals (30일 중앙값 대비 최대 하락)
     prisma.$queryRaw<any[]>`
       WITH median_prices AS (
         SELECT "productId",
@@ -78,7 +107,7 @@ export default async function MarketPage() {
         AND ((mp.median_price - lp.price)::numeric / mp.median_price::numeric) < 0.6
         AND p."imageUrl" IS NOT NULL
       ORDER BY "gapPercent" DESC
-      LIMIT 6
+      LIMIT 12
     `,
     // C. Flash Drops (48시간 대비 최근 급하락)
     prisma.$queryRaw<any[]>`
@@ -104,27 +133,61 @@ export default async function MarketPage() {
         AND ((old.price - lp.price)::numeric / old.price::numeric) < 0.7
         AND p."imageUrl" IS NOT NULL
       ORDER BY "dropPercent" DESC
-      LIMIT 6
+      LIMIT 12
     `,
-    // D. Near Target (목표가 5% 이내 임박)
+    // D. Most Hunted (전체 사용자 알림 최다 등록 저격 상품)
     prisma.$queryRaw<any[]>`
-      WITH latest_prices AS (
+      WITH alert_counts AS (
+        SELECT "productId", COUNT(*)::int as alerts_count
+        FROM "PriceAlert"
+        WHERE "isActive" = true
+        GROUP BY "productId"
+      ),
+      latest_prices AS (
         SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
         FROM "PriceHistory" ph
         ORDER BY ph."productId", ph.timestamp DESC
       )
-      SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice", pa."targetPrice",
-             ROUND(((lp.price - pa."targetPrice")::numeric / pa."targetPrice"::numeric) * 100, 1) as "gapPercent"
-      FROM "PriceAlert" pa
-      JOIN "Product" p ON pa."productId" = p.id
+      SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice", ac.alerts_count as "targetPrice"
+      FROM "Product" p
       JOIN latest_prices lp ON p.id = lp."productId"
-      WHERE pa."isActive" = true AND lp.price > pa."targetPrice" AND lp.price <= pa."targetPrice" * 1.05 AND p."imageUrl" IS NOT NULL
-      ORDER BY "gapPercent" ASC
-      LIMIT 6
+      JOIN alert_counts ac ON p.id = ac."productId"
+      WHERE p."imageUrl" IS NOT NULL
+      ORDER BY ac.alerts_count DESC
+      LIMIT 12
     `
   ]);
 
-  // 안전한 데이터 매핑 및 JSON 전송 규격 일치화
+  // 5. 최근 7일 가격 이력 쿼리
+  const allProductIds = Array.from(new Set([
+    ...flashDropsRaw.map(p => p.id),
+    ...trueDealsRaw.map(p => p.id),
+    ...goldenLowsRaw.map(p => p.id),
+    ...mostHuntedRaw.map(p => p.id),
+    ...brandDefenseRaw.map(p => p.id)
+  ]));
+
+  const histories = allProductIds.length > 0 ? await prisma.priceHistory.findMany({
+    where: {
+      productId: { in: allProductIds },
+      timestamp: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
+    },
+    orderBy: { timestamp: 'asc' },
+    select: {
+      productId: true,
+      price: true
+    }
+  }) : [];
+
+  // productId별 가격 배열 매핑
+  const historyMap: Record<string, number[]> = {};
+  histories.forEach(h => {
+    if (!historyMap[h.productId]) {
+      historyMap[h.productId] = [];
+    }
+    historyMap[h.productId].push(Number(h.price));
+  });
+
   const mapRawItem = (item: any) => ({
     id: item.id,
     title: item.title,
@@ -138,62 +201,73 @@ export default async function MarketPage() {
     prevPrice: item.prevPrice ? Number(item.prevPrice) : null,
     dropAmount: item.dropAmount ? Number(item.dropAmount) : null,
     dropPercent: item.dropPercent ? Number(item.dropPercent) : null,
-    targetPrice: item.targetPrice ? Number(item.targetPrice) : null
+    targetPrice: item.targetPrice ? Number(item.targetPrice) : null,
+    history: historyMap[item.id] || []
   });
 
   const flashDrops = flashDropsRaw.map(mapRawItem);
   const trueDeals = trueDealsRaw.map(mapRawItem);
   const goldenLows = goldenLowsRaw.map(mapRawItem);
-  const nearTargets = nearTargetsRaw.map(mapRawItem);
+  const mostHunted = mostHuntedRaw.map(mapRawItem);
+  const brandDefense = brandDefenseRaw.map(mapRawItem);
 
-  // Hero 후보 우선순위: flash → true → golden (가장 임팩트 있는 변동을 머리에)
   const todaysPick = flashDrops[0] ?? trueDeals[0] ?? goldenLows[0] ?? null;
 
   return (
-    <div className="pb-20 bg-zinc-950 text-zinc-50 min-h-screen">
-      <main className="max-w-7xl mx-auto px-6 pt-12 space-y-12">
-        <header className="space-y-2">
-          <div className="flex items-center gap-3 text-amber-400">
-            <BarChart3 size={18} />
-            <span className="text-xs font-black uppercase tracking-[0.3em]">Market</span>
+    <div className="pb-24 bg-zinc-950 text-zinc-100 min-h-screen">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-10 space-y-12">
+        <header className="space-y-4 border-b border-white/5 pb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6 px-2">
+          <div className="space-y-2 flex-1">
+            <div className="flex items-center gap-2 text-amber-500">
+              <BarChart3 size={16} />
+              <span className="text-xs font-black uppercase tracking-[0.25em]">Market Data Pulse</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white uppercase leading-none">
+              Deals.
+            </h1>
+            <p className="text-zinc-300 text-sm md:text-base font-medium max-w-3xl leading-relaxed mt-2">
+              수집된 가격 통계를 기반으로 진짜 가치가 확인된 타겟 하락 상품 정보를 실시간 데이터 콘솔 형식으로 제공합니다.
+            </p>
           </div>
-          <h1 className="text-5xl lg:text-6xl font-black tracking-tighter">Deals.</h1>
-          <p className="text-zinc-500 text-base lg:text-lg max-w-2xl">
-            지금 가격이 떨어진 상품, 30일 중앙값보다 싼 상품, 역대 최저가에 도달한 상품, 그리고 설정한 목표가에 임박한 상품을 한 화면에 모았습니다.
-          </p>
         </header>
 
+        {/* 1. 프리미엄 브랜드 가격 붕괴 경보 배너 (Glass/Red 그라데이션) */}
+        <BrandDefenseBanner items={brandDefense} />
+
+        {/* 오늘의 베스트 추천 딜 (Hero 섹션) */}
         <TodaysPick item={todaysPick} />
 
+        {/* 3. 기존의 핵심 3대 핫딜 그리드 섹션 */}
         <DealsSection
           title="Flash Drops"
-          description="지난 48시간 안에 가격이 떨어진 상품"
-          icon={<TrendingDown size={18} />}
+          description="최근 1~2일 사이에 갑자기 가격이 뚝 떨어진 반짝 할인 상품"
+          icon={<TrendingDown size={16} />}
           items={flashDrops}
           variant="flash"
         />
 
         <DealsSection
           title="True Deals"
-          description="30일 중앙값보다 의미 있게 싼 상품"
-          icon={<Flame size={18} />}
+          description="지난 한 달 평균 가격보다 확실히 싸진 진짜 가성비 상품"
+          icon={<Flame size={16} />}
           items={trueDeals}
           variant="true"
         />
 
         <DealsSection
           title="역대 최저가"
-          description="기록된 가격 중 가장 낮은 수준에 도달한 상품"
-          icon={<Trophy size={18} />}
+          description="수집된 데이터 중 가격이 가장 낮아진 역대급 최저가 찬스"
+          icon={<Trophy size={16} />}
           items={goldenLows}
           variant="golden"
         />
 
+        {/* 4. 최다 알림 등록 "Most Hunted" 저격 섹션 */}
         <DealsSection
-          title="목표가 근접"
-          description="내가 설정한 목표가까지 5% 이내로 들어온 상품"
-          icon={<Target size={18} />}
-          items={nearTargets}
+          title="Most Hunted"
+          description="사람들이 가격이 떨어지길 가장 많이 기다리는 인기 저격 상품"
+          icon={<Target size={16} />}
+          items={mostHunted}
           variant="target"
         />
 
@@ -207,4 +281,3 @@ export default async function MarketPage() {
     </div>
   );
 }
-
