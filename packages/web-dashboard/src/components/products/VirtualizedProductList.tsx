@@ -27,7 +27,7 @@ interface Product {
 interface VirtualizedProductListProps {
   initialItems: Product[];
   initialCursor: string | null;
-  searchParams: { q?: string; brand?: string; menuCategory?: string; menuSubCategory?: string; thirdCategory?: string; sort?: string };
+  searchParams: { q?: string; brand?: string; menuCategory?: string; menuSubCategory?: string; thirdCategory?: string; sort?: string; filter?: string };
 }
 
 export default function VirtualizedProductList({ initialItems, initialCursor, searchParams }: VirtualizedProductListProps) {
@@ -37,14 +37,46 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
   const [hasMore, setHasMore] = useState(!!initialCursor);
   const [mounted, setMounted] = useState(false);
   const [view, setView] = useState<ViewMode>('list');
+  const [isRestored, setIsRestored] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // 모바일에서는 기본적으로 카드 뷰로 시작하는 것이 가독성이 좋을 수 있음
     if (window.innerWidth < 768) {
       setView('card');
     }
-  }, []);
+
+    // 뒤로가기 시 스크롤 위치 및 데이터 상태 복원
+    const storageKey = `univwatch_list_cache_${JSON.stringify(searchParams)}`;
+    const cached = sessionStorage.getItem(storageKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        setItems(parsed.items);
+        setCursor(parsed.cursor);
+        setHasMore(parsed.hasMore);
+        setIsRestored(true);
+        
+        setTimeout(() => {
+          window.scrollTo({ top: parsed.scrollY, behavior: 'instant' as any });
+        }, 100);
+        
+        sessionStorage.removeItem(storageKey);
+      } catch (e) {
+        console.error("Failed to restore list cache:", e);
+      }
+    }
+  }, [searchParams]);
+
+  const saveScrollState = useCallback(() => {
+    const storageKey = `univwatch_list_cache_${JSON.stringify(searchParams)}`;
+    const cacheData = {
+      items,
+      cursor,
+      hasMore,
+      scrollY: window.scrollY
+    };
+    sessionStorage.setItem(storageKey, JSON.stringify(cacheData));
+  }, [items, cursor, hasMore, searchParams]);
 
   const fetchMore = useCallback(async () => {
     if (isLoading || !hasMore) return;
@@ -58,6 +90,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
       if (searchParams.menuSubCategory) params.set('menuSubCategory', searchParams.menuSubCategory);
       if (searchParams.thirdCategory) params.set('thirdCategory', searchParams.thirdCategory);
       if (searchParams.sort) params.set('sort', searchParams.sort);
+      if (searchParams.filter) params.set('filter', searchParams.filter);
       if (cursor) params.set('cursor', cursor);
 
       const res = await fetch(`/api/products?${params.toString()}`);
@@ -87,10 +120,14 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
   }, [fetchMore]);
 
   useEffect(() => {
+    if (isRestored) {
+      setIsRestored(false);
+      return;
+    }
     setItems(initialItems);
     setCursor(initialCursor);
     setHasMore(!!initialCursor);
-  }, [initialItems, initialCursor]);
+  }, [initialItems, initialCursor, isRestored]);
 
   if (!mounted) return null;
 
@@ -158,7 +195,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
               const historyData = item.priceHistory.map(h => h.price).reverse();
               return (
                 <div key={item.id} className="group hover:bg-white/[0.02] transition-all relative grid grid-cols-12 items-center px-4 md:px-10 py-6 md:py-8">
-                  <Link href={`/product/${item.id}`} className="absolute inset-0 z-10" />
+                  <Link href={`/product/${item.id}`} className="absolute inset-0 z-10" onClick={saveScrollState} />
                   <div className="col-span-8 md:col-span-6 lg:col-span-5 flex items-center space-x-3 md:space-x-6 relative z-0">
                     <div className="w-12 h-12 md:w-14 md:h-14 bg-zinc-900 rounded-xl md:rounded-2xl border border-white/5 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden shrink-0">
                       <img src={item.imageUrl!} alt={item.title} className="w-full h-full object-cover" />
@@ -222,7 +259,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
             : 0;
           const historyData = item.priceHistory.map(h => h.price).reverse();
           return (
-            <Link key={item.id} href={`/product/${item.id}`} className="glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] flex flex-col space-y-4 md:space-y-5 group glass-hover border-white/[0.03]">
+            <Link key={item.id} href={`/product/${item.id}`} className="glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] flex flex-col space-y-4 md:space-y-5 group glass-hover border-white/[0.03]" onClick={saveScrollState}>
               <div className="w-full aspect-square bg-zinc-950 rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
                 <img src={item.imageUrl!} alt={item.title} className="w-full h-full object-cover" />
               </div>
