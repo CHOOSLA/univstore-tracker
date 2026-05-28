@@ -7,7 +7,7 @@ class DBStateFilter {
     ctx.productStatus = await withPrismaRetry(() => prisma.product.findUnique({
       where: { id: ctx.id },
       select: {
-        title: true, imageUrl: true, category: true, brand: true,
+        title: true, imageUrl: true, category: true, brand: true, originalPrice: true, bestBenefit: true,
         priceHistory: { where: { timestamp: { gte: today } }, take: 1, select: { price: true } }
       }
     }));
@@ -209,6 +209,19 @@ class ValidationFilter {
     const priceNum = parseInt(ctx.itemInfo.price);
     if (isNaN(priceNum) || priceNum <= 0) {
       console.warn(`⚠️ [ID ${ctx.id}] 유효하지 않은 가격(${ctx.itemInfo.price}) - 수집 건너뜀`);
+      ctx.shouldSkip = true;
+      return;
+    }
+
+    // 페이지 모드 시절 cross-contamination(다른 상품 가격을 잘못 픽업)로
+    // PriceHistory에 outlier가 박히는 사고가 있었음 → 사니티 체크로 미래 방지.
+    // 현재 정가(originalPrice) 또는 직전 수집 시점 정가 대비 3배 초과면 reject.
+    const itemOriginal = parseInt(ctx.itemInfo.originalPrice);
+    const dbOriginal = ctx.productStatus?.originalPrice ?? null;
+    const referenceOriginal = (Number.isFinite(itemOriginal) && itemOriginal > 0) ? itemOriginal : dbOriginal;
+
+    if (referenceOriginal && referenceOriginal > 0 && priceNum > referenceOriginal * 3) {
+      console.warn(`⚠️ [ID ${ctx.id}] 가격 sanity 실패 (price=${priceNum} vs originalPrice=${referenceOriginal}) - 수집 건너뜀`);
       ctx.shouldSkip = true;
     }
   }

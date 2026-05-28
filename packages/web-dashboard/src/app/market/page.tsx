@@ -114,10 +114,14 @@ export default async function MarketPage() {
       ORDER BY lp.timestamp DESC
       LIMIT 6
     `,
-    // B. True Deals (30일 평균가 대비 최대 하락)
+    // B. True Deals (30일 중앙가 대비 최대 하락)
+    // AVG → PERCENTILE_DISC(0.5)로 변경: outlier에 휘둘리지 않음
+    // 추가 가드: 표본 3건 이상, 하락폭 70% 미만 (그 이상은 잘못된 originalPrice 케이스)
     prisma.$queryRaw<any[]>`
-      WITH avg_prices AS (
-        SELECT "productId", ROUND(AVG(price)) as avg_price
+      WITH median_prices AS (
+        SELECT "productId",
+               PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY price) AS median_price,
+               COUNT(*) AS samples
         FROM "PriceHistory"
         WHERE timestamp >= NOW() - INTERVAL '30 days'
         GROUP BY "productId"
@@ -127,13 +131,19 @@ export default async function MarketPage() {
         FROM "PriceHistory" ph
         ORDER BY ph."productId", ph.timestamp DESC
       )
-      SELECT p.id, p.title, p.brand, p."imageUrl", lp.price as "currentPrice", ap.avg_price as "avgPrice",
-             (ap.avg_price - lp.price) as "gapAmount",
-             ROUND(((ap.avg_price - lp.price)::numeric / ap.avg_price::numeric) * 100, 1) as "gapPercent"
+      SELECT p.id, p.title, p.brand, p."imageUrl",
+             lp.price as "currentPrice",
+             mp.median_price as "avgPrice",
+             (mp.median_price - lp.price) as "gapAmount",
+             ROUND(((mp.median_price - lp.price)::numeric / mp.median_price::numeric) * 100, 1) as "gapPercent"
       FROM "Product" p
       JOIN latest_prices lp ON p.id = lp."productId"
-      JOIN avg_prices ap ON p.id = ap."productId"
-      WHERE lp.price < ap.avg_price AND lp.price >= 10000 AND ROUND(((ap.avg_price - lp.price)::numeric / ap.avg_price::numeric) * 100, 1) < 85.0 AND p."imageUrl" IS NOT NULL
+      JOIN median_prices mp ON p.id = mp."productId"
+      WHERE mp.samples >= 5
+        AND lp.price < mp.median_price
+        AND lp.price >= 10000
+        AND ((mp.median_price - lp.price)::numeric / mp.median_price::numeric) < 0.6
+        AND p."imageUrl" IS NOT NULL
       ORDER BY "gapPercent" DESC
       LIMIT 6
     `,
@@ -156,7 +166,10 @@ export default async function MarketPage() {
       FROM "Product" p
       JOIN latest_prices lp ON p.id = lp."productId"
       JOIN price_48h_ago old ON p.id = old."productId"
-      WHERE lp.price < old.price AND lp.price >= 10000 AND ROUND(((old.price - lp.price)::numeric / old.price::numeric) * 100, 1) < 85.0 AND p."imageUrl" IS NOT NULL
+      WHERE lp.price < old.price
+        AND lp.price >= 10000
+        AND ((old.price - lp.price)::numeric / old.price::numeric) < 0.7
+        AND p."imageUrl" IS NOT NULL
       ORDER BY "dropPercent" DESC
       LIMIT 6
     `,
