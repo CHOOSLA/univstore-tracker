@@ -80,17 +80,53 @@ async function handlePriceUpdate(payload) {
   console.log(`\n[${new Date().toLocaleTimeString()}] 📦 가격 데이터 수신: [${brand || 'Brand'}] ${title}`);
 
   try {
-    const lastRecord = await prisma.priceHistory.findFirst({
+    // 상품의 기존 가격 이력들을 조회하여 실시간 최저가 및 30일 중간값 산출
+    const allHistory = await prisma.priceHistory.findMany({
       where: { productId: id },
-      orderBy: { timestamp: 'desc' }
+      select: { price: true, timestamp: true }
     });
+
+    const priceList = [price, ...allHistory.map(h => h.price)];
+    const lowestPrice = Math.min(...priceList);
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentPrices = [
+      price,
+      ...allHistory.filter(h => new Date(h.timestamp) >= thirtyDaysAgo).map(h => h.price)
+    ];
+    const medianPrice30d = getMedian(recentPrices);
 
     // 트랜잭션으로 상품 정보와 히스토리를 묶어서 처리
     await prisma.$transaction([
       prisma.product.upsert({
         where: { id: id },
-        update: { brand, title, originalPrice, imageUrl, stockStatus, bestBenefit, category, subCategory },
-        create: { id, brand, title, originalPrice, imageUrl, stockStatus, bestBenefit, category, subCategory }
+        update: { 
+          brand, 
+          title, 
+          originalPrice, 
+          imageUrl, 
+          stockStatus, 
+          bestBenefit, 
+          category, 
+          subCategory,
+          currentPrice: price,
+          lowestPrice,
+          medianPrice30d
+        },
+        create: { 
+          id, 
+          brand, 
+          title, 
+          originalPrice, 
+          imageUrl, 
+          stockStatus, 
+          bestBenefit, 
+          category, 
+          subCategory,
+          currentPrice: price,
+          lowestPrice,
+          medianPrice30d
+        }
       }),
       prisma.priceHistory.create({
         data: { productId: id, price, timestamp: new Date(timestamp) }
@@ -238,6 +274,16 @@ async function handleSpecialsUpdate(data) {
   await prisma.systemLog.create({
     data: { type: 'SUCCESS', service: 'Worker', message: `특가/래플 정보 ${raffles.length + flashSales.length}건 처리 완료` }
   });
+}
+
+function getMedian(values) {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const half = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 !== 0) {
+    return sorted[half];
+  }
+  return Math.round((sorted[half - 1] + sorted[half]) / 2);
 }
 
 
