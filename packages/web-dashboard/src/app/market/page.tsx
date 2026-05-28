@@ -1,98 +1,31 @@
 import React from 'react';
+import { Flame, TrendingDown, Trophy, Target, BarChart3 } from 'lucide-react';
 import { prisma } from "@/lib/prisma";
-import MarketInsightView from "@/components/market/MarketInsightView";
+import TodaysPick from "@/components/market/TodaysPick";
+import DealsSection from "@/components/market/DealsSection";
+import MarketPulse from "@/components/market/MarketPulse";
 
 export const dynamic = 'force-dynamic';
 
 export default async function MarketPage() {
-  // 1. 브랜드별 상품 수 (Brand Dominance) - Top 5 + Others 그룹화
-  const brandGroups = await prisma.product.groupBy({
-    by: ['brand'],
-    _count: { id: true },
-    orderBy: { _count: { id: 'desc' } }
-  });
-
-  const totalBrands = brandGroups.length;
-  const top5 = brandGroups.slice(0, 5);
-  const others = brandGroups.slice(5);
-  const othersCount = others.reduce((acc, curr) => acc + curr._count.id, 0);
-
-  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#27272a'];
-  const brandDistribution = [
-    ...top5.map((group, i) => ({
-      name: group.brand || 'Etc',
-      value: group._count.id,
-      color: colors[i]
-    })),
-    { name: 'Others', value: othersCount, color: colors[5] }
-  ];
-
-  // 2. 전체 데이터 포인트 수
-  const totalDataPoints = await prisma.product.count();
-
-  // 3. 누적 절약 금액 (Savings Index)
-  // Prisma 5.22가 32k+ 결과셋의 nested select에서 패닉하는 이슈가 있어 priceHistory를 별도 쿼리로 분리
-  const productsRaw = await prisma.product.findMany({
-    where: { originalPrice: { gt: 0 } },
-    select: {
-      id: true,
-      title: true,
-      brand: true,
-      originalPrice: true,
-    },
-  });
-
-  // Postgres DISTINCT ON으로 product당 최신 가격 1건씩 효율적으로 가져옴
-  // (Prisma 5.22의 priceHistory.findMany는 32k+ 결과 + distinct에서 패닉함)
-  const latestPrices = await prisma.$queryRaw<{ productId: string; price: number }[]>`
-    SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
-    FROM "PriceHistory" ph
-    INNER JOIN "Product" p ON p.id = ph."productId"
-    WHERE p."originalPrice" > 0
-    ORDER BY ph."productId", ph.timestamp DESC
+  // 누적 차익은 한 번에 SQL로 (Prisma 5.22가 32k+ nested select에서 패닉)
+  const [savingsRow] = await prisma.$queryRaw<{ sum: number | null }[]>`
+    WITH latest AS (
+      SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
+      FROM "PriceHistory" ph ORDER BY ph."productId", ph.timestamp DESC
+    )
+    SELECT COALESCE(SUM(p."originalPrice" - latest.price), 0)::bigint AS sum
+    FROM "Product" p
+    JOIN latest ON latest."productId" = p.id
+    WHERE p."originalPrice" > latest.price
   `;
-  const priceMap = new Map(latestPrices.map(lp => [lp.productId, lp.price]));
+  const totalSavings = Number(savingsRow?.sum ?? 0);
 
-  let totalSavings = 0;
-  productsRaw.forEach(p => {
-    const currentPrice = priceMap.get(p.id) || 0;
-    if (p.originalPrice && currentPrice > 0 && p.originalPrice > currentPrice) {
-      totalSavings += (p.originalPrice - currentPrice);
-    }
-  });
+  const totalProducts = await prisma.product.count();
+  const activeAlerts = await prisma.priceAlert.count({ where: { isActive: true } });
+  const totalCategories = 8; // taxonomy.json의 main 카테고리 수
 
-  // 4. 브랜드별 평균 할인율 (Efficiency)
-  const brandDiscounts = top5.map(group => {
-    const brandProducts = productsRaw.filter(p => p.brand === group.brand);
-    const validDiscounts = brandProducts
-      .map(p => {
-        const current = priceMap.get(p.id) || 0;
-        if (!p.originalPrice || p.originalPrice <= 0 || current <= 0 || current >= p.originalPrice) return 0;
-        return ((p.originalPrice - current) / p.originalPrice) * 100;
-      })
-      .filter(rate => rate > 0);
-
-    const avgDiscount = validDiscounts.length > 0 
-      ? validDiscounts.reduce((acc, rate) => acc + rate, 0) / validDiscounts.length
-      : 0;
-
-    return {
-      category: group.brand || 'Etc',
-      discount: Math.round(avgDiscount)
-    };
-  }).filter(b => b.discount > 0).sort((a, b) => b.discount - a.discount);
-
-  // 5. 주차별 절약 추이
-  const savingsHistory = [
-    { week: 'W1', amount: totalSavings * 0.4 },
-    { week: 'W2', amount: totalSavings * 0.6 },
-    { week: 'W3', amount: totalSavings * 0.5 },
-    { week: 'W4', amount: totalSavings * 0.8 },
-    { week: 'W5', amount: totalSavings * 0.9 },
-    { week: 'W6', amount: totalSavings },
-  ];
-
-  // 6. Bento Grid 2.0용 미시 분석 데이터 집계 (Postgres Raw SQL 활용)
+  // 4가지 deal 섹션 데이터 동시 집계
   const [goldenLowsRaw, trueDealsRaw, flashDropsRaw, nearTargetsRaw] = await Promise.all([
     // A. Golden Lows (역대 최저가 도달)
     prisma.$queryRaw<any[]>`
@@ -208,19 +141,70 @@ export default async function MarketPage() {
     targetPrice: item.targetPrice ? Number(item.targetPrice) : null
   });
 
+  const flashDrops = flashDropsRaw.map(mapRawItem);
+  const trueDeals = trueDealsRaw.map(mapRawItem);
+  const goldenLows = goldenLowsRaw.map(mapRawItem);
+  const nearTargets = nearTargetsRaw.map(mapRawItem);
+
+  // Hero 후보 우선순위: flash → true → golden (가장 임팩트 있는 변동을 머리에)
+  const todaysPick = flashDrops[0] ?? trueDeals[0] ?? goldenLows[0] ?? null;
+
   return (
-    <MarketInsightView 
-      totalSavings={totalSavings}
-      brandDistribution={brandDistribution}
-      categoryEfficiency={brandDiscounts}
-      savingsHistory={savingsHistory}
-      totalDataPoints={totalDataPoints}
-      totalBrands={totalBrands}
-      goldenLows={goldenLowsRaw.map(mapRawItem)}
-      trueDeals={trueDealsRaw.map(mapRawItem)}
-      flashDrops={flashDropsRaw.map(mapRawItem)}
-      nearTargets={nearTargetsRaw.map(mapRawItem)}
-    />
+    <div className="pb-20 bg-zinc-950 text-zinc-50 min-h-screen">
+      <main className="max-w-7xl mx-auto px-6 pt-12 space-y-12">
+        <header className="space-y-2">
+          <div className="flex items-center gap-3 text-amber-400">
+            <BarChart3 size={18} />
+            <span className="text-xs font-black uppercase tracking-[0.3em]">Market</span>
+          </div>
+          <h1 className="text-5xl lg:text-6xl font-black tracking-tighter">Deals.</h1>
+          <p className="text-zinc-500 text-base lg:text-lg max-w-2xl">
+            지금 가격이 떨어진 상품, 30일 중앙값보다 싼 상품, 역대 최저가에 도달한 상품, 그리고 설정한 목표가에 임박한 상품을 한 화면에 모았습니다.
+          </p>
+        </header>
+
+        <TodaysPick item={todaysPick} />
+
+        <DealsSection
+          title="Flash Drops"
+          description="지난 48시간 안에 가격이 떨어진 상품"
+          icon={<TrendingDown size={18} />}
+          items={flashDrops}
+          variant="flash"
+        />
+
+        <DealsSection
+          title="True Deals"
+          description="30일 중앙값보다 의미 있게 싼 상품"
+          icon={<Flame size={18} />}
+          items={trueDeals}
+          variant="true"
+        />
+
+        <DealsSection
+          title="역대 최저가"
+          description="기록된 가격 중 가장 낮은 수준에 도달한 상품"
+          icon={<Trophy size={18} />}
+          items={goldenLows}
+          variant="golden"
+        />
+
+        <DealsSection
+          title="목표가 근접"
+          description="내가 설정한 목표가까지 5% 이내로 들어온 상품"
+          icon={<Target size={18} />}
+          items={nearTargets}
+          variant="target"
+        />
+
+        <MarketPulse
+          totalProducts={totalProducts}
+          activeAlerts={activeAlerts}
+          totalCategories={totalCategories}
+          totalSavings={totalSavings}
+        />
+      </main>
+    </div>
   );
 }
 
