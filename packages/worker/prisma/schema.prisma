@@ -16,6 +16,9 @@ model Product {
   imageUrl           String?
   stockStatus        String?
   bestBenefit        String?
+  currentPrice       Int?
+  medianPrice30d     Int?
+  lowestPrice        Int?
   category           String?        // /api/item 응답의 item_category_name (내부 분류, 일관성 낮음)
   subCategory        String?        // /api/item 응답의 brand_item_category_name
   thirdCategory      String?        // @deprecated → thirdCategories
