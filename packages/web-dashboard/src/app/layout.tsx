@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Navbar } from "@/components/Navbar";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
@@ -38,7 +35,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className="dark" suppressHydrationWarning>
-      <body className={cn(inter.className, "bg-zinc-950 text-zinc-50 antialiased min-h-screen")} suppressHydrationWarning>
+      <body className={cn("bg-zinc-950 text-zinc-50 antialiased min-h-screen font-sans")} suppressHydrationWarning>
         <Navbar />
         {children}
       </body>
