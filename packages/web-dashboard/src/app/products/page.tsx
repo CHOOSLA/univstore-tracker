@@ -14,12 +14,123 @@ export const dynamic = 'force-dynamic';
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ brand?: string; q?: string; menuCategory?: string; menuSubCategory?: string; thirdCategory?: string; sort?: string }>;
+  searchParams: Promise<{ brand?: string; q?: string; menuCategory?: string; menuSubCategory?: string; thirdCategory?: string; sort?: string; filter?: string }>;
 }) {
-  const { brand: brandFilter, q: searchQuery, menuCategory, menuSubCategory, thirdCategory, sort: sortOption = 'latest' } = await searchParams;
+  const { brand: brandFilter, q: searchQuery, menuCategory, menuSubCategory, thirdCategory, sort: sortOption = 'latest', filter: activeFilter } = await searchParams;
 
   // 지능형 검색 키워드 생성 (유사어 지원)
   const searchKeywords = searchQuery ? getSearchKeywords(searchQuery) : [];
+
+  // 특수 핫딜 필터링을 위한 상품 ID 추출
+  let filteredIds: string[] | undefined = undefined;
+
+  if (activeFilter) {
+    let idsRow: { id: string }[] = [];
+    if (activeFilter === 'flash') {
+      idsRow = await prisma.$queryRaw<{ id: string }[]>`
+        WITH price_48h_ago AS (
+          SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
+          FROM "PriceHistory" ph
+          WHERE ph.timestamp >= NOW() - INTERVAL '48 hours' AND ph.timestamp < NOW() - INTERVAL '24 hours'
+          ORDER BY ph."productId", ph.timestamp ASC
+        ),
+        latest_prices AS (
+          SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
+          FROM "PriceHistory" ph
+          ORDER BY ph."productId", ph.timestamp DESC
+        )
+        SELECT p.id
+        FROM "Product" p
+        JOIN latest_prices lp ON p.id = lp."productId"
+        JOIN price_48h_ago old ON p.id = old."productId"
+        WHERE lp.price < old.price
+          AND lp.price >= 10000
+          AND ((old.price - lp.price)::numeric / old.price::numeric) < 0.7
+          AND p."imageUrl" IS NOT NULL
+      `;
+    } else if (activeFilter === 'true') {
+      idsRow = await prisma.$queryRaw<{ id: string }[]>`
+        WITH median_prices AS (
+          SELECT "productId",
+                 PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY price) AS median_price,
+                 COUNT(*) AS samples
+          FROM "PriceHistory"
+          WHERE timestamp >= NOW() - INTERVAL '30 days'
+          GROUP BY "productId"
+        ),
+        latest_prices AS (
+          SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
+          FROM "PriceHistory" ph
+          ORDER BY ph."productId", ph.timestamp DESC
+        )
+        SELECT p.id
+        FROM "Product" p
+        JOIN latest_prices lp ON p.id = lp."productId"
+        JOIN median_prices mp ON p.id = mp."productId"
+        WHERE mp.samples >= 5
+          AND lp.price < mp.median_price
+          AND lp.price >= 10000
+          AND ((mp.median_price - lp.price)::numeric / mp.median_price::numeric) < 0.6
+          AND p."imageUrl" IS NOT NULL
+      `;
+    } else if (activeFilter === 'golden') {
+      idsRow = await prisma.$queryRaw<{ id: string }[]>`
+        WITH min_prices AS (
+          SELECT "productId", 
+                 MIN(price) as min_price,
+                 MAX(price) as max_price
+          FROM "PriceHistory"
+          GROUP BY "productId"
+        ),
+        latest_prices AS (
+          SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
+          FROM "PriceHistory" ph
+          ORDER BY ph."productId", ph.timestamp DESC
+        )
+        SELECT p.id
+        FROM "Product" p
+        JOIN latest_prices lp ON p.id = lp."productId"
+        JOIN min_prices mp ON p.id = mp."productId"
+        WHERE lp.price <= mp.min_price 
+          AND mp.max_price > mp.min_price
+          AND p."imageUrl" IS NOT NULL
+      `;
+    } else if (activeFilter === 'target') {
+      idsRow = await prisma.$queryRaw<{ id: string }[]>`
+        WITH alert_counts AS (
+          SELECT "productId", COUNT(*)::int as alerts_count
+          FROM "PriceAlert"
+          WHERE "isActive" = true
+          GROUP BY "productId"
+        )
+        SELECT p.id
+        FROM "Product" p
+        JOIN alert_counts ac ON p.id = ac."productId"
+        WHERE p."imageUrl" IS NOT NULL
+      `;
+    } else if (activeFilter === 'defense') {
+      idsRow = await prisma.$queryRaw<{ id: string }[]>`
+        WITH median_prices AS (
+          SELECT "productId", PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY price) AS median_price
+          FROM "PriceHistory"
+          WHERE timestamp >= NOW() - INTERVAL '30 days'
+          GROUP BY "productId"
+        ),
+        latest_prices AS (
+          SELECT DISTINCT ON (ph."productId") ph."productId", ph.price, ph.timestamp
+          FROM "PriceHistory" ph ORDER BY ph."productId", ph.timestamp DESC
+        )
+        SELECT p.id
+        FROM "Product" p
+        JOIN latest_prices lp ON p.id = lp."productId"
+        JOIN median_prices mp ON p.id = mp."productId"
+        WHERE p.brand IN ('Apple', 'Apple(애플)', 'Samsung', 'Samsung(삼성)', '삼성전자', '삼성', 'LG', 'LG전자', 'Sony', '소니', 'Dell', '델', 'HP', 'Lenovo', '레노버', 'Asus', '에이수스', 'Logitech', '로지텍', 'Intel', 'AMD', 'Nvidia')
+          AND lp.price < mp.median_price * 0.92
+          AND p."imageUrl" IS NOT NULL
+      `;
+    }
+    filteredIds = idsRow.map(r => r.id);
+  }
 
   // 1. 기본 필터 정의 (array 컬럼은 has 연산자로 N:M 필터링)
   const whereClause = {
@@ -29,6 +140,7 @@ export default async function ProductsPage({
       menuCategory ? { menuCategories: { has: menuCategory } } : {},
       menuSubCategory ? { menuSubCategories: { has: menuSubCategory } } : {},
       thirdCategory ? { thirdCategories: { has: thirdCategory } } : {},
+      filteredIds ? { id: { in: filteredIds } } : activeFilter ? { id: { in: [] } } : {}, // activeFilter가 있지만 매칭되는 ID가 없는 경우를 위한 빈 리스트 가드
       searchQuery ? {
         OR: searchKeywords.flatMap(kw => [
           { title: { contains: kw, mode: 'insensitive' } },
@@ -142,6 +254,37 @@ export default async function ProductsPage({
              </div>
           </div>
         </header>
+        
+        {activeFilter && (
+          <div className="flex flex-wrap items-center gap-2 px-2">
+            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Active Special Filter</span>
+            <div className="flex items-center space-x-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold px-3 py-1.5 rounded-xl shadow-[0_0_12px_rgba(59,130,246,0.08)]">
+              <span>
+                {activeFilter === 'flash' && '⚡ 반짝 가격 하락 (Flash Drops)'}
+                {activeFilter === 'true' && '🔥 평균 대비 저렴 (True Deals)'}
+                {activeFilter === 'golden' && '🏆 역대 최저가 달성'}
+                {activeFilter === 'target' && '🎯 인기 알림 저격 (Most Hunted)'}
+                {activeFilter === 'defense' && '🚨 브랜드 가격 방어선 붕괴'}
+              </span>
+              <Link
+                href={{
+                  pathname: '/products',
+                  query: {
+                    ...(searchQuery ? { q: searchQuery } : {}),
+                    ...(brandFilter ? { brand: brandFilter } : {}),
+                    ...(menuCategory ? { menuCategory } : {}),
+                    ...(menuSubCategory ? { menuSubCategory } : {}),
+                    ...(thirdCategory ? { thirdCategory } : {}),
+                    ...(sortOption !== 'latest' ? { sort: sortOption } : {}),
+                  }
+                }}
+                className="hover:text-white hover:bg-white/10 rounded-md p-0.5 transition-all ml-1 font-black text-xs inline-flex items-center justify-center w-4 h-4"
+              >
+                ✕
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* --- [Toolbar: Search, Sort & Brands] --- */}
         <div className="space-y-4 md:space-y-6">
@@ -163,7 +306,7 @@ export default async function ProductsPage({
                   key={opt.id}
                   href={{
                     pathname: '/products',
-                    query: { ...(searchQuery ? { q: searchQuery } : {}), ...(brandFilter ? { brand: brandFilter } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), sort: opt.id }
+                    query: { ...(searchQuery ? { q: searchQuery } : {}), ...(brandFilter ? { brand: brandFilter } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(activeFilter ? { filter: activeFilter } : {}), sort: opt.id }
                   }}
                   className={cn(
                     "px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0",
@@ -179,7 +322,7 @@ export default async function ProductsPage({
               <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Brand</span>
               <Link href={{
                 pathname: '/products',
-                query: { ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}) }
+                query: { ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}), ...(activeFilter ? { filter: activeFilter } : {}) }
               }} className={cn(
                 "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0",
                 !brandFilter ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
@@ -189,7 +332,7 @@ export default async function ProductsPage({
                   key={b}
                   href={{
                     pathname: '/products',
-                    query: { brand: b, ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}) }
+                    query: { brand: b, ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}), ...(activeFilter ? { filter: activeFilter } : {}) }
                   }}
                   className={cn(
                     "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0",
@@ -212,7 +355,7 @@ export default async function ProductsPage({
         <VirtualizedProductList
           initialItems={safeInitialItems}
           initialCursor={initialCursor}
-          searchParams={{ q: searchQuery, brand: brandFilter, menuCategory, menuSubCategory, thirdCategory, sort: sortOption }}
+          searchParams={{ q: searchQuery, brand: brandFilter, menuCategory, menuSubCategory, thirdCategory, sort: sortOption, filter: activeFilter }}
         />
       </main>
     </div>
