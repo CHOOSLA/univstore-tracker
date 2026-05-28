@@ -52,7 +52,7 @@ export async function GET(request: Request) {
         SELECT id
         FROM "Product"
         WHERE "currentPrice" <= "lowestPrice"
-          AND "originalPrice" > "lowestPrice"
+          AND "lowestPrice" < "highestPrice"
           AND "imageUrl" IS NOT NULL
       `;
     } else if (activeFilter === 'target') {

@@ -57,7 +57,7 @@ export default async function ProductsPage({
         SELECT id
         FROM "Product"
         WHERE "currentPrice" <= "lowestPrice"
-          AND "originalPrice" > "lowestPrice"
+          AND "lowestPrice" < "highestPrice"
           AND "imageUrl" IS NOT NULL
       `;
     } else if (activeFilter === 'target') {

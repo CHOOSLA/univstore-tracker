@@ -44,7 +44,7 @@ export default async function MarketPage() {
       SELECT id, title, brand, "imageUrl", "currentPrice", "originalPrice"
       FROM "Product"
       WHERE "currentPrice" <= "lowestPrice"
-        AND "originalPrice" > "lowestPrice"
+        AND "lowestPrice" < "highestPrice"
         AND "imageUrl" IS NOT NULL
       ORDER BY "updatedAt" DESC
       LIMIT 12
