@@ -64,6 +64,9 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
       } catch (e) {
         console.error("Failed to restore list cache:", e);
       }
+    } else {
+      // 캐시가 없는 신규 진입의 경우, 브라우저 네이티브 복원에 의해 스크롤이 중간에 걸리는 것을 막기 위해 최상단으로 강제 초기화
+      window.scrollTo(0, 0);
     }
   }, [searchParams]);
 
