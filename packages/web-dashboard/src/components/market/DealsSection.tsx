@@ -35,7 +35,7 @@ export default function DealsSection({ title, description, icon, items, variant 
           No matching products detected
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {items.map(item => (
             <DealCard key={item.id} item={item} variant={variant} />
           ))}

@@ -47,7 +47,7 @@ export default function BrandDefenseBanner({ items }: Props) {
       </div>
 
       {/* 대형 카드 레이아웃 그리드 (반응형 다단 레이아웃 설계) */}
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="relative z-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
         {items.slice(0, 12).map((item) => (
           <DealCard key={item.id} item={item} variant="true" />
         ))}
