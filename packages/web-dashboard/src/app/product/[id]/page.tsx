@@ -40,6 +40,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     ? `https://www.univstore.com/mno/item/${product.id}`
     : `https://www.univstore.com/item/${product.id}`;
 
+  // 통신사 상품이면 옵션/요금제 메타데이터 동봉
+  const mnoOption = isMnoItem
+    ? await prisma.mnoOption.findUnique({ where: { productId: id } })
+    : null;
+
   return (
     <ProductDetailView
       product={product}
@@ -53,6 +58,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       existingAlerts={priceAlerts.map(a => ({ id: a.id, targetPrice: a.targetPrice }))}
       isMnoItem={isMnoItem}
       externalUrl={externalUrl}
+      mnoOption={mnoOption ? JSON.parse(JSON.stringify(mnoOption)) : null}
     />
   );
 }

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import PriceAlertControl from "./PriceAlertControl";
+import MnoCalculator from "./MnoCalculator";
 import { 
   AreaChart, 
   Area, 
@@ -57,11 +58,13 @@ interface ProductDetailViewProps {
   isMnoItem?: boolean;
   /** 외부 store URL 직접 주입. 제공되면 isMnoItem과 무관하게 우선 사용. */
   externalUrl?: string;
+  /** 통신사 상품 옵션/요금제. 있으면 MnoCalculator 렌더 */
+  mnoOption?: import("./MnoCalculator").MnoOptionData | null;
 }
 
 type RangeType = '1M' | '3M' | '6M' | 'ALL';
 
-export default function ProductDetailView({ product, history, benefitRules, existingAlerts, isMnoItem = false, externalUrl }: ProductDetailViewProps) {
+export default function ProductDetailView({ product, history, benefitRules, existingAlerts, isMnoItem = false, externalUrl, mnoOption }: ProductDetailViewProps) {
   // externalUrl이 주입되면 그대로, 아니면 isMnoItem 분기로 fallback
   const buyNowUrl = externalUrl ?? (isMnoItem
     ? `https://www.univstore.com/mno/item/${product.id}`
@@ -228,7 +231,7 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                       itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
-                      formatter={(value: number) => [`₩${value.toLocaleString()}`, 'Price']}
+                      formatter={(value: any) => [`₩${Number(value).toLocaleString()}`, 'Price']}
                       labelStyle={{ color: '#71717a', marginBottom: '4px', fontSize: '10px' }}
                     />
                     <Area type="monotone" dataKey="price" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPriceDetail)" isAnimationActive={false} />
@@ -303,6 +306,10 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                 </button>
                 */}
               </div>
+
+              {mnoOption && (
+                <MnoCalculator devicePrice={currentPrice} option={mnoOption} />
+              )}
             </div>
 
             {/* Metrics Dashboard */}
