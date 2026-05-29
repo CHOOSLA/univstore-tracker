@@ -53,11 +53,20 @@ interface ProductDetailViewProps {
   history: PriceHistoryEntry[];
   benefitRules: BenefitRuleProp[];
   existingAlerts: { id: number, targetPrice: number }[];
+  /** univstore의 통신사(mno) 카테고리 상품 여부. true면 Buy Now URL이 /mno/item/{id}로 분기 */
+  isMnoItem?: boolean;
+  /** 외부 store URL 직접 주입. 제공되면 isMnoItem과 무관하게 우선 사용. */
+  externalUrl?: string;
 }
 
 type RangeType = '1M' | '3M' | '6M' | 'ALL';
 
-export default function ProductDetailView({ product, history, benefitRules, existingAlerts }: ProductDetailViewProps) {
+export default function ProductDetailView({ product, history, benefitRules, existingAlerts, isMnoItem = false, externalUrl }: ProductDetailViewProps) {
+  // externalUrl이 주입되면 그대로, 아니면 isMnoItem 분기로 fallback
+  const buyNowUrl = externalUrl ?? (isMnoItem
+    ? `https://www.univstore.com/mno/item/${product.id}`
+    : `https://www.univstore.com/item/${product.id}`);
+
   const [mounted, setMounted] = useState(false);
   const [range, setRange] = useState<RangeType>('1M');
   
@@ -279,7 +288,7 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                 {/* 외부 도메인이라 next/link 대신 일반 anchor 사용
                     (next/link로 외부 URL을 쓰면 라우터가 가로채서 클릭이 무시되는 케이스가 있음) */}
                 <a
-                  href={`https://www.univstore.com/item/${product.id}`}
+                  href={buyNowUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex w-full items-center justify-center space-x-2 bg-white text-black h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-200 transition-all"

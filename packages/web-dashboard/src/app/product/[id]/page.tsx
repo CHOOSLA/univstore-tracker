@@ -8,24 +8,15 @@ export const dynamic = 'force-dynamic';
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  // 1. 상품 기본 정보 조회
-  const product = await prisma.product.findUnique({
-    where: { id },
-  });
+  const product = await prisma.product.findUnique({ where: { id } });
+  if (!product) return notFound();
 
-  if (!product) {
-    return notFound();
-  }
-
-  // 2. 가격 이력 전체 조회 (차트용)
   const history = await prisma.priceHistory.findMany({
     where: { productId: id },
     orderBy: { timestamp: 'desc' },
-    // 1000개 정도면 수년간의 일일 데이터로 충분함
-    take: 1000, 
+    take: 1000,
   });
 
-  // 클라이언트에서 처리하기 편하도록 타임스탬프와 가격만 전달
   const formattedHistory = history.map(h => ({
     date: h.timestamp.toISOString(),
     price: h.price
@@ -41,10 +32,18 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     orderBy: { targetPrice: 'asc' }
   });
 
+  // 통신사(mno) 상품은 univstore에서 /mno/item/{id} 경로에 노출됨
+  // menuSubCategories에 '통신사'가 포함된 상품은 Buy Now URL을 mno 경로로 분기해야
+  // univstore의 홈 redirect를 피할 수 있음 (사용자 신고로 발견된 패턴)
+  const isMnoItem = product.menuSubCategories?.includes('통신사') ?? false;
+  const externalUrl = isMnoItem
+    ? `https://www.univstore.com/mno/item/${product.id}`
+    : `https://www.univstore.com/item/${product.id}`;
+
   return (
-    <ProductDetailView 
-      product={product} 
-      history={formattedHistory} 
+    <ProductDetailView
+      product={product}
+      history={formattedHistory}
       benefitRules={benefitRules.map(r => ({
         pattern: r.pattern,
         rate: r.rate,
@@ -52,6 +51,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         label: r.label
       }))}
       existingAlerts={priceAlerts.map(a => ({ id: a.id, targetPrice: a.targetPrice }))}
+      isMnoItem={isMnoItem}
+      externalUrl={externalUrl}
     />
   );
 }
