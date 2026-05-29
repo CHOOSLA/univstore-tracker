@@ -90,6 +90,11 @@ async function handlePriceUpdate(payload) {
     const lowestPrice = Math.min(...priceList);
     const highestPrice = Math.max(...priceList);
 
+    // 직전 기록(가장 최근 timestamp) — 가격 하락 알림 비교 기준
+    const lastRecord = allHistory.length > 0
+      ? allHistory.reduce((a, b) => new Date(a.timestamp) > new Date(b.timestamp) ? a : b)
+      : null;
+
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const recentPrices = [
       price,
