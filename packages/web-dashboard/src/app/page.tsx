@@ -172,7 +172,7 @@ export default async function HomePage() {
                     <div className="space-y-2 md:space-y-3 flex-1">
                        <div className="space-y-1">
                           <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
-                          <p className="text-xs md:text-base font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[2.5rem] md:h-[3rem]">
+                          <p className="text-xs md:text-base font-bold text-white leading-snug group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[2.5em] break-keep">
                             {item.title}
                           </p>
                        </div>
