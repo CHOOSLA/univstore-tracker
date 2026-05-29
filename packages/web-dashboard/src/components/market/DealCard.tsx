@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { Sparkline } from '../Sparkline';
+import PriceScoreBadge from '../common/PriceScoreBadge';
 
 export type DealVariant = 'flash' | 'true' | 'golden' | 'target';
 
@@ -20,6 +21,7 @@ export interface DealItem {
   dropPercent?: number | null;
   targetPrice?: number | null;
   history?: number[];
+  priceScore?: number | null;
 }
 
 interface DealCardProps {
@@ -28,7 +30,7 @@ interface DealCardProps {
 }
 
 export default function DealCard({ item, variant }: DealCardProps) {
-  const { id, title, brand, imageUrl, currentPrice } = item;
+  const { id, title, brand, imageUrl, currentPrice, priceScore } = item;
 
   const { headlinePercent, comparisonLabel, comparisonValue, accentColor } = (() => {
     switch (variant) {
@@ -204,7 +206,10 @@ export default function DealCard({ item, variant }: DealCardProps) {
       {/* 정보 영역 */}
       <div className="space-y-3 flex-1 flex flex-col justify-between">
         <div className="space-y-1">
-          <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest leading-none">{brand}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest leading-none truncate">{brand}</p>
+            <PriceScoreBadge score={priceScore} />
+          </div>
           <p className="text-xs md:text-sm font-bold text-white leading-snug group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[2.5em] break-keep">
             {title}
           </p>

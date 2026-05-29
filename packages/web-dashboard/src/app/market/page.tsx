@@ -24,7 +24,7 @@ export default async function MarketPage() {
 
   // 2. 프리미엄 브랜드 가격 장벽 붕괴 쿼리 (역정규화 필드 활용해 무거운 Median 조인 제거)
   const brandDefenseRaw = await prisma.$queryRaw<any[]>`
-    SELECT id, title, brand, "imageUrl", "currentPrice",
+    SELECT id, title, brand, "imageUrl", "currentPrice", "priceScore",
            "medianPrice30d" as "avgPrice",
            ROUND((("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) * 100, 1) as "gapPercent"
     FROM "Product"
@@ -41,7 +41,7 @@ export default async function MarketPage() {
   const [goldenLowsRaw, trueDealsRaw, flashDropsRaw, mostHuntedRaw] = await Promise.all([
     // A. Golden Lows (역대 최저가 도달)
     prisma.$queryRaw<any[]>`
-      SELECT id, title, brand, "imageUrl", "currentPrice", "originalPrice"
+      SELECT id, title, brand, "imageUrl", "currentPrice", "originalPrice", "priceScore"
       FROM "Product"
       WHERE "currentPrice" <= "lowestPrice"
         AND "lowestPrice" < "highestPrice"
@@ -73,7 +73,7 @@ export default async function MarketPage() {
         WHERE ph.timestamp >= NOW() - INTERVAL '48 hours' AND ph.timestamp < NOW() - INTERVAL '24 hours'
         ORDER BY ph."productId", ph.timestamp ASC
       )
-      SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", old.price as "prevPrice",
+      SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", p."priceScore", old.price as "prevPrice",
              (old.price - p."currentPrice") as "dropAmount",
              ROUND(((old.price - p."currentPrice")::numeric / old.price::numeric) * 100, 1) as "dropPercent"
       FROM "Product" p
@@ -93,7 +93,7 @@ export default async function MarketPage() {
         WHERE "isActive" = true
         GROUP BY "productId"
       )
-      SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", ac.alerts_count as "targetPrice"
+      SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", p."priceScore", ac.alerts_count as "targetPrice"
       FROM "Product" p
       JOIN alert_counts ac ON p.id = ac."productId"
       WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
@@ -146,7 +146,8 @@ export default async function MarketPage() {
     dropAmount: item.dropAmount ? Number(item.dropAmount) : null,
     dropPercent: item.dropPercent ? Number(item.dropPercent) : null,
     targetPrice: item.targetPrice ? Number(item.targetPrice) : null,
-    history: historyMap[item.id] || []
+    history: historyMap[item.id] || [],
+    priceScore: item.priceScore !== null && item.priceScore !== undefined ? Number(item.priceScore) : null,
   });
 
   const flashDrops = flashDropsRaw.map(mapRawItem);

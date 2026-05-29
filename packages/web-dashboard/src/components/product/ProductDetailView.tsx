@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import PriceAlertControl from "./PriceAlertControl";
 import MnoCalculator from "./MnoCalculator";
+import PriceScoreBadge from "../common/PriceScoreBadge";
 import { 
   AreaChart, 
   Area, 
@@ -50,6 +51,7 @@ interface ProductDetailViewProps {
     imageUrl: string | null;
     stockStatus: string | null;
     bestBenefit: string | null;
+    priceScore?: number | null;
   };
   history: PriceHistoryEntry[];
   benefitRules: BenefitRuleProp[];
@@ -174,6 +176,7 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                         "text-[9px] md:text-[10px] font-black px-2 py-1 rounded border uppercase tracking-widest",
                         product.stockStatus === "Low Stock" || product.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                       )}>{product.stockStatus || 'In Stock'}</span>
+                      <PriceScoreBadge score={product.priceScore} size="md" />
                     </div>
                     <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter">
                       {product.title}

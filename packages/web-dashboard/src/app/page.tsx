@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import { getStorageMetrics } from "./terminal/actions";
 import HomeSearchBar from "@/components/HomeSearchBar";
+import PriceScoreBadge from "@/components/common/PriceScoreBadge";
 
 export const dynamic = 'force-dynamic';
 
@@ -205,7 +206,10 @@ export default async function HomePage() {
                     {/* 중간: 이름 & 가격 */}
                     <div className="space-y-2 md:space-y-3 flex-1">
                        <div className="space-y-1">
-                          <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest truncate">{item.brand || 'Brand'}</p>
+                            <PriceScoreBadge score={(item as any).priceScore} />
+                          </div>
                           <p className="text-xs md:text-base font-bold text-white leading-snug group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[2.5em] break-keep">
                             {item.title}
                           </p>

@@ -90,6 +90,11 @@ async function handlePriceUpdate(payload) {
     const lowestPrice = Math.min(...priceList);
     const highestPrice = Math.max(...priceList);
 
+    // 가격 등급 0~100 (100=역대최저, 0=역대최고)
+    const priceScore = highestPrice === lowestPrice
+      ? 50
+      : Math.max(0, Math.min(100, Math.round((highestPrice - price) * 100 / (highestPrice - lowestPrice))));
+
     // 직전 기록(가장 최근 timestamp) — 가격 하락 알림 비교 기준
     const lastRecord = allHistory.length > 0
       ? allHistory.reduce((a, b) => new Date(a.timestamp) > new Date(b.timestamp) ? a : b)
@@ -118,7 +123,8 @@ async function handlePriceUpdate(payload) {
           currentPrice: price,
           lowestPrice,
           highestPrice,
-          medianPrice30d
+          medianPrice30d,
+          priceScore
         },
         create: { 
           id, 
@@ -133,7 +139,8 @@ async function handlePriceUpdate(payload) {
           currentPrice: price,
           lowestPrice,
           highestPrice,
-          medianPrice30d
+          medianPrice30d,
+          priceScore
         }
       }),
       prisma.priceHistory.create({
