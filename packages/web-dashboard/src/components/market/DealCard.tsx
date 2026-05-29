@@ -205,7 +205,7 @@ export default function DealCard({ item, variant }: DealCardProps) {
       <div className="space-y-3 flex-1 flex flex-col justify-between">
         <div className="space-y-1">
           <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest leading-none">{brand}</p>
-          <p className="text-xs md:text-sm font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[2.5rem] md:h-[2.5rem] overflow-hidden">
+          <p className="text-xs md:text-sm font-bold text-white leading-snug group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[2.5em] break-keep">
             {title}
           </p>
         </div>
