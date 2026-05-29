@@ -159,18 +159,18 @@ export default async function MarketPage() {
 
   return (
     <div className="pb-24 bg-zinc-950 text-zinc-100 min-h-screen">
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-10 space-y-12">
-        <header className="space-y-4 border-b border-white/5 pb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6 px-2">
-          <div className="space-y-2 flex-1">
-            <div className="flex items-center gap-2 text-amber-500">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 space-y-12">
+        <header className="space-y-4 text-center md:text-left border-b border-white/5 pb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6 px-2">
+          <div className="space-y-3 flex-1">
+            <div className="flex items-center justify-center md:justify-start gap-2 text-amber-500">
               <BarChart3 size={16} />
               <span className="text-xs font-black uppercase tracking-[0.25em]">Market Data Pulse</span>
             </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight text-white uppercase leading-none">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tight text-white uppercase leading-[1.1] md:leading-[1.1]">
               Deals.
             </h1>
-            <p className="text-zinc-300 text-sm md:text-base font-medium max-w-3xl leading-relaxed mt-2">
-              수집된 가격 통계를 기반으로 진짜 가치가 확인된 타겟 하락 상품 정보를 실시간 데이터 콘솔 형식으로 제공합니다.
+            <p className="text-zinc-400 text-base md:text-lg font-medium max-w-3xl leading-relaxed">
+              수집된 가격 통계를 기반으로 진짜 가치가 확인된 타겟 하락 상품을 실시간으로 보여줍니다.
             </p>
           </div>
         </header>

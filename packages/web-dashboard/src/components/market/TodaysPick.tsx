@@ -23,7 +23,7 @@ export default function TodaysPick({ item }: Props) {
     <section className="glass rounded-[32px] md:rounded-[40px] overflow-hidden border-white/[0.03] bg-gradient-to-br from-zinc-900/40 via-zinc-900/10 to-zinc-950 relative">
       <div className="absolute -top-16 -right-16 w-56 h-56 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 p-6 lg:p-10 relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 md:gap-8 p-5 md:p-8 lg:p-10 relative z-10">
         {/* 이미지 */}
         <div className="lg:col-span-2">
           <Link href={`/product/${id}`} className="block group">
