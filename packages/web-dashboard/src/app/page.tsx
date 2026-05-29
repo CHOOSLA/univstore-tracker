@@ -104,22 +104,56 @@ export default async function HomePage() {
           </p>
         </section>
 
-        {/* --- [Live Deals Ticker Banner] --- */}
-        <Link href="/market" className="relative group block overflow-hidden rounded-[24px] border border-blue-500/20 bg-gradient-to-r from-blue-950/20 via-zinc-900/30 to-zinc-950/90 p-4 md:px-6 md:py-4 transition-all duration-300 hover:border-blue-500/40 hover:shadow-[0_0_24px_rgba(59,130,246,0.1)]">
-          <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all duration-700 pointer-events-none" />
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
-            <div className="flex items-center space-x-3 text-center md:text-left">
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-              </span>
-              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 shrink-0">Live Alert</span>
-              <p className="text-zinc-300 text-xs md:text-sm font-medium">
-                현재 마켓에서 <span className="text-amber-400 font-black">역대 최저가 {goldenCount}개</span> 및 <span className="text-red-400 font-black">평균대비 급락 {trueDealsCount}개</span> 상품 실시간 감지됨.
+        {/* --- [Live Deals CTA Card] --- */}
+        <Link
+          href="/market"
+          className="relative group block overflow-hidden rounded-[24px] md:rounded-[28px] border border-white/10 hover:border-blue-500/40 bg-gradient-to-br from-blue-950/25 via-zinc-900/40 to-zinc-950 p-5 md:p-7 transition-all duration-300 hover:shadow-[0_0_40px_rgba(59,130,246,0.18)] hover:-translate-y-0.5"
+        >
+          {/* 배경 앰비언트 */}
+          <div className="absolute -top-20 -right-20 w-72 h-72 bg-blue-500/8 rounded-full blur-3xl group-hover:bg-blue-500/15 transition-colors duration-700 pointer-events-none" />
+          <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-amber-500/[0.04] rounded-full blur-3xl group-hover:bg-amber-500/8 transition-colors duration-700 pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
+            {/* 좌측: LIVE + 큰 숫자 두 개 + 부가 설명 */}
+            <div className="space-y-3 md:space-y-4 flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-400">Live Now</span>
+              </div>
+
+              <div className="flex flex-wrap items-baseline gap-x-6 md:gap-x-10 gap-y-2">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl md:text-5xl font-black text-amber-400 leading-none tabular-nums">
+                    {goldenCount.toLocaleString()}
+                  </span>
+                  <span className="text-[11px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+                    역대 최저
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl md:text-5xl font-black text-red-400 leading-none tabular-nums">
+                    {trueDealsCount.toLocaleString()}
+                  </span>
+                  <span className="text-[11px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+                    평균 대비 급락
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-xs md:text-sm text-zinc-400 font-medium leading-relaxed">
+                지금 마켓에서 실시간으로 감지된 가격 기회입니다.
               </p>
             </div>
-            <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center shrink-0 bg-blue-500/5 px-3.5 py-2 rounded-xl border border-blue-500/10 group-hover:bg-blue-500/10 transition-colors">
-              Deals Console 입장 <ArrowRight size={12} className="ml-1 group-hover:translate-x-1 transition-transform" />
+
+            {/* 우측: 진짜 버튼처럼 보이는 CTA */}
+            <div className="shrink-0 w-full md:w-auto">
+              <div className="flex w-full md:w-auto items-center justify-center gap-2 px-5 md:px-7 py-3.5 md:py-4 rounded-2xl bg-white text-black font-black text-sm md:text-base uppercase tracking-wider group-hover:bg-amber-300 transition-colors shadow-[0_4px_24px_rgba(255,255,255,0.08)] group-hover:shadow-[0_6px_28px_rgba(252,211,77,0.25)]">
+                <span>마켓 보러 가기</span>
+                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </div>
             </div>
           </div>
         </Link>
