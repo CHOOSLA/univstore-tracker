@@ -162,10 +162,10 @@ export default function DealCard({ item, variant }: DealCardProps) {
   return (
     <Link
       href={`/product/${id}`}
-      className="glass glass-hover p-4 md:p-5 rounded-[32px] border-white/[0.03] flex flex-col space-y-4 group transition-all duration-300"
+      className="glass glass-hover p-4 md:p-6 rounded-[32px] md:rounded-[40px] border-white/[0.03] flex flex-col space-y-4 md:space-y-5 group transition-all duration-300"
     >
       {/* 이미지 영역 */}
-      <div className="w-full aspect-square bg-zinc-950 rounded-2xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 relative">
+      <div className="w-full aspect-square bg-zinc-950 rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 relative">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
