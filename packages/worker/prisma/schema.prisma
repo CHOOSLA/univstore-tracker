@@ -29,6 +29,7 @@ model Product {
   menuCategories     String[]       @default([])
   menuSubCategories  String[]       @default([])
   thirdCategories    String[]       @default([])
+  mnoOption          MnoOption?     // 통신사 상품일 때만 row 존재 (1:1)
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   priceHistory       PriceHistory[]
@@ -151,5 +152,19 @@ model TelegramSubscriber {
   token     String   @unique
   chatId    String
   createdAt DateTime @default(now())
+}
+
+/// 통신사(mno) 상품의 옵션 메타데이터. Product 1건당 1행 (통신사 상품일 때만).
+/// phonePlans는 sub-entity가 단순(평면 객체 배열)이고 함께 조회되는 패턴이라 JSON으로 묶음.
+model MnoOption {
+  productId          String   @id
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  deviceColors       String[] @default([]) // option2Text — ["제트블랙","블루쉐도우","코랄레드"]
+  deviceCapacities   String[] @default([]) // option1Text — ["256GB"]
+  registrationTypes  String[] @default([]) // ["DEVICE_CHANGE","NUMBER_CHANGE","NEW"]
+  baseColor          String?  // optionPickers.option2_text — price2 기준 옵션 색상
+  baseCapacity       String?  // optionPickers.option1_text — price2 기준 용량
+  phonePlans         Json     // [{id,name,monthPrice,publicXXXAmount,additionalXXXAmount,isDefault}, ...]
+  updatedAt          DateTime @updatedAt
 }
 
