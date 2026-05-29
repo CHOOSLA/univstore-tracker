@@ -276,14 +276,17 @@ export default function ProductDetailView({ product, history, benefitRules, exis
               </div>
 
               <div className="flex w-full">
-                <Link 
+                {/* 외부 도메인이라 next/link 대신 일반 anchor 사용
+                    (next/link로 외부 URL을 쓰면 라우터가 가로채서 클릭이 무시되는 케이스가 있음) */}
+                <a
                   href={`https://www.univstore.com/item/${product.id}`}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="flex w-full items-center justify-center space-x-2 bg-white text-black h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-200 transition-all"
                 >
                   <span>Buy Now</span>
                   <ExternalLink className="w-4 h-4 md:w-[18px] md:h-[18px]" />
-                </Link>
+                </a>
                 {/* Price Target Alert 기능 비활성화로 인한 Track 버튼 주석 처리
                 <button className="flex items-center justify-center space-x-2 bg-zinc-900 border border-white/5 text-white h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-800 transition-all">
                   <Zap className="w-4 h-4 md:w-[18px] md:h-[18px]" />
