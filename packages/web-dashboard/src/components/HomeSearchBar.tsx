@@ -7,11 +7,12 @@ import { cn } from '@/lib/utils';
 
 const PLACEHOLDERS = [
   'MacBook Air M3 검색...',
-  'AirPods Pro 검색...',
+  '10만원 이하 무선 이어폰',
+  '5만 ~ 20만 가방',
+  '역대최저 키보드',
   '갤럭시 S25 검색...',
+  '30% 할인 Apple',
   'iPad 검색...',
-  'Nintendo Switch 검색...',
-  'Sony 헤드폰 검색...',
 ];
 
 export default function HomeSearchBar() {

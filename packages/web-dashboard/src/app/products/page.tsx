@@ -8,6 +8,7 @@ import VirtualizedProductList from "@/components/products/VirtualizedProductList
 import CategoryMenu, { CategoryCounts } from "@/components/products/CategoryMenu";
 import { Suspense } from 'react';
 import { getSearchKeywords } from "@/lib/search-utils";
+import { parseNaturalQuery } from "@/lib/parseNaturalQuery";
 
 export const dynamic = 'force-dynamic';
 
@@ -18,8 +19,9 @@ export default async function ProductsPage({
 }) {
   const { brand: brandFilter, q: searchQuery, menuCategory, menuSubCategory, thirdCategory, sort: sortOption = 'latest', filter: activeFilter } = await searchParams;
 
-  // 지능형 검색 키워드 생성 (유사어 지원)
-  const searchKeywords = searchQuery ? getSearchKeywords(searchQuery) : [];
+  // 자연어 파싱 (가격 범위/하락률/역대최저 등 토큰 추출). 잔여 키워드만 유사어 확장.
+  const parsedNL = searchQuery ? parseNaturalQuery(searchQuery) : { keywords: '', detected: [] as string[] };
+  const searchKeywords = parsedNL.keywords ? getSearchKeywords(parsedNL.keywords) : [];
 
   // 특수 핫딜 필터링을 위한 상품 ID 추출
   let filteredIds: string[] | undefined = undefined;
@@ -95,13 +97,22 @@ export default async function ProductsPage({
       menuSubCategory ? { menuSubCategories: { has: menuSubCategory } } : {},
       thirdCategory ? { thirdCategories: { has: thirdCategory } } : {},
       filteredIds ? { id: { in: filteredIds } } : activeFilter ? { id: { in: [] } } : {}, // activeFilter가 있지만 매칭되는 ID가 없는 경우를 위한 빈 리스트 가드
-      searchQuery ? {
+      searchKeywords.length > 0 ? {
         OR: searchKeywords.flatMap(kw => [
           { title: { contains: kw, mode: 'insensitive' } },
           { brand: { contains: kw, mode: 'insensitive' } },
           { id: { contains: kw } },
         ])
-      } : {}
+      } : {},
+      // 자연어 추출 가격 범위
+      parsedNL.minPrice !== undefined ? { currentPrice: { gte: parsedNL.minPrice } } : {},
+      parsedNL.maxPrice !== undefined ? { currentPrice: { lte: parsedNL.maxPrice } } : {},
+      // 자연어 "N% 할인" → originalPrice 대비 currentPrice 차이 비율 비교는
+      // SQL 표현이 까다로워 priceScore 90+를 근사값으로 사용 (역대 최저 근접)
+      parsedNL.minDropPercent !== undefined && parsedNL.minDropPercent >= 30
+        ? { priceScore: { gte: 90 } } : {},
+      // 자연어 "역대최저" → priceScore 90+
+      parsedNL.onlyGoldenLow ? { priceScore: { gte: 90 } } : {},
     ]
   };
 
@@ -242,6 +253,21 @@ export default async function ProductsPage({
 
         {/* --- [Toolbar: Search, Sort & Brands] --- */}
         <div className="space-y-4 md:space-y-6">
+          {parsedNL.detected.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 px-2">
+              <span className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">자연어 인식</span>
+              {parsedNL.detected.map((d, i) => (
+                <span key={i} className="text-[10px] md:text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-md px-2 py-0.5 md:py-1">
+                  {d}
+                </span>
+              ))}
+              {parsedNL.keywords && (
+                <span className="text-[10px] md:text-xs font-bold text-zinc-400 bg-zinc-800/40 border border-white/5 rounded-md px-2 py-0.5 md:py-1">
+                  keyword · {parsedNL.keywords}
+                </span>
+              )}
+            </div>
+          )}
           <div className="flex flex-col lg:flex-row gap-3 md:gap-4 bg-zinc-900/30 p-2 md:p-3 rounded-2xl md:rounded-[32px] border border-white/5 backdrop-blur-md">
             <Suspense fallback={<div className="flex-1 h-12 bg-zinc-900/50 animate-pulse rounded-2xl" />}>
               <div className="flex-1">
