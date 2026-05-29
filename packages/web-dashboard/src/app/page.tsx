@@ -25,7 +25,17 @@ export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   // 1. 데이터 병렬 쿼리 (추천 PICK 전체 수집 및 모든 지표 포함)
-  const [totalProductsCount, totalHistoryCount, brandGroups, dailyPicks, featuredProducts, storage, dbStats] = await Promise.all([
+  const [
+    totalProductsCount, 
+    totalHistoryCount, 
+    brandGroups, 
+    dailyPicks, 
+    featuredProducts, 
+    storage, 
+    dbStats,
+    goldenCountRow,
+    trueDealsCountRow
+  ] = await Promise.all([
     prisma.product.count(),
     prisma.priceHistory.count(),
     prisma.product.groupBy({ by: ['brand'], _count: { id: true } }),
@@ -55,8 +65,13 @@ export default async function HomePage() {
       }
     }),
     getStorageMetrics(),
-    prisma.$queryRaw`SELECT pg_size_pretty(pg_database_size('univstore')) as size`.catch(() => [{ size: '0 MB' }])
+    prisma.$queryRaw<{ size: string }[]>`SELECT pg_size_pretty(pg_database_size('univstore')) as size`.catch(() => [{ size: '0 MB' }]),
+    prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint FROM "Product" WHERE "currentPrice" <= "lowestPrice" AND "lowestPrice" < "highestPrice" AND "imageUrl" IS NOT NULL`,
+    prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint FROM "Product" WHERE "currentPrice" < "medianPrice30d" AND "currentPrice" >= 10000 AND "medianPrice30d" > 0 AND (("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) < 0.6 AND "imageUrl" IS NOT NULL`
   ]);
+
+  const goldenCount = Number(goldenCountRow?.[0]?.count ?? 0);
+  const trueDealsCount = Number(trueDealsCountRow?.[0]?.count ?? 0);
 
   const categoryStats = brandGroups.map(group => ({
     label: group.brand || 'Etc',
@@ -88,6 +103,26 @@ export default async function HomePage() {
             UnivWatch는 자체 분산 수집 파이프라인을 통해 가공되지 않은 실시간 가격 변동을 정밀 분석합니다.
           </p>
         </section>
+
+        {/* --- [Live Deals Ticker Banner] --- */}
+        <Link href="/market" className="relative group block overflow-hidden rounded-[24px] border border-blue-500/20 bg-gradient-to-r from-blue-950/20 via-zinc-900/30 to-zinc-950/90 p-4 md:px-6 md:py-4 transition-all duration-300 hover:border-blue-500/40 hover:shadow-[0_0_24px_rgba(59,130,246,0.1)]">
+          <div className="absolute -top-12 -right-12 w-48 h-48 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-all duration-700 pointer-events-none" />
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 relative z-10">
+            <div className="flex items-center space-x-3 text-center md:text-left">
+              <span className="relative flex h-2 w-2 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500 shrink-0">Live Alert</span>
+              <p className="text-zinc-300 text-xs md:text-sm font-medium">
+                현재 마켓에서 <span className="text-amber-400 font-black">역대 최저가 {goldenCount}개</span> 및 <span className="text-red-400 font-black">평균대비 급락 {trueDealsCount}개</span> 상품 실시간 감지됨.
+              </p>
+            </div>
+            <div className="text-[10px] font-black text-blue-400 uppercase tracking-widest flex items-center shrink-0 bg-blue-500/5 px-3.5 py-2 rounded-xl border border-blue-500/10 group-hover:bg-blue-500/10 transition-colors">
+              Deals Console 입장 <ArrowRight size={12} className="ml-1 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </Link>
 
         {/* --- [Top Tier Metrics] --- */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
