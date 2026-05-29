@@ -128,17 +128,21 @@ describe('DirectApiFilter', () => {
     expect(mockCtx.apiHandled).toBeUndefined();
   });
 
+  // DirectApiFilter가 res.text() 후 JSON.parse 하므로 두 메서드 모두 stub
+  const mockJsonResponse = (status, data) => ({
+    status: () => status,
+    text: async () => JSON.stringify(data),
+    json: async () => data,
+  });
+
   it('isRecoveryMode + 이미지 있는 API 응답은 API 경로로 처리한다', async () => {
     mockCtx.isRecoveryMode = true;
-    mockCtx.browserContext.request.get.mockResolvedValue({
-      status: () => 200,
-      json: async () => ({
-        id: 13704,
-        brand_name: 'X', front_name: 'Y',
-        price1: 100, price2: 90,
-        thumbnail_url: 'https://image.univstore.com/x.jpg',
-      })
-    });
+    mockCtx.browserContext.request.get.mockResolvedValue(mockJsonResponse(200, {
+      id: 13704,
+      brand_name: 'X', front_name: 'Y',
+      price1: 100, price2: 90,
+      thumbnail_url: 'https://image.univstore.com/x.jpg',
+    }));
     await filter.process(mockCtx);
     expect(mockCtx.apiHandled).toBe(true);
     expect(mockCtx.itemInfo.imageUrl).toBe('https://image.univstore.com/x.jpg');
@@ -146,41 +150,45 @@ describe('DirectApiFilter', () => {
 
   it('isRecoveryMode + 이미지 없는 API 응답은 페이지 fallback으로 위임한다', async () => {
     mockCtx.isRecoveryMode = true;
-    mockCtx.browserContext.request.get.mockResolvedValue({
-      status: () => 200,
-      json: async () => ({
-        id: 13704,
-        brand_name: 'X', front_name: 'Y',
-        price1: 100, price2: 90,
-        thumbnail_url: null,
-      })
-    });
+    mockCtx.browserContext.request.get.mockResolvedValue(mockJsonResponse(200, {
+      id: 13704,
+      brand_name: 'X', front_name: 'Y',
+      price1: 100, price2: 90,
+      thumbnail_url: null,
+    }));
     await filter.process(mockCtx);
     expect(mockCtx.apiHandled).toBeUndefined();
   });
 
   it('API 응답을 itemInfo로 매핑하고 apiHandled를 set한다', async () => {
-    mockCtx.browserContext.request.get.mockResolvedValue({
-      status: () => 200,
-      json: async () => ({
-        id: 13704,
-        brand_name: '비오엠',
-        front_name: '듀이립밤',
-        price1: 15000,
-        price2: 7700,
-        thumbnail_url: 'https://image.univstore.com/x.jpg',
-        benefit: '무료배송',
-        item_category_name: '뷰티',
-        brand_item_category_name: '뷰티',
-        has_stock: true,
-      })
-    });
+    mockCtx.browserContext.request.get.mockResolvedValue(mockJsonResponse(200, {
+      id: 13704,
+      brand_name: '비오엠',
+      front_name: '듀이립밤',
+      price1: 15000,
+      price2: 7700,
+      thumbnail_url: 'https://image.univstore.com/x.jpg',
+      benefit: '무료배송',
+      item_category_name: '뷰티',
+      brand_item_category_name: '뷰티',
+      has_stock: true,
+    }));
     await filter.process(mockCtx);
     expect(mockCtx.apiHandled).toBe(true);
     expect(mockCtx.itemInfo.price).toBe('7700');
     expect(mockCtx.itemInfo.originalPrice).toBe('15000');
     expect(mockCtx.itemInfo.brand).toBe('비오엠');
     expect(mockCtx.itemInfo.stockStatus).toBe('In Stock');
+  });
+
+  it('200 OK + 빈 body는 단종 상품으로 마킹하고 shouldSkip', async () => {
+    mockCtx.browserContext.request.get.mockResolvedValue({
+      status: () => 200,
+      text: async () => '',
+    });
+    await filter.process(mockCtx);
+    expect(mockCtx.shouldSkip).toBe(true);
+    expect(mockCtx.apiHandled).toBeUndefined();
   });
 
   it('403/405/429는 BlockDetectedError를 던진다', async () => {

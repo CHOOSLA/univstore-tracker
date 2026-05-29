@@ -66,9 +66,23 @@ class DirectApiFilter {
       return; // apiHandled를 set하지 않고 빠져나가면 NavigationFilter가 이어받음
     }
 
+    // univstore는 단종/삭제 상품에 대해 200 OK + 빈 body로 응답한다.
+    // (probe 결과: 셀린느 토트백 122490은 content-length 0)
+    // 이 신호를 잡아 stockStatus를 Discontinued로 마킹하고 cycle에서 제외.
+    const rawText = await res.text();
+    if (!rawText || rawText.length === 0) {
+      console.warn(`⛔ [ID ${ctx.id}] API 빈 응답 - 단종/삭제 상품으로 마킹`);
+      await withPrismaRetry(() => prisma.product.update({
+        where: { id: ctx.id },
+        data: { stockStatus: 'Discontinued' }
+      })).catch(e => console.warn(`  Discontinued 마킹 실패: ${e.message}`));
+      ctx.shouldSkip = true;
+      return;
+    }
+
     let apiData;
     try {
-      apiData = await res.json();
+      apiData = JSON.parse(rawText);
     } catch (e) {
       console.warn(`⚠️ [ID ${ctx.id}] API JSON 파싱 실패 (${e.message}) - 페이지 fallback으로 위임`);
       return;
