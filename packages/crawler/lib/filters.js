@@ -1,5 +1,6 @@
 const { prisma, redis, withPrismaRetry, sleep, BlockDetectedError, SessionExpiredError } = require('./engine');
 const { blockGuard } = require('./blockGuard');
+const { extractMnoOption } = require('./mnoExtract');
 
 class DBStateFilter {
   async process(ctx) {
@@ -89,7 +90,22 @@ class DirectApiFilter {
           });
           if (mnoRes.status() === 200) {
             const mnoText = await mnoRes.text();
-            if (mnoText && mnoText.length > 0) rawText = mnoText;
+            if (mnoText && mnoText.length > 0) {
+              rawText = mnoText;
+              // 부수 효과: mno 옵션 메타데이터 (색상/용량/가입유형/요금제)를 같이 저장.
+              // 가격 추적은 기존 흐름 그대로 유지, 옵션은 상세 페이지 계산기에서만 사용.
+              try {
+                const mnoJson = JSON.parse(mnoText);
+                const mnoMeta = extractMnoOption(mnoJson);
+                if (mnoMeta) {
+                  await withPrismaRetry(() => prisma.mnoOption.upsert({
+                    where: { productId: ctx.id },
+                    create: { productId: ctx.id, ...mnoMeta },
+                    update: mnoMeta,
+                  })).catch(e => console.warn(`  MnoOption 저장 실패 [${ctx.id}]: ${e.message}`));
+                }
+              } catch (e) { /* JSON 파싱 실패 시 옵션만 skip, 가격 흐름은 진행 */ }
+            }
           }
         } catch (e) { /* fall through to Discontinued check */ }
       }
