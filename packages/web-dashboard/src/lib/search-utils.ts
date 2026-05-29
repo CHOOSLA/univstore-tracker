@@ -2,38 +2,39 @@
  * 검색어에 대한 유사어/동의어 매핑 사전입니다.
  * 브랜드명, 제품군, 영문/한글 혼용 대응을 위해 사용합니다.
  */
+/**
+ * 한↔영 1:1 매핑만 유지. 'laptop', 'tablet', 'mobile', 'earphone' 같은
+ * 광범위 단어는 brand·액세서리 카드까지 다 잡혀서 검색 noise를 만들기 때문에 제거.
+ * (이전: '맥북' → 'laptop' 매칭으로 모든 노트북 액세서리가 첫 페이지에 올라옴)
+ */
 const SYNONYM_MAP: Record<string, string[]> = {
-  // Apple 제품군
-  '아이패드': ['ipad', 'tablet'],
-  'ipad': ['아이패드', 'tablet'],
-  '아이폰': ['iphone', 'mobile'],
-  'iphone': ['아이폰', 'mobile'],
-  '맥북': ['macbook', 'laptop'],
-  'macbook': ['맥북', 'laptop'],
-  '에어팟': ['airpods', 'earphone'],
-  'airpods': ['에어팟', 'earphone'],
-  '맥': ['mac', 'apple'],
-  '워치': ['watch', 'apple watch'],
-  
-  // 삼성 제품군
-  '갤럭시': ['galaxy', 'samsung'],
-  'galaxy': ['갤럭시', 'samsung'],
-  '버즈': ['buds', 'galaxy buds'],
-  'buds': ['버즈', 'galaxy buds'],
-  '탭': ['tab', 'tablet'],
-  'tab': ['탭', 'tablet'],
-  '지플립': ['z flip', 'flip'],
-  'z flip': ['지플립', 'flip'],
-  '지폴드': ['z fold', 'fold'],
-  'z fold': ['지폴드', 'fold'],
+  // Apple
+  '아이패드': ['ipad'],
+  'ipad': ['아이패드'],
+  '아이폰': ['iphone'],
+  'iphone': ['아이폰'],
+  '맥북': ['macbook'],
+  'macbook': ['맥북'],
+  '에어팟': ['airpods'],
+  'airpods': ['에어팟'],
+  '애플워치': ['apple watch'],
+  'apple watch': ['애플워치'],
 
-  // 카테고리/기타
-  '노트북': ['laptop', 'notebook'],
-  'laptop': ['노트북', 'notebook'],
-  '모니터': ['monitor', 'display'],
-  'monitor': ['모니터', 'display'],
-  '청소기': ['vacuum', 'cleaner'],
-  '헤드폰': ['headphone', 'headset'],
+  // 삼성
+  '갤럭시': ['galaxy'],
+  'galaxy': ['갤럭시'],
+  '버즈': ['buds'],
+  'buds': ['버즈'],
+  '지플립': ['z flip', 'flip7', 'flip6'],
+  'z flip': ['지플립'],
+  '지폴드': ['z fold', 'fold7', 'fold6'],
+  'z fold': ['지폴드'],
+
+  // 카테고리 (한↔영만, 일반 단어 매칭 회피)
+  '노트북': ['notebook'],
+  '모니터': ['monitor'],
+  '청소기': ['vacuum'],
+  '헤드폰': ['headphone'],
   '키보드': ['keyboard'],
   '마우스': ['mouse'],
 };

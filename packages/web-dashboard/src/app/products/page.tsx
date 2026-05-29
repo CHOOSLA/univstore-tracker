@@ -9,6 +9,7 @@ import CategoryMenu, { CategoryCounts } from "@/components/products/CategoryMenu
 import { Suspense } from 'react';
 import { getSearchKeywords } from "@/lib/search-utils";
 import { parseNaturalQuery } from "@/lib/parseNaturalQuery";
+import { relevanceScore } from "@/lib/relevance";
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,9 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<{ brand?: string; q?: string; menuCategory?: string; menuSubCategory?: string; thirdCategory?: string; sort?: string; filter?: string }>;
 }) {
-  const { brand: brandFilter, q: searchQuery, menuCategory, menuSubCategory, thirdCategory, sort: sortOption = 'latest', filter: activeFilter } = await searchParams;
+  const { brand: brandFilter, q: searchQuery, menuCategory, menuSubCategory, thirdCategory, sort: sortParam, filter: activeFilter } = await searchParams;
+  // 검색어가 있으면 default sort를 relevance로, 없으면 latest로
+  const sortOption = sortParam || (searchQuery ? 'relevance' : 'latest');
 
   // 자연어 파싱 (가격 범위/하락률/역대최저 등 토큰 추출). 잔여 키워드만 유사어 확장.
   const parsedNL = searchQuery ? parseNaturalQuery(searchQuery) : { keywords: '', detected: [] as string[] };
@@ -127,7 +130,8 @@ export default async function ProductsPage({
         },
       },
       orderBy: sortOption === 'latest' ? { updatedAt: 'desc' } : undefined,
-      take: 100, // 정렬을 위해 넉넉하게 가져옴
+      // 검색어가 있으면 relevance 정렬 위해 더 많이 가져와 candidate 풀을 늘림
+      take: searchQuery ? 400 : 100,
     }),
     prisma.product.count({ where: whereClause as any })
   ]);
@@ -148,6 +152,14 @@ export default async function ProductsPage({
     });
   } else if (sortOption === 'price-asc') {
     productsSorted.sort((a, b) => (a.priceHistory[0]?.price || 0) - (b.priceHistory[0]?.price || 0));
+  } else if (sortOption === 'relevance' && searchQuery && parsedNL.keywords) {
+    // 관련도 점수 계산 후 desc 정렬, top 100만 노출
+    const synonyms = searchKeywords; // getSearchKeywords 결과(원문+동의어 확장)
+    productsSorted = productsSorted
+      .map(p => ({ p, score: relevanceScore(p as any, parsedNL.keywords, synonyms) }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 100)
+      .map(x => x.p);
   }
 
   // 4. 메뉴 분류별 상품 수 (array는 CROSS JOIN LATERAL UNNEST로 별도 펼침)
@@ -278,6 +290,7 @@ export default async function ProductsPage({
             <div className="flex items-center space-x-2 px-2 md:px-4 lg:border-l border-white/5 overflow-x-auto no-scrollbar py-1 md:py-0">
               <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Sort</span>
               {[
+                ...(searchQuery ? [{ id: 'relevance', label: 'Relevance' }] : []),
                 { id: 'latest', label: 'Latest' },
                 { id: 'discount', label: '% Off' },
                 { id: 'price-asc', label: 'Low Price' }
