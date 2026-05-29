@@ -45,6 +45,32 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     ? await prisma.mnoOption.findUnique({ where: { productId: id } })
     : null;
 
+  // 유사 상품 — 같은 sub 또는 third 카테고리, 가격 ±30% 내, 가격 차이 작은 순
+  const currentPrice = Number(product.currentPrice ?? 0);
+  const subCats = product.menuSubCategories ?? [];
+  const thirdCats = product.thirdCategories ?? [];
+  const similarItems = (subCats.length || thirdCats.length) && currentPrice > 0
+    ? await prisma.$queryRaw<any[]>`
+        SELECT id, title, brand, "imageUrl", "currentPrice", "priceScore"
+        FROM "Product"
+        WHERE id != ${id}
+          AND "imageUrl" IS NOT NULL
+          AND "stockStatus" != 'Discontinued'
+          AND "currentPrice" BETWEEN ${Math.floor(currentPrice * 0.7)} AND ${Math.ceil(currentPrice * 1.3)}
+          AND ("menuSubCategories" && ${subCats}::text[] OR "thirdCategories" && ${thirdCats}::text[])
+        ORDER BY ABS("currentPrice" - ${currentPrice})
+        LIMIT 6
+      `
+    : [];
+  const similar = similarItems.map(s => ({
+    id: s.id,
+    title: s.title,
+    brand: s.brand ?? 'Brand',
+    imageUrl: s.imageUrl,
+    currentPrice: Number(s.currentPrice ?? 0),
+    priceScore: s.priceScore ?? null,
+  }));
+
   return (
     <ProductDetailView
       product={product}
@@ -59,6 +85,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       isMnoItem={isMnoItem}
       externalUrl={externalUrl}
       mnoOption={mnoOption ? JSON.parse(JSON.stringify(mnoOption)) : null}
+      similar={similar}
     />
   );
 }

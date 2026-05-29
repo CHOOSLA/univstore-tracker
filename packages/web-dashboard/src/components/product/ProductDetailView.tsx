@@ -5,6 +5,7 @@ import Link from 'next/link';
 import PriceAlertControl from "./PriceAlertControl";
 import MnoCalculator from "./MnoCalculator";
 import PriceScoreBadge from "../common/PriceScoreBadge";
+import SimilarProducts, { SimilarItem } from "./SimilarProducts";
 import { 
   AreaChart, 
   Area, 
@@ -62,11 +63,13 @@ interface ProductDetailViewProps {
   externalUrl?: string;
   /** 통신사 상품 옵션/요금제. 있으면 MnoCalculator 렌더 */
   mnoOption?: import("./MnoCalculator").MnoOptionData | null;
+  /** 유사 상품. 비어있으면 섹션 생략 */
+  similar?: SimilarItem[];
 }
 
 type RangeType = '1M' | '3M' | '6M' | 'ALL';
 
-export default function ProductDetailView({ product, history, benefitRules, existingAlerts, isMnoItem = false, externalUrl, mnoOption }: ProductDetailViewProps) {
+export default function ProductDetailView({ product, history, benefitRules, existingAlerts, isMnoItem = false, externalUrl, mnoOption, similar }: ProductDetailViewProps) {
   // externalUrl이 주입되면 그대로, 아니면 isMnoItem 분기로 fallback
   const buyNowUrl = externalUrl ?? (isMnoItem
     ? `https://www.univstore.com/mno/item/${product.id}`
@@ -373,6 +376,13 @@ export default function ProductDetailView({ product, history, benefitRules, exis
 
           </div>
         </div>
+
+        {/* 유사 상품 (같은 카테고리, ±30% 가격대) */}
+        {similar && similar.length > 0 && (
+          <div className="mt-12 md:mt-16">
+            <SimilarProducts items={similar} />
+          </div>
+        )}
       </main>
     </div>
   );
