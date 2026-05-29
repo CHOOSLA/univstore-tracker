@@ -149,8 +149,10 @@ async function run() {
       sendTelegramAlert(msg).catch(() => {});
     }
 
-    // 500개마다 브라우저 재시작 (메모리 관리)
-    if (processedCount > 0 && processedCount % 500 === 0) {
+    // 2000개마다 브라우저 재시작 (메모리 관리)
+    // DirectAPI 비중이 65%로 늘어 누수가 적어졌으므로 500 → 2000으로 완화
+    // (cycle당 재시작 비용 11분 → 2.7분, fallback page 누적분은 임계치 전 정리)
+    if (processedCount > 0 && processedCount % 2000 === 0) {
       console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
       await browserContext.close();
       await sleep(5000);
