@@ -40,7 +40,7 @@ export default async function ProductsPage({
         WHERE p."currentPrice" < old.price
           AND p."currentPrice" >= 10000
           AND ((old.price - p."currentPrice")::numeric / old.price::numeric) < 0.7
-          AND p."imageUrl" IS NOT NULL
+          AND p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
       `;
     } else if (activeFilter === 'true') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
@@ -50,7 +50,7 @@ export default async function ProductsPage({
           AND "currentPrice" >= 10000
           AND "medianPrice30d" > 0
           AND (("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) < 0.6
-          AND "imageUrl" IS NOT NULL
+          AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'
       `;
     } else if (activeFilter === 'golden') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
@@ -58,7 +58,7 @@ export default async function ProductsPage({
         FROM "Product"
         WHERE "currentPrice" <= "lowestPrice"
           AND "lowestPrice" < "highestPrice"
-          AND "imageUrl" IS NOT NULL
+          AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'
       `;
     } else if (activeFilter === 'target') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
@@ -71,7 +71,7 @@ export default async function ProductsPage({
         SELECT p.id
         FROM "Product" p
         JOIN alert_counts ac ON p.id = ac."productId"
-        WHERE p."imageUrl" IS NOT NULL
+        WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
       `;
     } else if (activeFilter === 'defense') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
@@ -80,7 +80,7 @@ export default async function ProductsPage({
         WHERE brand IN ('Apple', 'Apple(애플)', 'Samsung', 'Samsung(삼성)', '삼성전자', '삼성', 'LG', 'LG전자', 'Sony', '소니', 'Dell', '델', 'HP', 'Lenovo', '레노버', 'Asus', '에이수스', 'Logitech', '로지텍', 'Intel', 'AMD', 'Nvidia')
           AND "currentPrice" < "medianPrice30d" * 0.92
           AND "medianPrice30d" > 0
-          AND "imageUrl" IS NOT NULL
+          AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'
       `;
     }
     filteredIds = idsRow.map(r => r.id);
@@ -89,7 +89,7 @@ export default async function ProductsPage({
   // 1. 기본 필터 정의 (array 컬럼은 has 연산자로 N:M 필터링)
   const whereClause = {
     AND: [
-      { imageUrl: { not: null } },
+      { imageUrl: { not: null }, stockStatus: { not: 'Discontinued' } },
       brandFilter ? { brand: brandFilter } : {},
       menuCategory ? { menuCategories: { has: menuCategory } } : {},
       menuSubCategory ? { menuSubCategories: { has: menuSubCategory } } : {},
@@ -147,7 +147,7 @@ export default async function ProductsPage({
       SELECT m AS name, COUNT(DISTINCT p.id) AS cnt
       FROM "Product" p
       CROSS JOIN LATERAL UNNEST(p."menuCategories") AS m
-      WHERE p."imageUrl" IS NOT NULL
+      WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
       GROUP BY m
     `,
     prisma.$queryRaw<{ main: string; sub: string; cnt: bigint }[]>`
@@ -155,7 +155,7 @@ export default async function ProductsPage({
       FROM "Product" p
       CROSS JOIN LATERAL UNNEST(p."menuCategories") AS m
       CROSS JOIN LATERAL UNNEST(p."menuSubCategories") AS s
-      WHERE p."imageUrl" IS NOT NULL
+      WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
       GROUP BY m, s
     `,
     prisma.$queryRaw<{ main: string; sub: string; third: string; cnt: bigint }[]>`
@@ -164,7 +164,7 @@ export default async function ProductsPage({
       CROSS JOIN LATERAL UNNEST(p."menuCategories") AS m
       CROSS JOIN LATERAL UNNEST(p."menuSubCategories") AS s
       CROSS JOIN LATERAL UNNEST(p."thirdCategories") AS t
-      WHERE p."imageUrl" IS NOT NULL
+      WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
       GROUP BY m, s, t
     `,
   ]);

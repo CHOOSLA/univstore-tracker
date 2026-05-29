@@ -54,7 +54,7 @@ export default async function HomePage() {
       take: 24 // 추천 PICK 전체 노출 (24개)
     }),
     prisma.product.findMany({
-      where: { imageUrl: { not: null } },
+      where: { imageUrl: { not: null }, stockStatus: { not: 'Discontinued' } },
       take: 5,
       orderBy: { updatedAt: 'desc' },
       include: {
@@ -66,8 +66,8 @@ export default async function HomePage() {
     }),
     getStorageMetrics(),
     prisma.$queryRaw<{ size: string }[]>`SELECT pg_size_pretty(pg_database_size('univstore')) as size`.catch(() => [{ size: '0 MB' }]),
-    prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint FROM "Product" WHERE "currentPrice" <= "lowestPrice" AND "lowestPrice" < "highestPrice" AND "imageUrl" IS NOT NULL`,
-    prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint FROM "Product" WHERE "currentPrice" < "medianPrice30d" AND "currentPrice" >= 10000 AND "medianPrice30d" > 0 AND (("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) < 0.6 AND "imageUrl" IS NOT NULL`
+    prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint FROM "Product" WHERE "currentPrice" <= "lowestPrice" AND "lowestPrice" < "highestPrice" AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'`,
+    prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint FROM "Product" WHERE "currentPrice" < "medianPrice30d" AND "currentPrice" >= 10000 AND "medianPrice30d" > 0 AND (("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) < 0.6 AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'`
   ]);
 
   const goldenCount = Number(goldenCountRow?.[0]?.count ?? 0);

@@ -31,7 +31,7 @@ export default async function MarketPage() {
     WHERE brand IN ('Apple', 'Apple(애플)', 'Samsung', 'Samsung(삼성)', '삼성전자', '삼성', 'LG', 'LG전자', 'Sony', '소니', 'Dell', '델', 'HP', 'Lenovo', '레노버', 'Asus', '에이수스', 'Logitech', '로지텍', 'Intel', 'AMD', 'Nvidia')
       AND "currentPrice" < "medianPrice30d" * 0.92
       AND "medianPrice30d" > 0
-      AND "imageUrl" IS NOT NULL
+      AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'
     ORDER BY "gapPercent" DESC
     LIMIT 12
   `;
@@ -45,7 +45,7 @@ export default async function MarketPage() {
       FROM "Product"
       WHERE "currentPrice" <= "lowestPrice"
         AND "lowestPrice" < "highestPrice"
-        AND "imageUrl" IS NOT NULL
+        AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'
       ORDER BY "updatedAt" DESC
       LIMIT 12
     `,
@@ -61,7 +61,7 @@ export default async function MarketPage() {
         AND "currentPrice" >= 10000
         AND "medianPrice30d" > 0
         AND (("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) < 0.6
-        AND "imageUrl" IS NOT NULL
+        AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'
       ORDER BY "gapPercent" DESC
       LIMIT 12
     `,
@@ -81,7 +81,7 @@ export default async function MarketPage() {
       WHERE p."currentPrice" < old.price
         AND p."currentPrice" >= 10000
         AND ((old.price - p."currentPrice")::numeric / old.price::numeric) < 0.7
-        AND p."imageUrl" IS NOT NULL
+        AND p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
       ORDER BY "dropPercent" DESC
       LIMIT 12
     `,
@@ -96,7 +96,7 @@ export default async function MarketPage() {
       SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", ac.alerts_count as "targetPrice"
       FROM "Product" p
       JOIN alert_counts ac ON p.id = ac."productId"
-      WHERE p."imageUrl" IS NOT NULL
+      WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
       ORDER BY ac.alerts_count DESC
       LIMIT 12
     `
