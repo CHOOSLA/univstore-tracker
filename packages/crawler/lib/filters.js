@@ -8,6 +8,7 @@ class DBStateFilter {
       where: { id: ctx.id },
       select: {
         title: true, imageUrl: true, category: true, brand: true, originalPrice: true, bestBenefit: true,
+        menuSubCategories: true,
         priceHistory: { where: { timestamp: { gte: today } }, take: 1, select: { price: true } }
       }
     }));
@@ -67,17 +68,41 @@ class DirectApiFilter {
     }
 
     // univstore는 단종/삭제 상품에 대해 200 OK + 빈 body로 응답한다.
-    // (probe 결과: 셀린느 토트백 122490은 content-length 0)
-    // 이 신호를 잡아 stockStatus를 Discontinued로 마킹하고 cycle에서 제외.
-    const rawText = await res.text();
+    // 다만 통신사(mno) 카테고리 상품은 /api/item/{id}에서도 빈 응답을 주지만
+    // /api/mno/item/{id}에서는 정상 응답을 준다 (실제 단종 아님).
+    let rawText = await res.text();
     if (!rawText || rawText.length === 0) {
-      console.warn(`⛔ [ID ${ctx.id}] API 빈 응답 - 단종/삭제 상품으로 마킹`);
-      await withPrismaRetry(() => prisma.product.update({
-        where: { id: ctx.id },
-        data: { stockStatus: 'Discontinued' }
-      })).catch(e => console.warn(`  Discontinued 마킹 실패: ${e.message}`));
-      ctx.shouldSkip = true;
-      return;
+      const isMno = ctx.productStatus?.menuSubCategories?.includes('통신사');
+      if (isMno) {
+        try {
+          const mnoUrl = `https://www.univstore.com/api/mno/item/${ctx.id}`;
+          const mnoRes = await ctx.browserContext.request.get(mnoUrl, {
+            headers: {
+              'Referer': `https://www.univstore.com/mno/item/${ctx.id}`,
+              'Sec-Fetch-Site': 'same-origin',
+              'Sec-Fetch-Mode': 'cors',
+              'Sec-Fetch-Dest': 'empty',
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+            timeout: 15000,
+          });
+          if (mnoRes.status() === 200) {
+            const mnoText = await mnoRes.text();
+            if (mnoText && mnoText.length > 0) rawText = mnoText;
+          }
+        } catch (e) { /* fall through to Discontinued check */ }
+      }
+
+      if (!rawText || rawText.length === 0) {
+        console.warn(`⛔ [ID ${ctx.id}] API 빈 응답 - 단종/삭제 상품으로 마킹`);
+        await withPrismaRetry(() => prisma.product.update({
+          where: { id: ctx.id },
+          data: { stockStatus: 'Discontinued' }
+        })).catch(e => console.warn(`  Discontinued 마킹 실패: ${e.message}`));
+        ctx.shouldSkip = true;
+        return;
+      }
     }
 
     let apiData;
