@@ -59,12 +59,12 @@ export default function TodaysPick({ item }: Props) {
               </h2>
             </div>
 
-            <div className="flex items-baseline gap-4 pt-1">
-              <span className="text-3xl lg:text-4xl font-black text-amber-400">
+            <div className="flex flex-wrap items-baseline gap-x-3 md:gap-x-4 gap-y-1 pt-1">
+              <span className="text-3xl lg:text-4xl font-black text-amber-400 whitespace-nowrap">
                 ₩{currentPrice.toLocaleString()}
               </span>
               {headlinePercent != null && (
-                <span className="text-2xl font-black text-red-500">
+                <span className="text-2xl font-black text-red-500 whitespace-nowrap">
                   -{headlinePercent}%
                 </span>
               )}
