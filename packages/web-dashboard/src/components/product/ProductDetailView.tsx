@@ -177,8 +177,10 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                       <span className="bg-zinc-900 text-zinc-400 text-[9px] md:text-[10px] font-black px-2 py-1 rounded border border-white/5 uppercase tracking-widest">{product.brand || 'Brand'}</span>
                       <span className={cn(
                         "text-[9px] md:text-[10px] font-black px-2 py-1 rounded border uppercase tracking-widest",
-                        product.stockStatus === "Low Stock" || product.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                      )}>{product.stockStatus || 'In Stock'}</span>
+                        product.stockStatus === "Discontinued" ? "bg-zinc-700/20 text-zinc-400 border-zinc-600/30"
+                          : product.stockStatus === "Low Stock" || product.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20"
+                          : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                      )}>{product.stockStatus === "Discontinued" ? "판매 종료" : (product.stockStatus || 'In Stock')}</span>
                       <PriceScoreBadge score={product.priceScore} size="md" />
                     </div>
                     <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter">
@@ -296,15 +298,22 @@ export default function ProductDetailView({ product, history, benefitRules, exis
               <div className="flex w-full">
                 {/* 외부 도메인이라 next/link 대신 일반 anchor 사용
                     (next/link로 외부 URL을 쓰면 라우터가 가로채서 클릭이 무시되는 케이스가 있음) */}
-                <a
-                  href={buyNowUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex w-full items-center justify-center space-x-2 bg-white text-black h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-200 transition-all"
-                >
-                  <span>Buy Now</span>
-                  <ExternalLink className="w-4 h-4 md:w-[18px] md:h-[18px]" />
-                </a>
+                {product.stockStatus === "Discontinued" ? (
+                  // 단종 상품: univstore가 홈으로 redirect하므로 외부 링크 비활성
+                  <div className="flex w-full items-center justify-center space-x-2 bg-zinc-900 text-zinc-500 h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base border border-white/5 cursor-not-allowed select-none">
+                    <span>판매 종료</span>
+                  </div>
+                ) : (
+                  <a
+                    href={buyNowUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-center space-x-2 bg-white text-black h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-200 transition-all"
+                  >
+                    <span>Buy Now</span>
+                    <ExternalLink className="w-4 h-4 md:w-[18px] md:h-[18px]" />
+                  </a>
+                )}
                 {/* Price Target Alert 기능 비활성화로 인한 Track 버튼 주석 처리
                 <button className="flex items-center justify-center space-x-2 bg-zinc-900 border border-white/5 text-white h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-800 transition-all">
                   <Zap className="w-4 h-4 md:w-[18px] md:h-[18px]" />
