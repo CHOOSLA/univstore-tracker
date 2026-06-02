@@ -22,11 +22,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     price: h.price
   }));
 
-  const benefitRules = await prisma.benefitRule.findMany({
-    where: { isActive: true },
-    orderBy: { priority: 'desc' }
-  });
-
   const priceAlerts = await prisma.priceAlert.findMany({
     where: { productId: id, isActive: true },
     orderBy: { targetPrice: 'asc' }
@@ -75,12 +70,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     <ProductDetailView
       product={product}
       history={formattedHistory}
-      benefitRules={benefitRules.map(r => ({
-        pattern: r.pattern,
-        rate: r.rate,
-        maxLimit: r.maxLimit,
-        label: r.label
-      }))}
       existingAlerts={priceAlerts.map(a => ({ id: a.id, targetPrice: a.targetPrice }))}
       isMnoItem={isMnoItem}
       externalUrl={externalUrl}

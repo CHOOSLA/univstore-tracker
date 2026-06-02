@@ -36,13 +36,6 @@ interface PriceHistoryEntry {
   price: number;
 }
 
-interface BenefitRuleProp {
-  pattern: string;
-  rate: number;
-  maxLimit: number;
-  label: string;
-}
-
 interface ProductDetailViewProps {
   product: {
     id: string;
@@ -55,7 +48,6 @@ interface ProductDetailViewProps {
     priceScore?: number | null;
   };
   history: PriceHistoryEntry[];
-  benefitRules: BenefitRuleProp[];
   existingAlerts: { id: number, targetPrice: number }[];
   /** univstore의 통신사(mno) 카테고리 상품 여부. true면 Buy Now URL이 /mno/item/{id}로 분기 */
   isMnoItem?: boolean;
@@ -69,7 +61,7 @@ interface ProductDetailViewProps {
 
 type RangeType = '1M' | '3M' | '6M' | 'ALL';
 
-export default function ProductDetailView({ product, history, benefitRules, existingAlerts, isMnoItem = false, externalUrl, mnoOption, similar }: ProductDetailViewProps) {
+export default function ProductDetailView({ product, history, existingAlerts, isMnoItem = false, externalUrl, mnoOption, similar }: ProductDetailViewProps) {
   // externalUrl이 주입되면 그대로, 아니면 isMnoItem 분기로 fallback
   const buyNowUrl = externalUrl ?? (isMnoItem
     ? `https://www.univstore.com/mno/item/${product.id}`

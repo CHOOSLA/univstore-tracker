@@ -12,7 +12,6 @@ const NAV_ITEMS = [
   { name: 'Market', href: '/market' },
   { name: 'Terminal', href: '/terminal' },
   { name: 'Alerts', href: '/alerts' },
-  { name: 'Settings', href: '/settings/benefits' },
 ];
 
 export function Navbar() {
