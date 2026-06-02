@@ -24,7 +24,12 @@ export interface Scoreable {
 
 const norm = (s: string | null | undefined) => (s ?? '').toLowerCase();
 
-export function relevanceScore(item: Scoreable, query: string, synonyms: string[]): number {
+export function relevanceScore(
+  item: Scoreable,
+  query: string,
+  synonyms: string[],
+  phraseVariants: string[] = []
+): number {
   const q = query.toLowerCase().trim();
   if (!q) return 0;
 
@@ -37,6 +42,16 @@ export function relevanceScore(item: Scoreable, query: string, synonyms: string[
   if (title.startsWith(q)) score += 80;
   if (brand === q) score += 90;
   else if (brand && brand.includes(q)) score += 40;
+
+  // Phrase variant 매칭 (한↔영 cartesian variant 중 어느 하나라도 title에 포함되면 큰 가산점)
+  // 예: query="맥북 에어" → variants ["macbook air"] → title "MacBook Air 13 M3" 매칭
+  let bestVariantHit = 0;
+  for (const v of phraseVariants) {
+    if (!v || v === q) continue;
+    if (title.includes(v)) bestVariantHit = Math.max(bestVariantHit, 100);
+    if (title.startsWith(v)) bestVariantHit = Math.max(bestVariantHit, bestVariantHit + 30);
+  }
+  score += bestVariantHit;
 
   const tokens = q.split(/\s+/).filter(t => t.length > 0);
   const allInTitle = tokens.length > 0 && tokens.every(t => title.includes(t));

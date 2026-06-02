@@ -37,7 +37,66 @@ const SYNONYM_MAP: Record<string, string[]> = {
   '헤드폰': ['headphone'],
   '키보드': ['keyboard'],
   '마우스': ['mouse'],
+
+  // 모델/시리즈 음역 — 양방향
+  '에어': ['air'],
+  'air': ['에어'],
+  '프로': ['pro'],
+  'pro': ['프로'],
+  '미니': ['mini'],
+  'mini': ['미니'],
+  '울트라': ['ultra'],
+  'ultra': ['울트라'],
+  '맥스': ['max'],
+  'max': ['맥스'],
+  '플러스': ['plus', '+'],
+  'plus': ['플러스', '+'],
+  '네오': ['neo'],
+  'neo': ['네오'],
+  '엣지': ['edge'],
+  'edge': ['엣지'],
+  '슬림': ['slim'],
+  'slim': ['슬림'],
+  '플립': ['flip'],
+  'flip': ['플립'],
+  '폴드': ['fold'],
+  'fold': ['폴드'],
 };
+
+/**
+ * Phrase 단위 한↔영 variant 생성기.
+ *
+ * "맥북 에어" → ["맥북 에어", "macbook 에어", "맥북 air", "macbook air"]
+ *               → "MacBook Air 13" 같은 title에 정확 phrase match 가능
+ *
+ * 각 토큰에 대해 한↔영 동의어를 cartesian product. 2^N polynomial이라
+ * tokens.length > 5면 truncate.
+ */
+export function getQueryVariants(query: string): string[] {
+  const tokens = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return [];
+  if (tokens.length > 5) return [tokens.join(' ')];
+
+  // 각 토큰에 대한 후보 (자기자신 + 1:1 음역 동의어)
+  const perToken: string[][] = tokens.map(t => {
+    const set = new Set<string>([t]);
+    (SYNONYM_MAP[t] || []).forEach(s => set.add(s));
+    return [...set];
+  });
+
+  // cartesian product
+  let acc: string[] = [''];
+  for (const variants of perToken) {
+    const next: string[] = [];
+    for (const a of acc) {
+      for (const v of variants) {
+        next.push(a ? `${a} ${v}` : v);
+      }
+    }
+    acc = next;
+  }
+  return [...new Set(acc)];
+}
 
 /**
  * 입력된 검색어와 연관된 모든 키워드 리스트를 반환합니다.

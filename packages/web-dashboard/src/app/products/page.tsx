@@ -7,7 +7,7 @@ import SearchBar from "@/components/products/SearchBar";
 import VirtualizedProductList from "@/components/products/VirtualizedProductList";
 import CategoryMenu, { CategoryCounts } from "@/components/products/CategoryMenu";
 import { Suspense } from 'react';
-import { getSearchKeywords } from "@/lib/search-utils";
+import { getSearchKeywords, getQueryVariants } from "@/lib/search-utils";
 import { parseNaturalQuery } from "@/lib/parseNaturalQuery";
 import { relevanceScore } from "@/lib/relevance";
 
@@ -155,8 +155,9 @@ export default async function ProductsPage({
   } else if (sortOption === 'relevance' && searchQuery && parsedNL.keywords) {
     // 관련도 점수 계산 후 desc 정렬, top 100만 노출
     const synonyms = searchKeywords; // getSearchKeywords 결과(원문+동의어 확장)
+    const variants = getQueryVariants(parsedNL.keywords); // 한↔영 phrase cartesian
     productsSorted = productsSorted
-      .map(p => ({ p, score: relevanceScore(p as any, parsedNL.keywords, synonyms) }))
+      .map(p => ({ p, score: relevanceScore(p as any, parsedNL.keywords, synonyms, variants) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 100)
       .map(x => x.p);
