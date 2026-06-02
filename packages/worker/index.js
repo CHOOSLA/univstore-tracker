@@ -148,21 +148,9 @@ async function handlePriceUpdate(payload) {
       })
     ]);
 
-    // --- [목표 가격 알림 체크 로직 추가] ---
-    // 1. 실질 구매가 계산 (대시보드와 동일한 룰 적용)
-    const calculateFinalPrice = (price, benefit) => {
-      if (!benefit) return price;
-      const maxMatch = benefit.match(/(\d+)만/);
-      const maxLimit = maxMatch ? parseInt(maxMatch[1]) * 10000 : 0;
-      let rate = 0;
-      if (benefit.includes('페이코머니')) rate = 0.03;
-      else if (benefit.includes('토스페이')) rate = 0.10;
-      else if (benefit.includes('최대')) rate = 0.03;
-      const discount = Math.min(Math.floor(price * rate), maxLimit || Infinity);
-      return price - discount;
-    };
-
-    const finalPrice = calculateFinalPrice(price, bestBenefit);
+    // 카드/결제수단 할인은 univstore가 per-item 구조화 값을 주지 않아 정확 계산 불가.
+    // finalPrice(실질가) 계산 제거 — 가격 비교는 raw price 기준.
+    // (목표가 알림 기능은 아래 주석 블록으로 이미 비활성)
 
     // --- [시스템 설정 로드 및 적용] ---
     const configs = await prisma.systemConfig.findMany();

@@ -126,21 +126,10 @@ export default function ProductDetailView({ product, history, benefitRules, exis
   const currentPrice = history[0]?.price || 0;
   const originalPrice = product.originalPrice || currentPrice;
   
-  const calculateDynamicDiscount = (price: number, benefit: string | null) => {
-    if (!benefit || !benefitRules) return 0;
-    const policy = benefitRules.find(p => new RegExp(p.pattern).test(benefit));
-    if (!policy) return 0;
-    let maxLimit = policy.maxLimit;
-    if (maxLimit === 0) {
-      const match = benefit.match(/(\d+)만/);
-      maxLimit = match ? parseInt(match[1]) * 10000 : 0;
-    }
-    const calculated = Math.floor(price * policy.rate);
-    return Math.min(calculated, maxLimit);
-  };
-
-  const cardDiscount = calculateDynamicDiscount(currentPrice, product.bestBenefit);
-  const finalPrice = currentPrice - cardDiscount;
+  // 카드/결제수단 할인은 univstore가 per-item 구조화 값으로 제공하지 않음.
+  // (benefit은 결제수단 조건부 + "최대 N만" cap 마케팅 문구라 정확 계산 불가)
+  // 따라서 finalPrice 계산을 제거하고 currentPrice를 그대로 구매가로 노출.
+  // bestBenefit 텍스트는 조건 안내 라벨로만 표시.
 
   const prices = history.length > 0 ? history.map(h => h.price) : [0];
   const maxPrice = Math.max(...prices);
@@ -278,20 +267,22 @@ export default function ProductDetailView({ product, history, benefitRules, exis
                 </div>
                 
                 {product.bestBenefit && (
-                  <div className="flex justify-between items-center text-emerald-400">
-                    <div className="flex items-center space-x-2 min-w-0">
-                      <CreditCard className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
-                      <span className="font-bold text-xs md:text-sm truncate">{product.bestBenefit}</span>
-                    </div>
-                    <span className="font-black font-mono text-sm md:text-base shrink-0">- ₩{cardDiscount.toLocaleString()}</span>
+                  <div className="flex items-start space-x-2 min-w-0 text-emerald-400">
+                    <CreditCard className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0 mt-0.5" />
+                    <span className="font-bold text-xs md:text-sm">{product.bestBenefit}</span>
                   </div>
                 )}
-                
+
                 <div className="pt-4 md:pt-6 border-t border-white/5 space-y-1 md:space-y-2">
-                  <p className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest text-right">최종 실질 구매가</p>
+                  <p className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest text-right">구매가</p>
                   <p className="text-4xl md:text-6xl font-black text-white text-right tracking-tighter tabular-nums leading-none">
-                    ₩{finalPrice.toLocaleString()}
+                    ₩{currentPrice.toLocaleString()}
                   </p>
+                  {product.bestBenefit && (
+                    <p className="text-[10px] md:text-xs text-zinc-500 font-medium text-right">
+                      결제수단/이벤트별 추가 할인은 univstore에서 확인
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -366,7 +357,7 @@ export default function ProductDetailView({ product, history, benefitRules, exis
             {/* Price Alert Center - 비활성화로 인한 주석 처리
             <PriceAlertControl 
               productId={product.id} 
-              currentPrice={finalPrice} 
+              currentPrice={currentPrice}
               existingAlerts={existingAlerts} 
             />
             */}
