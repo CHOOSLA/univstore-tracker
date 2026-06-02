@@ -225,10 +225,12 @@ async function run() {
       }
       await redis.set(PROGRESS_KEY, i);
 
-      const qLen = await redis.zcard('univstore:task_queue');
+      // totalItems는 cycle 시작 시 set한 고정 cycle 크기(allItemIds.length)를 유지해야 함.
+      // 이전엔 qLen(남은 큐, 감소)으로 덮어써서 currentIndex(증가)와 단위 충돌 →
+      // ratio가 100% 초과로 폭발 → terminal % 고정 버그.
       await prisma.crawlerStatus.update({
         where: { id: 'singleton' },
-        data: { currentIndex: i, totalItems: qLen, lastHeartbeat: new Date() }
+        data: { currentIndex: i, lastHeartbeat: new Date() }
       }).catch(() => {});
       
     } catch (err) {
