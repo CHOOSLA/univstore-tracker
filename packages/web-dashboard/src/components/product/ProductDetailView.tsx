@@ -312,7 +312,7 @@ export default function ProductDetailView({ product, history, existingAlerts, is
 
             {/* Metrics Dashboard */}
             <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <div className="glass p-5 md:p-6 rounded-[24px] md:rounded-[32px] border-white/[0.03]">
+              <div className="glass p-5 md:p-6 rounded-[24px] md:rounded-[32px] border-white/[0.03] min-w-0">
                 <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-4 flex items-center">
                   <History className="mr-1.5 w-2.5 h-2.5 md:w-3 md:h-3" /> Volatility
                 </p>
@@ -332,7 +332,7 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                 </p>
               </div>
 
-              <div className="glass p-5 md:p-6 rounded-[24px] md:rounded-[32px] border-white/[0.03] flex flex-col justify-between">
+              <div className="glass p-5 md:p-6 rounded-[24px] md:rounded-[32px] border-white/[0.03] flex flex-col justify-between min-w-0">
                 <div className="space-y-2 md:space-y-4">
                   <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center">
                     <Percent className="mr-1.5 w-2.5 h-2.5 md:w-3 md:h-3" /> Perk

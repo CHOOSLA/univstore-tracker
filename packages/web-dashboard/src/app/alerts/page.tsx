@@ -12,7 +12,7 @@ export default async function AlertsPage() {
 
   return (
     <div className="pb-20 bg-zinc-950 min-h-screen">
-      <main className="max-w-4xl mx-auto px-6 pt-12 space-y-12">
+      <main className="max-w-4xl mx-auto px-4 md:px-6 pt-12 space-y-12">
         <section className="space-y-4 text-center">
           <div className="mx-auto w-16 h-16 bg-blue-500/10 rounded-3xl flex items-center justify-center mb-6">
             <Bell className="text-blue-500" size={32} />

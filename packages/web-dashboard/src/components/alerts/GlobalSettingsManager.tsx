@@ -37,7 +37,7 @@ export default function GlobalSettingsManager({ initialConfig }: GlobalSettingsM
   };
 
   return (
-    <div className="grid gap-6">
+    <div className="flex flex-col gap-6 min-w-0">
       <h3 className="text-xs font-black text-zinc-600 uppercase tracking-widest px-2">Global System Configuration</h3>
       
       <SettingCard 
@@ -51,17 +51,17 @@ export default function GlobalSettingsManager({ initialConfig }: GlobalSettingsM
         active={config.TELEGRAM_ENABLED === 'true'}
       />
 
-      <div className="glass p-6 rounded-3xl flex items-center justify-between group glass-hover">
-        <div className="flex items-center space-x-5">
-          <div className="p-4 rounded-2xl bg-zinc-950/50 border border-white/5 text-zinc-400">
+      <div className="glass p-4 md:p-6 rounded-3xl flex items-center justify-between gap-3 group glass-hover">
+        <div className="flex items-center space-x-3 md:space-x-5 min-w-0">
+          <div className="p-3 md:p-4 rounded-2xl bg-zinc-950/50 border border-white/5 text-zinc-400 shrink-0">
             <Settings size={24} />
           </div>
-          <div>
+          <div className="min-w-0">
             <h4 className="font-bold text-white">Price Drop Threshold</h4>
             <p className="text-xs text-zinc-500">알림을 보낼 최소 가격 하락율을 설정합니다.</p>
           </div>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 shrink-0">
           <select 
             value={config.MIN_DROP_RATE}
             onChange={(e) => handleUpdateValue('MIN_DROP_RATE', e.target.value)}
@@ -97,21 +97,21 @@ function SettingCard({ title, desc, status, icon: Icon, color, onClick, active, 
     <div 
       onClick={onClick}
       className={cn(
-        "glass p-6 rounded-3xl flex items-center justify-between group cursor-pointer transition-all border",
+        "glass p-4 md:p-6 rounded-3xl flex items-center justify-between gap-3 group cursor-pointer transition-all border",
         active ? "border-white/10 bg-white/[0.01]" : "border-white/5 opacity-50 grayscale",
         isLoading && "pointer-events-none opacity-80"
       )}
     >
-      <div className="flex items-center space-x-5">
-        <div className={cn("p-4 rounded-2xl bg-zinc-950/50 border border-white/5", color)}>
+      <div className="flex items-center space-x-3 md:space-x-5 min-w-0">
+        <div className={cn("p-3 md:p-4 rounded-2xl bg-zinc-950/50 border border-white/5 shrink-0", color)}>
           <Icon size={24} />
         </div>
-        <div>
+        <div className="min-w-0">
           <h4 className="font-bold text-white">{title}</h4>
           <p className="text-xs text-zinc-500">{desc}</p>
         </div>
       </div>
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4 shrink-0">
         {isLoading ? (
           <Loader2 size={18} className="text-zinc-500 animate-spin" />
         ) : (
