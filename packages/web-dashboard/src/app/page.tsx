@@ -267,7 +267,7 @@ export default async function HomePage() {
                 <Zap className="mr-2 text-yellow-400 fill-yellow-400" size={20} />
                 Recent Market Updates
               </h2>
-              <Link href="/products" className="text-[10px] font-black text-zinc-600 hover:text-white uppercase tracking-widest flex items-center transition-colors">
+              <Link href="/products" className="text-[10px] font-black text-zinc-600 hover:text-white uppercase tracking-widest flex items-center shrink-0 whitespace-nowrap transition-colors">
                 Explore all <ChevronRight size={14} />
               </Link>
             </div>

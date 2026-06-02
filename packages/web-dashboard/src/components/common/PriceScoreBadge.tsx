@@ -29,7 +29,7 @@ export default function PriceScoreBadge({ score, size = "sm", className }: Props
   return (
     <span
       className={cn(
-        "inline-flex items-center font-black uppercase tracking-widest border rounded-md tabular-nums",
+        "inline-flex items-center font-black uppercase tracking-widest border rounded-md tabular-nums whitespace-nowrap shrink-0",
         tier.classes,
         sizing,
         className

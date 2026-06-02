@@ -153,18 +153,18 @@ export default function ProductDetailView({ product, history, existingAlerts, is
             <div className="glass p-6 md:p-10 rounded-[32px] md:rounded-[40px] space-y-6 md:space-y-8 border-white/[0.03]">
               <div className="flex flex-col space-y-6">
                 <div className="flex justify-between items-start">
-                  <div className="space-y-3 md:space-y-4 flex-1">
-                    <div className="flex items-center space-x-2">
-                      <span className="bg-zinc-900 text-zinc-400 text-[9px] md:text-[10px] font-black px-2 py-1 rounded border border-white/5 uppercase tracking-widest">{product.brand || 'Brand'}</span>
+                  <div className="space-y-3 md:space-y-4 flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="bg-zinc-900 text-zinc-400 text-[9px] md:text-[10px] font-black px-2 py-1 rounded border border-white/5 uppercase tracking-widest whitespace-nowrap">{product.brand || 'Brand'}</span>
                       <span className={cn(
-                        "text-[9px] md:text-[10px] font-black px-2 py-1 rounded border uppercase tracking-widest",
+                        "text-[9px] md:text-[10px] font-black px-2 py-1 rounded border uppercase tracking-widest whitespace-nowrap",
                         product.stockStatus === "Discontinued" ? "bg-zinc-700/20 text-zinc-400 border-zinc-600/30"
                           : product.stockStatus === "Low Stock" || product.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20"
                           : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                       )}>{product.stockStatus === "Discontinued" ? "판매 종료" : (product.stockStatus || 'In Stock')}</span>
                       <PriceScoreBadge score={product.priceScore} size="md" />
                     </div>
-                    <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter">
+                    <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter break-keep">
                       {product.title}
                     </h1>
                   </div>
