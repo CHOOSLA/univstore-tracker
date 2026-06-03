@@ -70,6 +70,22 @@ export async function togglePriceAlert(id: number, isActive: boolean) {
   }
 }
 
+/**
+ * 로그인 사용자의 텔레그램 연동 토큰 발급/조회.
+ * userId에 귀속된 TelegramSubscriber를 find-or-create (chatId는 봇 /start 시 채워짐).
+ * 반환: { token, linked } — linked는 chatId 연결 완료 여부.
+ */
+export async function getTelegramLinkToken() {
+  const userId = await currentUserId();
+  if (!userId) return null;
+  let sub = await prisma.telegramSubscriber.findFirst({ where: { userId } });
+  if (!sub) {
+    const token = "UW-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+    sub = await prisma.telegramSubscriber.create({ data: { token, chatId: "", userId } });
+  }
+  return { token: sub.token, linked: !!sub.chatId };
+}
+
 /** 내 목표가 알림 목록 (현재가 포함) */
 export async function getMyPriceAlerts() {
   const userId = await currentUserId();

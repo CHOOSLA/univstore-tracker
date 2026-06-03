@@ -2,29 +2,43 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { Send, QrCode, RefreshCw, CheckCircle, Clipboard } from 'lucide-react';
+import { getTelegramLinkToken } from "@/app/alerts/actions";
 
 interface TelegramConnectorProps {
   botUsername: string;
 }
 
 export default function TelegramConnector({ botUsername }: TelegramConnectorProps) {
+  const { status } = useSession();
   const [token, setToken] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [linked, setLinked] = useState(false);
+  const isAuthed = status === 'authenticated';
 
   useEffect(() => {
     setMounted(true);
-    if (typeof window !== 'undefined') {
+  }, []);
+
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (status === 'authenticated') {
+      // 로그인 사용자: 계정에 귀속된 연동 토큰 발급/조회
+      getTelegramLinkToken().then((res) => {
+        if (res) { setToken(res.token); setLinked(res.linked); }
+      });
+    } else if (typeof window !== 'undefined') {
+      // 비회원: localStorage 식별 토큰 (전역 브로드캐스트용)
       let storedToken = localStorage.getItem('univwatch_subscriber_token');
       if (!storedToken) {
-        // 비회원 식별용 고유 토큰 발급 (UW- + 6자리 난수)
         storedToken = 'UW-' + Math.random().toString(36).substring(2, 8).toUpperCase();
         localStorage.setItem('univwatch_subscriber_token', storedToken);
       }
       setToken(storedToken);
     }
-  }, []);
+  }, [status]);
 
   const handleRegenerate = () => {
     if (!confirm('토큰을 재발급 받으시면 기존 텔레그램 채팅 연동 정보가 만료되며, 기존 알림 설정을 새로 연결해야 합니다. 진행하시겠습니까?')) return;
@@ -56,7 +70,14 @@ export default function TelegramConnector({ botUsername }: TelegramConnectorProp
             <Send size={18} className="fill-blue-500/10" />
             <h3 className="text-xs font-black uppercase tracking-widest">Telegram Personal Binding</h3>
           </div>
-          <h4 className="text-2xl font-black text-white tracking-tight">개인 알림 채널 연동</h4>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h4 className="text-2xl font-black text-white tracking-tight">개인 알림 채널 연동</h4>
+            {isAuthed && linked && (
+              <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 rounded">
+                <CheckCircle size={12} /> 연동됨
+              </span>
+            )}
+          </div>
           <p className="text-sm text-zinc-500 leading-relaxed max-w-xl">
             가입이나 번거로운 양식 없이, 텔레그램 봇 대화방 진입 한 번으로 격리된 알림 수신 채널을 활성화합니다. 
             아래의 QR 코드를 스캔하거나 연동 시작 버튼을 눌러주세요.
@@ -73,13 +94,15 @@ export default function TelegramConnector({ botUsername }: TelegramConnectorProp
           >
             {copied ? <CheckCircle size={14} className="text-emerald-500" /> : <Clipboard size={14} />}
           </button>
-          <button 
-            onClick={handleRegenerate}
-            className="p-2 bg-zinc-900 border border-white/5 hover:border-white/20 text-zinc-400 hover:text-red-400 rounded-xl transition-all"
-            title="토큰 재발급"
-          >
-            <RefreshCw size={14} />
-          </button>
+          {!isAuthed && (
+            <button
+              onClick={handleRegenerate}
+              className="p-2 bg-zinc-900 border border-white/5 hover:border-white/20 text-zinc-400 hover:text-red-400 rounded-xl transition-all"
+              title="토큰 재발급"
+            >
+              <RefreshCw size={14} />
+            </button>
+          )}
         </div>
       </div>
 

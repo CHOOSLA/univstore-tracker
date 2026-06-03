@@ -160,48 +160,40 @@ async function handlePriceUpdate(payload) {
     const telegramEnabled = configMap['TELEGRAM_ENABLED'] !== 'false';
     const minDropRate = parseInt(configMap['MIN_DROP_RATE'] || '10');
 
-    /* 개별 목표가 알림 감지 기능 비활성화로 인한 주석 처리
-    // 2. 활성화된 알림 중 목표가에 도달한 항목 조회
-    if (telegramEnabled) {
+    // 2. 계정 귀속 목표가 알림: 현재가가 목표가 이하로 떨어진 활성 알림 처리
+    //    (raw price 기준. 텔레그램 연동된 계정에만 푸시, 인앱 표시는 항상 동작)
+    if (telegramEnabled && bot) {
       const activeAlerts = await prisma.priceAlert.findMany({
         where: {
           productId: id,
           isActive: true,
-          targetPrice: { gte: finalPrice }
-        }
+          userId: { not: null },
+          targetPrice: { gte: price },
+        },
       });
 
       for (const alert of activeAlerts) {
+        // 일 1회 중복 발송 방지
         const today = new Date(); today.setHours(0, 0, 0, 0);
         if (alert.lastNotifiedAt && new Date(alert.lastNotifiedAt) >= today) continue;
 
-        let targetChatId = chatId; // 기본은 전역 관리자 chatId
+        // 사용자 계정에 연동된 텔레그램 chatId 조회 (미연동 시 푸시 스킵)
+        const sub = await prisma.telegramSubscriber.findFirst({
+          where: { userId: alert.userId, NOT: { chatId: '' } },
+        });
+        if (!sub || !sub.chatId) continue;
 
-        // 개별 구독자 토큰이 있을 경우, 매핑된 텔레그램 chatId를 쿼리함
-        if (alert.subscriberToken) {
-          const subscriber = await prisma.telegramSubscriber.findUnique({
-            where: { token: alert.subscriberToken }
-          });
-          if (subscriber) {
-            targetChatId = subscriber.chatId;
-          } else {
-            // 매핑되는 텔레그램 chatId가 유실되었으면 발송 스킵
-            continue;
-          }
-        }
+        const message = `🎯 *목표가 도달 알림!*\n\n📦 *상품명*: ${title}\n💰 *현재가*: ${price.toLocaleString()}원\n📍 *목표가*: ${alert.targetPrice.toLocaleString()}원 이하\n🎁 *혜택*: ${bestBenefit || '기본'}\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
 
-        if (bot && targetChatId) {
-          const message = `🎯 *목표 가격 도달 알림!*\n\n📦 *상품명*: ${title}\n🔥 *현재 실질 구매가*: ${finalPrice.toLocaleString()}원\n📍 *설정 목표가*: ${alert.targetPrice.toLocaleString()}원 이하\n🎁 *혜택*: ${bestBenefit || '기본'}\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
-          
-          // API Rate Limits 방지를 위한 40ms Throttling spacing
-          await new Promise(r => setTimeout(r, 40));
-          
-          await bot.sendMessage(targetChatId, message, { parse_mode: 'Markdown' });
+        await new Promise(r => setTimeout(r, 40));
+        try {
+          await bot.sendMessage(sub.chatId, message, { parse_mode: 'Markdown' });
           await prisma.priceAlert.update({ where: { id: alert.id }, data: { lastNotifiedAt: new Date() } });
+        } catch (err) {
+          console.error(`❌ 목표가 알림 발송 실패 (alert ${alert.id}, chatId ${sub.chatId}): ${err.message}`);
         }
       }
     }
-    */
 
     // 3. 기존의 단순 가격 하락 알림 로직 (설정한 최소 하락율 이상일 때만 발송) -> 모든 구독자 대상 브로드캐스트로 확장
     if (lastRecord && price < lastRecord.price) {
