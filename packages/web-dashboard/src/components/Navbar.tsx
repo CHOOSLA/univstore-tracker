@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X, Monitor, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import AuthButton from "@/components/AuthButton";
 
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/' },
@@ -88,6 +89,11 @@ export function Navbar() {
           <span className="text-[11px] font-black text-zinc-400 uppercase tracking-tighter">System Online</span>
         </div>
 
+        {/* Desktop Auth */}
+        <div className="hidden md:block">
+          <AuthButton variant="desktop" />
+        </div>
+
         {/* Mobile Menu Toggle */}
         <button 
           className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors"
@@ -124,9 +130,12 @@ export function Navbar() {
         })}
         
         <div className={cn(
-          "pt-12 border-t border-white/5 w-1/2 flex flex-col items-center space-y-4 transition-all duration-700 delay-300",
+          "pt-12 border-t border-white/5 w-2/3 flex flex-col items-center space-y-6 transition-all duration-700 delay-300",
           isMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
         )}>
+          <div className="w-full">
+            <AuthButton variant="mobile" />
+          </div>
           <div className="px-4 py-2 bg-zinc-900 border border-white/5 rounded-full flex items-center space-x-2">
             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
             <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest">System Online</span>
