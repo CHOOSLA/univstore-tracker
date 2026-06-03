@@ -162,7 +162,7 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                           : product.stockStatus === "Low Stock" || product.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20"
                           : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                       )}>{product.stockStatus === "Discontinued" ? "판매 종료" : (product.stockStatus || 'In Stock')}</span>
-                      <PriceScoreBadge score={product.priceScore} size="md" />
+                      <PriceScoreBadge score={product.priceScore} />
                     </div>
                     <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter break-keep">
                       {product.title}
