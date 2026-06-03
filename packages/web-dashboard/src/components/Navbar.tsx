@@ -85,7 +85,7 @@ export function Navbar() {
       <div className="flex items-center space-x-4 relative z-[110]">
         <div className="hidden sm:flex px-3 py-1.5 bg-zinc-950 border border-white/5 rounded-full items-center space-x-2">
           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-tighter">System Online</span>
+          <span className="text-[11px] font-black text-zinc-400 uppercase tracking-tighter">System Online</span>
         </div>
 
         {/* Mobile Menu Toggle */}
@@ -129,9 +129,9 @@ export function Navbar() {
         )}>
           <div className="px-4 py-2 bg-zinc-900 border border-white/5 rounded-full flex items-center space-x-2">
             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">System Online</span>
+            <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest">System Online</span>
           </div>
-          <p className="text-[8px] font-bold text-zinc-700 uppercase tracking-[0.4em]">UnivWatch Intel Engine</p>
+          <p className="text-[10px] font-bold text-zinc-700 uppercase tracking-[0.4em]">UnivWatch Intel Engine</p>
         </div>
       </div>
     </nav>

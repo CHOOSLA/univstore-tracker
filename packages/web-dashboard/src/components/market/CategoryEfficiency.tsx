@@ -25,7 +25,7 @@ export default function CategoryEfficiency({ categories }: Props) {
           <h3 className="text-lg font-black text-white tracking-tight leading-none uppercase">
             CATEGORY SMARTNESS YIELD
           </h3>
-          <p className="text-[10px] text-zinc-500 tracking-tight mt-1 uppercase font-bold">
+          <p className="text-[11px] text-zinc-500 tracking-tight mt-1 uppercase font-bold">
             실시간 카테고리별 핫딜 밀도 및 가성비 효율 분석
           </p>
         </div>

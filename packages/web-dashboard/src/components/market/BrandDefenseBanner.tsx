@@ -32,7 +32,7 @@ export default function BrandDefenseBanner({ items }: Props) {
           </div>
         </div>
         <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-start gap-3 self-stretch md:self-auto shrink-0">
-          <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-red-500/10 border border-red-500/20 rounded-xl text-[10px] md:text-sm text-red-400 font-black tracking-wider uppercase shadow-[0_0_12px_rgba(239,68,68,0.15)] animate-pulse whitespace-nowrap">
+          <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-red-500/10 border border-red-500/20 rounded-xl text-[11px] md:text-sm text-red-400 font-black tracking-wider uppercase shadow-[0_0_12px_rgba(239,68,68,0.15)] animate-pulse whitespace-nowrap">
             <span className="w-2 h-2 rounded-full bg-red-500" />
             <span>CRITICAL STATUS</span>
           </div>

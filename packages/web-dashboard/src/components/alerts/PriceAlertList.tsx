@@ -90,15 +90,15 @@ export default function PriceAlertList() {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
-                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{alert.product?.brand || 'Brand'}</span>
+                    <span className="text-[11px] font-black text-blue-500 uppercase tracking-widest">{alert.product?.brand || 'Brand'}</span>
                     {alert.lastNotifiedAt && (
-                      <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20 uppercase tracking-tighter">Last Alerted</span>
+                      <span className="text-[10px] font-black bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20 uppercase tracking-tighter">Last Alerted</span>
                     )}
                   </div>
                   <Link href={`/product/${alert.productId}`} className="text-base font-bold text-white hover:text-blue-400 transition-colors line-clamp-1">
                     {alert.product?.title || '알 수 없는 상품'}
                   </Link>
-                  <div className="flex items-center space-x-3 text-[11px] text-zinc-500 font-bold">
+                  <div className="flex items-center space-x-3 text-[12px] text-zinc-500 font-bold">
                     <span className="text-zinc-300">Target: ₩{alert.targetPrice.toLocaleString()}</span>
                     {alert.lastNotifiedAt && (
                       <span className="flex items-center space-x-1">

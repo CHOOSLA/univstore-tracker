@@ -23,7 +23,7 @@ export default function PriceScoreBadge({ score, size = "sm", className }: Props
   if (score === null || score === undefined) return null;
   const tier = tierOf(score);
   const sizing = size === "sm"
-    ? "text-[9px] md:text-[10px] px-1.5 md:px-2 py-0.5 md:py-1 gap-1"
+    ? "text-[10px] md:text-[11px] px-1.5 md:px-2 py-0.5 md:py-1 gap-1"
     : "text-xs md:text-sm px-2.5 py-1.5 gap-1.5";
 
   return (

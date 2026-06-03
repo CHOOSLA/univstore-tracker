@@ -158,7 +158,7 @@ export default function TerminalView({
                 isRunning ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" : 
                 isBlocked ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]" : "bg-zinc-700"
               )} />
-              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.4em]">
+              <span className="text-[10px] md:text-[11px] font-black uppercase tracking-[0.4em]">
                 {isRunning ? "Pipeline Active" : isBlocked ? "Pipeline Blocked" : "System Standby"}
               </span>
             </div>
@@ -167,11 +167,11 @@ export default function TerminalView({
             <div className="pt-4 md:pt-6 space-y-3 md:space-y-4 max-w-2xl">
                <div className="flex justify-between items-end">
                   <div className="space-y-0.5 md:space-y-1">
-                    <p className="text-[9px] md:text-[10px] font-black text-zinc-600 uppercase tracking-widest">Global Scan Depth</p>
+                    <p className="text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-widest">Global Scan Depth</p>
                     <p className="text-xl md:text-3xl font-black text-white">{currentIdx.toLocaleString()} <span className="text-zinc-700 text-sm md:text-base font-bold">/ {totalItems.toLocaleString()} items</span></p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] md:text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-0.5 md:mb-1">Coverage</p>
+                    <p className="text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-widest mb-0.5 md:mb-1">Coverage</p>
                     <p className="text-2xl md:text-4xl font-black text-emerald-500 tracking-tighter">{progressPercent}%</p>
                   </div>
                </div>
@@ -191,7 +191,7 @@ export default function TerminalView({
              <button 
                onClick={handleRestartCrawler}
                disabled={isProcessing}
-               className="flex-1 lg:flex-none flex items-center justify-center space-x-2 bg-emerald-500 text-black px-4 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-emerald-400 transition-all disabled:opacity-50"
+               className="flex-1 lg:flex-none flex items-center justify-center space-x-2 bg-emerald-500 text-black px-4 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl text-[11px] md:text-xs font-black uppercase tracking-widest hover:bg-emerald-400 transition-all disabled:opacity-50"
              >
                <Play size={14} fill="currentColor" />
                <span>Resume</span>
@@ -199,7 +199,7 @@ export default function TerminalView({
              <button 
                onClick={handleRestartAll}
                disabled={isProcessing}
-               className="flex-1 lg:flex-none flex items-center justify-center space-x-2 bg-zinc-900 border border-white/10 px-4 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all disabled:opacity-50"
+               className="flex-1 lg:flex-none flex items-center justify-center space-x-2 bg-zinc-900 border border-white/10 px-4 md:px-8 py-3 md:py-4 rounded-xl md:rounded-2xl text-[11px] md:text-xs font-black uppercase tracking-widest hover:bg-zinc-800 transition-all disabled:opacity-50"
              >
                <RefreshCcw size={14} />
                <span>Restart</span>
@@ -217,12 +217,12 @@ export default function TerminalView({
                           <div className="w-2.5 h-2.5 rounded-full bg-amber-500/20 border border-amber-500/40" />
                           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/20 border border-emerald-500/40" />
                        </div>
-                       <span className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest sm:ml-4 font-mono truncate">root@univwatch:~# live_telemetry</span>
+                       <span className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest sm:ml-4 font-mono truncate">root@univwatch:~# live_telemetry</span>
                     </div>
-                    <button onClick={() => setLocalLogs([])} className="text-[9px] md:text-[10px] font-black text-zinc-600 hover:text-white transition-colors uppercase tracking-widest">Clear</button>
+                    <button onClick={() => setLocalLogs([])} className="text-[10px] md:text-[11px] font-black text-zinc-600 hover:text-white transition-colors uppercase tracking-widest">Clear</button>
                  </div>
 
-                 <div className="flex-1 p-4 md:p-8 font-mono text-[11px] md:text-sm space-y-2 md:space-y-3 overflow-y-auto custom-scrollbar">
+                 <div className="flex-1 p-4 md:p-8 font-mono text-[12px] md:text-sm space-y-2 md:space-y-3 overflow-y-auto custom-scrollbar">
                     {localLogs.map((log) => (
                       <div key={log.id} className="flex space-x-3 md:space-x-4 text-emerald-400 animate-in fade-in slide-in-from-left-2 duration-300">
                          <span className="text-zinc-700 shrink-0">[{log.time}]</span>
@@ -268,17 +268,17 @@ export default function TerminalView({
               {/* Storage Node */}
               <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/[0.03] space-y-5 md:space-y-6">
                  <div className="flex justify-between items-center px-1 md:px-2">
-                    <h3 className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center">
+                    <h3 className="text-[11px] md:text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center">
                        <HardDrive size={14} className="mr-2 text-amber-500" />
                        Storage Node
                     </h3>
-                    <span className="hidden sm:block text-[9px] md:text-[10px] font-black text-amber-500/50 uppercase tracking-tighter">SSD Optimized</span>
+                    <span className="hidden sm:block text-[10px] md:text-[11px] font-black text-amber-500/50 uppercase tracking-tighter">SSD Optimized</span>
                  </div>
                  <div className="space-y-5 md:space-y-6">
                     <div className="bg-zinc-950/50 p-4 md:p-6 rounded-2xl md:rounded-3xl border border-white/5 space-y-3 md:space-y-4">
                        <div className="flex justify-between items-end">
-                          <p className="text-[9px] md:text-[10px] font-bold text-zinc-600 uppercase">Disk Usage</p>
-                          <p className="text-lg md:text-xl font-black text-white">{storageMetrics.diskUsed} <span className="text-zinc-700 text-[10px] md:text-xs">/ {storageMetrics.diskTotal}</span></p>
+                          <p className="text-[10px] md:text-[11px] font-bold text-zinc-600 uppercase">Disk Usage</p>
+                          <p className="text-lg md:text-xl font-black text-white">{storageMetrics.diskUsed} <span className="text-zinc-700 text-[11px] md:text-xs">/ {storageMetrics.diskTotal}</span></p>
                        </div>
                        <div className="h-1.5 md:h-2 w-full bg-zinc-900 rounded-full overflow-hidden">
                           <div className={cn("h-full rounded-full transition-all duration-1000", storageMetrics.diskPercent > 90 ? "bg-red-500" : "bg-amber-500")} style={{ width: `${storageMetrics.diskPercent}%` }} />
@@ -286,11 +286,11 @@ export default function TerminalView({
                     </div>
                     <div className="grid grid-cols-2 gap-3 md:gap-4">
                        <div className="bg-zinc-950/50 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-white/5 space-y-0.5 md:space-y-1">
-                          <p className="text-[8px] md:text-[9px] font-bold text-zinc-600 uppercase">Database</p>
+                          <p className="text-[10px] md:text-[10px] font-bold text-zinc-600 uppercase">Database</p>
                           <p className="text-sm md:text-base font-black text-white truncate">{storageMetrics.dbSize}</p>
                        </div>
                        <div className="bg-zinc-950/50 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-white/5 space-y-0.5 md:space-y-1">
-                          <p className="text-[8px] md:text-[9px] font-bold text-zinc-600 uppercase">Logs Size</p>
+                          <p className="text-[10px] md:text-[10px] font-bold text-zinc-600 uppercase">Logs Size</p>
                           <p className="text-sm md:text-base font-black text-emerald-500">Minimal</p>
                        </div>
                     </div>
@@ -298,7 +298,7 @@ export default function TerminalView({
               </div>
 
               <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/[0.03] space-y-6 md:space-y-8">
-                 <h3 className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">Database Health</h3>
+                 <h3 className="text-[11px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">Database Health</h3>
                  <div className="space-y-5 md:space-y-6">
                     <StatProgressBar label="Index Efficiency" percent={98} color="bg-blue-500" />
                     <StatProgressBar label="Sync Rate" percent={totalProducts > 0 ? 100 : 0} color="bg-emerald-500" />
@@ -307,7 +307,7 @@ export default function TerminalView({
               </div>
 
               <div className="glass p-6 md:p-8 rounded-[32px] md:rounded-[40px] border-white/[0.03] bg-zinc-100/[0.01] space-y-5 md:space-y-6">
-                 <h3 className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center">
+                 <h3 className="text-[11px] md:text-xs font-black text-zinc-500 uppercase tracking-widest flex items-center">
                     <Zap size={14} className="mr-2 text-blue-500" />
                     Queue Metrics
                  </h3>
@@ -317,11 +317,11 @@ export default function TerminalView({
                  </div>
                  <div className="grid grid-cols-2 gap-3 md:gap-4 text-center">
                     <div>
-                       <p className="text-[9px] md:text-[10px] font-bold text-zinc-600 uppercase">Pending</p>
+                       <p className="text-[10px] md:text-[11px] font-bold text-zinc-600 uppercase">Pending</p>
                        <p className="text-base md:text-lg font-black text-white">{queueSize.toLocaleString()}</p>
                     </div>
                     <div>
-                       <p className="text-[9px] md:text-[10px] font-bold text-zinc-600 uppercase">Buffer State</p>
+                       <p className="text-[10px] md:text-[11px] font-bold text-zinc-600 uppercase">Buffer State</p>
                        <p className={cn("text-sm md:text-lg font-black truncate", queueSize === 0 ? "text-emerald-500" : queueSize < 100 ? "text-blue-500" : queueSize < 500 ? "text-amber-500" : "text-red-500")}>
                          {queueSize === 0 ? "Empty" : queueSize < 100 ? "Stable" : queueSize < 500 ? "Busy" : "Backlogged"}
                        </p>
@@ -338,7 +338,7 @@ export default function TerminalView({
 function StatProgressBar({ label, percent, color }: any) {
   return (
     <div className="space-y-1.5 md:space-y-2">
-       <div className="flex justify-between text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest">
+       <div className="flex justify-between text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest">
           <span>{label}</span>
           <span className="text-white">{percent}%</span>
        </div>

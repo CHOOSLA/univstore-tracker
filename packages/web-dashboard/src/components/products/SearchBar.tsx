@@ -71,7 +71,7 @@ export default function SearchBar() {
         
         <button 
           onClick={() => handleSearch(query)}
-          className="hidden md:block px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[10px] font-black uppercase tracking-widest rounded-lg border border-white/5 transition-all"
+          className="hidden md:block px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[11px] font-black uppercase tracking-widest rounded-lg border border-white/5 transition-all"
         >
           Enter
         </button>

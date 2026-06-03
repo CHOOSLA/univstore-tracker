@@ -142,7 +142,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
         </div>
       )}
       {!hasMore && items.length > 0 && (
-        <div className="py-10 text-center text-zinc-600 font-black uppercase text-[10px] tracking-[0.3em] border-t border-white/5">
+        <div className="py-10 text-center text-zinc-600 font-black uppercase text-[11px] tracking-[0.3em] border-t border-white/5">
           End of Market Data
         </div>
       )}
@@ -184,7 +184,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
           <ViewToggle />
         </div>
         <div className="glass rounded-[32px] md:rounded-[40px] overflow-hidden border-white/[0.03]">
-          <div className="grid grid-cols-12 bg-white/[0.02] text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 border-b border-white/5 px-4 md:px-10 py-6">
+          <div className="grid grid-cols-12 bg-white/[0.02] text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 border-b border-white/5 px-4 md:px-10 py-6">
             <div className="col-span-8 md:col-span-6 lg:col-span-5">Product</div>
             <div className="col-span-4 md:col-span-3 text-right">Price</div>
             <div className="hidden lg:block lg:col-span-2 text-center">Trend</div>
@@ -205,10 +205,10 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
                     </div>
                     <div className="space-y-0.5 md:space-y-1 min-w-0">
                       <div className="flex items-center space-x-2">
-                        <span className="text-[9px] md:text-[10px] font-black text-blue-500 uppercase tracking-widest truncate">{item.brand || 'Brand'}</span>
+                        <span className="text-[10px] md:text-[11px] font-black text-blue-500 uppercase tracking-widest truncate">{item.brand || 'Brand'}</span>
                       </div>
                       <p className="text-sm md:text-base font-black text-white group-hover:text-blue-400 transition-colors line-clamp-1">{item.title}</p>
-                      <span className="flex items-center space-x-1 text-emerald-400/80 text-[10px] md:text-[11px] font-bold truncate">
+                      <span className="flex items-center space-x-1 text-emerald-400/80 text-[11px] md:text-[12px] font-bold truncate">
                         <CreditCard size={10} /><span className="truncate">{item.bestBenefit || '기본 혜택'}</span>
                       </span>
                     </div>
@@ -216,8 +216,8 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
                   <div className="col-span-4 md:col-span-3 text-right relative z-0">
                     <div className="flex flex-col items-end">
                       <div className="flex items-baseline space-x-1 md:space-x-2">
-                        <span className="text-[10px] md:text-xs text-zinc-600 line-through tabular-nums font-medium">₩{oldPrice.toLocaleString()}</span>
-                        <span className="text-red-500 font-black text-[10px] md:text-sm">-{dropRate}%</span>
+                        <span className="text-[11px] md:text-xs text-zinc-600 line-through tabular-nums font-medium">₩{oldPrice.toLocaleString()}</span>
+                        <span className="text-red-500 font-black text-[11px] md:text-sm">-{dropRate}%</span>
                       </div>
                       <p className="text-lg md:text-2xl font-black text-white tracking-tighter tabular-nums leading-tight">₩{currentPrice.toLocaleString()}</p>
                     </div>
@@ -228,7 +228,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
                   <div className="hidden md:block md:col-span-3 lg:col-span-2 text-right relative z-0">
                     <div className="flex items-center justify-end space-x-4">
                       <span className={cn(
-                        "hidden xl:block text-[10px] font-black px-2.5 py-1 rounded-lg border uppercase tracking-widest",
+                        "hidden xl:block text-[11px] font-black px-2.5 py-1 rounded-lg border uppercase tracking-widest",
                         item.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                       )}>
                         {item.stockStatus === "Out of Stock" ? "Sold Out" : "In Stock"}
@@ -268,7 +268,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
               </div>
               <div className="space-y-2 md:space-y-3 flex-1">
                 <div className="space-y-1">
-                  <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
+                  <p className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
                   <p className="text-xs md:text-base font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[2.5rem] md:h-[3rem]">
                     {item.title}
                   </p>
@@ -277,7 +277,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
                   {discountRate > 0 && (
                     <div className="flex items-center space-x-2">
                       <span className="text-red-500 text-xs md:text-sm font-black">{discountRate}%</span>
-                      <span className="text-[10px] md:text-xs text-zinc-600 line-through font-bold">₩{oldPrice.toLocaleString()}</span>
+                      <span className="text-[11px] md:text-xs text-zinc-600 line-through font-bold">₩{oldPrice.toLocaleString()}</span>
                     </div>
                   )}
                   <p className="text-base md:text-2xl font-black text-white leading-tight">
@@ -287,11 +287,11 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
               </div>
               <div className="pt-3 md:pt-4 border-t border-white/5 space-y-3 md:space-y-4">
                 <div className="flex justify-between items-end">
-                  <p className="text-[8px] md:text-[10px] font-black text-zinc-600 uppercase tracking-widest">7D Trend Feed</p>
+                  <p className="text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-widest">7D Trend Feed</p>
                   {historyData.length > 1 && (
                     <div className="flex items-center space-x-1">
                       <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[7px] md:text-[8px] font-black text-emerald-500 uppercase">Live</span>
+                      <span className="text-[7px] md:text-[10px] font-black text-emerald-500 uppercase">Live</span>
                     </div>
                   )}
                 </div>
@@ -300,7 +300,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
                     <Sparkline data={historyData} color="#3b82f6" height={40} fullWidth />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center border border-dashed border-zinc-800 rounded-lg">
-                      <p className="text-[8px] font-black text-zinc-700 uppercase tracking-widest">Awaiting Data</p>
+                      <p className="text-[10px] font-black text-zinc-700 uppercase tracking-widest">Awaiting Data</p>
                     </div>
                   )}
                 </div>

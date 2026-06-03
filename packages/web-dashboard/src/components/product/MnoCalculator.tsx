@@ -125,7 +125,7 @@ export default function MnoCalculator({ devicePrice, option }: Props) {
             <h3 className="text-base md:text-lg font-black text-white uppercase tracking-tight">
               실질가 계산기
             </h3>
-            <p className="text-[10px] md:text-xs text-zinc-500 font-medium mt-0.5">
+            <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-0.5">
               가입유형·약정·요금제 조합별 월 부담금
             </p>
           </div>
@@ -166,7 +166,7 @@ export default function MnoCalculator({ devicePrice, option }: Props) {
 
         {/* 요금제 (드롭다운) */}
         <div className="space-y-2">
-          <label className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">
+          <label className="text-[11px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">
             요금제
           </label>
           <select
@@ -201,10 +201,10 @@ export default function MnoCalculator({ devicePrice, option }: Props) {
         />
         <div className="pt-3 md:pt-4 border-t border-white/5 flex items-center justify-between">
           <div className="space-y-0.5">
-            <p className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">
+            <p className="text-[11px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">
               월 부담금
             </p>
-            <p className="text-[10px] md:text-xs text-zinc-600 font-medium">
+            <p className="text-[11px] md:text-xs text-zinc-600 font-medium">
               {contractMonths}개월 총 ₩{result.contractTotal.toLocaleString()}
             </p>
           </div>
@@ -217,7 +217,7 @@ export default function MnoCalculator({ devicePrice, option }: Props) {
       {/* 사용 가능한 옵션 */}
       {(option.deviceColors.length > 0 || option.deviceCapacities.length > 0) && (
         <div className="pt-4 md:pt-5 border-t border-white/5 space-y-2">
-          <p className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">
+          <p className="text-[11px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">
             사용 가능한 옵션
           </p>
           {option.deviceCapacities.length > 0 && (
@@ -233,7 +233,7 @@ export default function MnoCalculator({ devicePrice, option }: Props) {
             </p>
           )}
           {(option.baseColor || option.baseCapacity) && (
-            <p className="text-[10px] md:text-xs text-zinc-600 font-medium">
+            <p className="text-[11px] md:text-xs text-zinc-600 font-medium">
               기준 옵션: {[option.baseCapacity, option.baseColor].filter(Boolean).join(" · ")}
             </p>
           )}
@@ -241,7 +241,7 @@ export default function MnoCalculator({ devicePrice, option }: Props) {
       )}
 
       {/* 면책 */}
-      <p className="text-[10px] md:text-xs text-zinc-600 leading-relaxed font-medium">
+      <p className="text-[11px] md:text-xs text-zinc-600 leading-relaxed font-medium">
         <CreditCard className="w-3 h-3 inline mr-1 -mt-0.5" />
         선택약정 25%는 약정 기간 동안의 월 통신비 25% 할인 가정. 실제 약관·부가서비스·위약금에 따라 차이가 있을 수 있으니 univstore에서 최종 확인하세요.
       </p>
@@ -262,7 +262,7 @@ function Selector({
 }) {
   return (
     <div className="space-y-2">
-      <label className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">
+      <label className="text-[11px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">
         {label}
       </label>
       <div className="flex flex-wrap gap-2">
@@ -304,7 +304,7 @@ function ResultRow({
         <span className="text-zinc-500 mt-0.5">{icon}</span>
         <div className="min-w-0">
           <p className="text-xs md:text-sm font-bold text-zinc-300 leading-none">{label}</p>
-          <p className="text-[10px] md:text-xs text-zinc-600 font-medium mt-1 truncate">{sub}</p>
+          <p className="text-[11px] md:text-xs text-zinc-600 font-medium mt-1 truncate">{sub}</p>
         </div>
       </div>
       <p className={cn("font-black tabular-nums shrink-0 text-sm md:text-base", accent)}>{value}</p>

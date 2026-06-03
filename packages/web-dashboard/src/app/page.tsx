@@ -122,7 +122,7 @@ export default async function HomePage() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-400">Live Now</span>
+                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400">Live Now</span>
               </div>
 
               <div className="flex flex-wrap items-baseline gap-x-6 md:gap-x-10 gap-y-2">
@@ -130,7 +130,7 @@ export default async function HomePage() {
                   <span className="text-3xl md:text-5xl font-black text-amber-400 leading-none tabular-nums">
                     {goldenCount.toLocaleString()}
                   </span>
-                  <span className="text-[11px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+                  <span className="text-[12px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
                     역대 최저
                   </span>
                 </div>
@@ -138,7 +138,7 @@ export default async function HomePage() {
                   <span className="text-3xl md:text-5xl font-black text-red-400 leading-none tabular-nums">
                     {trueDealsCount.toLocaleString()}
                   </span>
-                  <span className="text-[11px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
+                  <span className="text-[12px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
                     평균 대비 급락
                   </span>
                 </div>
@@ -178,7 +178,7 @@ export default async function HomePage() {
                  <h2 className="text-2xl md:text-3xl font-black text-white tracking-tight flex items-center uppercase">
                     EVERYUNIV 추천 PICK
                  </h2>
-                 <p className="text-[10px] md:text-xs text-zinc-600 font-bold uppercase tracking-widest">EveryUniv Curated + UnivWatch Price Engine</p>
+                 <p className="text-[11px] md:text-xs text-zinc-600 font-bold uppercase tracking-widest">EveryUniv Curated + UnivWatch Price Engine</p>
               </div>
            </div>
 
@@ -199,7 +199,7 @@ export default async function HomePage() {
                       {item.imageUrl ? (
                         <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-800 font-black uppercase tracking-tighter px-1 text-center">NO IMAGE</div>
+                        <div className="w-full h-full flex items-center justify-center text-[11px] text-zinc-800 font-black uppercase tracking-tighter px-1 text-center">NO IMAGE</div>
                       )}
                     </div>
 
@@ -207,7 +207,7 @@ export default async function HomePage() {
                     <div className="space-y-2 md:space-y-3 flex-1">
                        <div className="space-y-1">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest truncate">{item.brand || 'Brand'}</p>
+                            <p className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest truncate">{item.brand || 'Brand'}</p>
                             <PriceScoreBadge score={(item as any).priceScore} />
                           </div>
                           <p className="text-xs md:text-base font-bold text-white leading-snug group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[2.5em] break-keep">
@@ -218,8 +218,8 @@ export default async function HomePage() {
                        <div className="flex flex-col">
                           {discountRate > 0 && (
                             <div className="flex items-center space-x-2">
-                              <span className="text-red-500 text-[10px] md:text-sm font-black">{discountRate}%</span>
-                              <span className="text-[8px] md:text-xs text-zinc-600 line-through font-bold">₩{originalPrice.toLocaleString()}</span>
+                              <span className="text-red-500 text-[11px] md:text-sm font-black">{discountRate}%</span>
+                              <span className="text-[10px] md:text-xs text-zinc-600 line-through font-bold">₩{originalPrice.toLocaleString()}</span>
                             </div>
                           )}
                           <p className="text-base md:text-2xl font-black text-white leading-tight">
@@ -231,11 +231,11 @@ export default async function HomePage() {
                     {/* 하단: 트렌드 (Full Width 복구) */}
                     <div className="pt-3 md:pt-4 border-t border-white/5 space-y-3 md:space-y-4">
                        <div className="flex justify-between items-end">
-                          <p className="text-[8px] md:text-[10px] font-black text-zinc-600 uppercase tracking-widest">7D Trend Feed</p>
+                          <p className="text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-widest">7D Trend Feed</p>
                           {historyData.length > 1 && (
                             <div className="flex items-center space-x-1">
                                <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                               <span className="text-[7px] md:text-[8px] font-black text-emerald-500 uppercase">Live</span>
+                               <span className="text-[7px] md:text-[10px] font-black text-emerald-500 uppercase">Live</span>
                             </div>
                           )}
                        </div>
@@ -244,7 +244,7 @@ export default async function HomePage() {
                             <Sparkline data={historyData} color="#3b82f6" height={48} fullWidth />
                           ) : (
                             <div className="h-full w-full flex items-center justify-center border border-dashed border-zinc-800 rounded-lg">
-                               <p className="text-[8px] font-black text-zinc-700 uppercase tracking-widest">Awaiting Data</p>
+                               <p className="text-[10px] font-black text-zinc-700 uppercase tracking-widest">Awaiting Data</p>
                             </div>
                           )}
                        </div>
@@ -267,7 +267,7 @@ export default async function HomePage() {
                 <Zap className="mr-2 text-yellow-400 fill-yellow-400" size={20} />
                 Recent Market Updates
               </h2>
-              <Link href="/products" className="text-[10px] font-black text-zinc-600 hover:text-white uppercase tracking-widest flex items-center shrink-0 whitespace-nowrap transition-colors">
+              <Link href="/products" className="text-[11px] font-black text-zinc-600 hover:text-white uppercase tracking-widest flex items-center shrink-0 whitespace-nowrap transition-colors">
                 Explore all <ChevronRight size={14} />
               </Link>
             </div>
@@ -284,15 +284,15 @@ export default async function HomePage() {
                     {/* 왼쪽 블록: 고정 크기 이미지 및 텍스트 보호 */}
                     <div className="flex items-center space-x-4 md:space-x-6 flex-1 min-w-0">
                       <div className="relative w-16 h-16 md:w-20 md:h-20 shrink-0 bg-zinc-900 rounded-xl md:rounded-2xl flex items-center justify-center border border-white/5 overflow-hidden group-hover:scale-105 transition-transform">
-                        {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <div className="text-[10px] text-zinc-700 uppercase font-black tracking-tighter px-1 text-center">NO IMAGE</div>}
+                        {item.imageUrl ? <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" /> : <div className="text-[11px] text-zinc-700 uppercase font-black tracking-tighter px-1 text-center">NO IMAGE</div>}
                       </div>
                       <div className="space-y-1 min-w-0">
                         <div className="flex items-center space-x-2">
-                          <span className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest truncate">{item.brand}</span>
-                          <span className="shrink-0 text-[8px] md:text-[9px] font-black px-1.5 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 uppercase">Active</span>
+                          <span className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest truncate">{item.brand}</span>
+                          <span className="shrink-0 text-[10px] md:text-[10px] font-black px-1.5 py-0.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 uppercase">Active</span>
                         </div>
                         <p className="text-white font-black text-base md:text-xl group-hover:text-blue-400 transition-colors line-clamp-1">{item.title}</p>
-                        <div className="flex items-center space-x-1 text-[10px] md:text-xs text-emerald-400 font-bold truncate">
+                        <div className="flex items-center space-x-1 text-[11px] md:text-xs text-emerald-400 font-bold truncate">
                            <CreditCard size={10} className="shrink-0" />
                            <span className="truncate">{item.bestBenefit || '기본 혜택 적용'}</span>
                         </div>
@@ -302,12 +302,12 @@ export default async function HomePage() {
                     {/* 오른쪽 블록: 너비 고정으로 레이아웃 보호 */}
                     <div className="shrink-0 flex items-center justify-between sm:justify-end space-x-4 md:space-x-8 mt-4 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-white/5">
                       <div className="hidden md:block w-24 shrink-0">
-                        <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest text-right mb-2">Trend</p>
+                        <p className="text-[11px] text-zinc-600 font-bold uppercase tracking-widest text-right mb-2">Trend</p>
                         <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color={parseFloat(dropRate) > 10 ? "#ef4444" : "#3b82f6"} />
                       </div>
                       <div className="text-right min-w-[100px] sm:min-w-[148px] shrink-0">
                         <div className="flex items-baseline justify-end space-x-2">
-                          <span className="text-[10px] text-zinc-500 line-through">₩{oldPrice.toLocaleString()}</span>
+                          <span className="text-[11px] text-zinc-500 line-through">₩{oldPrice.toLocaleString()}</span>
                           <span className="text-red-500 font-black text-base md:text-lg">-{dropRate}%</span>
                         </div>
                         <p className="text-2xl md:text-3xl font-black text-white leading-none">₩{currentPrice.toLocaleString()}</p>
@@ -329,9 +329,9 @@ export default async function HomePage() {
                     <cat.icon size={20} />
                   </div>
                   <div className="mt-2 md:mt-4">
-                    <p className="text-zinc-500 text-[8px] md:text-[10px] font-black uppercase tracking-[0.2em]">{cat.label}</p>
+                    <p className="text-zinc-500 text-[10px] md:text-[11px] font-black uppercase tracking-[0.2em]">{cat.label}</p>
                     <p className="text-2xl md:text-3xl font-black text-white">{cat.count}</p>
-                    <p className="text-[8px] md:text-[10px] text-emerald-500 font-bold mt-1">Items Tracked</p>
+                    <p className="text-[10px] md:text-[11px] text-emerald-500 font-bold mt-1">Items Tracked</p>
                   </div>
                 </Link>
               ))}
@@ -343,12 +343,12 @@ export default async function HomePage() {
                 <ShieldCheck className="text-blue-500" size={24} />
                 <h3 className="font-black text-white text-lg md:text-xl tracking-tight">System Node</h3>
               </div>
-              <p className="text-[10px] md:text-xs text-zinc-500 leading-relaxed font-medium">
+              <p className="text-[11px] md:text-xs text-zinc-500 leading-relaxed font-medium">
                 서버의 가용 자원을 실시간으로 모니터링하며 최적화된 수집 성능을 유지합니다.
               </p>
               <div className="space-y-4 pt-2 border-t border-white/5">
                 <div className="space-y-2">
-                   <div className="flex justify-between text-[8px] md:text-[10px] font-black text-zinc-600 uppercase tracking-widest">
+                   <div className="flex justify-between text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-widest">
                       <span>Disk ({storage.diskUsed})</span>
                       <span className="text-blue-400">{storage.diskPercent}%</span>
                    </div>
@@ -356,7 +356,7 @@ export default async function HomePage() {
                       <div className="h-full bg-blue-500 rounded-full transition-all duration-1000" style={{ width: `${storage.diskPercent}%` }} />
                    </div>
                 </div>
-                <div className="flex justify-between text-[8px] md:text-[10px] font-black text-zinc-600 uppercase tracking-widest pt-2">
+                <div className="flex justify-between text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-widest pt-2">
                   <span>DB Size</span>
                   <span className="text-white">{(dbStats as any)[0]?.size}</span>
                 </div>
@@ -373,9 +373,9 @@ function MetricCard({ title, value, sub, icon: Icon, accent }: any) {
   return (
     <div className="glass p-5 md:p-8 rounded-[32px] md:rounded-[40px] flex flex-col md:flex-row items-start justify-between border-white/[0.03] group hover:border-white/10 transition-all">
       <div className="order-2 md:order-1 mt-4 md:mt-0">
-        <p className="text-[8px] md:text-[10px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-2 md:mb-4">{title}</p>
+        <p className="text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-2 md:mb-4">{title}</p>
         <p className="text-2xl md:text-5xl font-black text-white tabular-nums tracking-tighter">{value}</p>
-        <p className={cn("text-[8px] md:text-[10px] font-bold mt-2 md:mt-4 uppercase tracking-widest opacity-80", accent)}>{sub}</p>
+        <p className={cn("text-[10px] md:text-[11px] font-bold mt-2 md:mt-4 uppercase tracking-widest opacity-80", accent)}>{sub}</p>
       </div>
       <div className={cn("order-1 md:order-2 p-3 md:p-4 bg-zinc-950/50 rounded-xl md:rounded-2xl border border-white/5 group-hover:scale-110 transition-transform", accent)}>
         <Icon size={18} />

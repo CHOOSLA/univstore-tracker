@@ -211,7 +211,7 @@ export default async function ProductsPage({
           <div className="space-y-2">
             <div className="flex items-center space-x-3 text-blue-500 mb-1">
               <Layers size={16} className="md:w-[18px] md:h-[18px]" />
-              <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.3em]">Market Intelligence</span>
+              <span className="text-[11px] md:text-xs font-black uppercase tracking-[0.3em]">Market Intelligence</span>
             </div>
             <h1 className="text-4xl md:text-6xl font-black tracking-tighter">Explorer.</h1>
             <p className="text-zinc-500 text-base md:text-lg max-w-2xl leading-snug">
@@ -227,7 +227,7 @@ export default async function ProductsPage({
             </p>
           </div>
           <div className="flex items-center">
-             <div className="bg-emerald-500/10 text-emerald-500 text-[10px] font-black px-4 py-2 rounded-full border border-emerald-500/20 uppercase tracking-widest">
+             <div className="bg-emerald-500/10 text-emerald-500 text-[11px] font-black px-4 py-2 rounded-full border border-emerald-500/20 uppercase tracking-widest">
                {totalCount.toLocaleString()} Intel Points Found
              </div>
           </div>
@@ -235,7 +235,7 @@ export default async function ProductsPage({
         
         {activeFilter && (
           <div className="flex flex-wrap items-center gap-2 px-2">
-            <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Active Special Filter</span>
+            <span className="text-[11px] font-black text-zinc-500 uppercase tracking-widest">Active Special Filter</span>
             <div className="flex items-center space-x-1.5 bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-bold px-3 py-1.5 rounded-xl shadow-[0_0_12px_rgba(59,130,246,0.08)]">
               <span>
                 {activeFilter === 'flash' && '⚡ 반짝 가격 하락 (Flash Drops)'}
@@ -268,14 +268,14 @@ export default async function ProductsPage({
         <div className="space-y-4 md:space-y-6">
           {parsedNL.detected.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 px-2">
-              <span className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">자연어 인식</span>
+              <span className="text-[11px] md:text-xs font-black text-zinc-500 uppercase tracking-widest">자연어 인식</span>
               {parsedNL.detected.map((d, i) => (
-                <span key={i} className="text-[10px] md:text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-md px-2 py-0.5 md:py-1">
+                <span key={i} className="text-[11px] md:text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 rounded-md px-2 py-0.5 md:py-1">
                   {d}
                 </span>
               ))}
               {parsedNL.keywords && (
-                <span className="text-[10px] md:text-xs font-bold text-zinc-400 bg-zinc-800/40 border border-white/5 rounded-md px-2 py-0.5 md:py-1">
+                <span className="text-[11px] md:text-xs font-bold text-zinc-400 bg-zinc-800/40 border border-white/5 rounded-md px-2 py-0.5 md:py-1">
                   keyword · {parsedNL.keywords}
                 </span>
               )}
@@ -289,7 +289,7 @@ export default async function ProductsPage({
             </Suspense>
             
             <div className="flex items-center space-x-2 px-2 md:px-4 lg:border-l border-white/5 overflow-x-auto no-scrollbar py-1 md:py-0">
-              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Sort</span>
+              <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Sort</span>
               {[
                 ...(searchQuery ? [{ id: 'relevance', label: 'Relevance' }] : []),
                 { id: 'latest', label: 'Latest' },
@@ -303,7 +303,7 @@ export default async function ProductsPage({
                     query: { ...(searchQuery ? { q: searchQuery } : {}), ...(brandFilter ? { brand: brandFilter } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(activeFilter ? { filter: activeFilter } : {}), sort: opt.id }
                   }}
                   className={cn(
-                    "px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0",
+                    "px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
                     sortOption === opt.id ? "bg-white text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
                   )}
                 >
@@ -313,12 +313,12 @@ export default async function ProductsPage({
             </div>
 
             <div className="flex items-center space-x-2 px-2 md:px-4 lg:border-l border-white/5 overflow-x-auto no-scrollbar py-1 md:py-0">
-              <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Brand</span>
+              <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Brand</span>
               <Link href={{
                 pathname: '/products',
                 query: { ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}), ...(activeFilter ? { filter: activeFilter } : {}) }
               }} className={cn(
-                "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0",
+                "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
                 !brandFilter ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
               )}>All</Link>
               {['Apple', '삼성'].map(b => (
@@ -329,7 +329,7 @@ export default async function ProductsPage({
                     query: { brand: b, ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}), ...(activeFilter ? { filter: activeFilter } : {}) }
                   }}
                   className={cn(
-                    "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shrink-0",
+                    "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
                     brandFilter === b ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
                   )}
                 >

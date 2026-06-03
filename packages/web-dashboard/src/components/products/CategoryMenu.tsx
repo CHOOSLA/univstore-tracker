@@ -119,7 +119,7 @@ export default function CategoryMenu({ counts }: Props) {
                 <span>{m.name}</span>
                 <span
                   className={cn(
-                    "font-mono text-[10px]",
+                    "font-mono text-[11px]",
                     isActive ? "text-white/70" : isOpen ? "text-black/50" : "text-zinc-500"
                   )}
                 >
@@ -135,7 +135,7 @@ export default function CategoryMenu({ counts }: Props) {
           {hasFilter && (
             <button
               onClick={() => handleSelect(null, null)}
-              className="ml-auto text-zinc-600 hover:text-red-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-1 px-3 whitespace-nowrap"
+              className="ml-auto text-zinc-600 hover:text-red-500 text-[11px] font-black uppercase tracking-widest flex items-center gap-1 px-3 whitespace-nowrap"
             >
               <X className="w-3 h-3" />
               Clear
@@ -178,7 +178,7 @@ export default function CategoryMenu({ counts }: Props) {
                             >
                               <span>{thirdName}</span>
                               {thirdCnt > 0 && (
-                                <span className="font-mono text-[10px] text-zinc-600">{thirdCnt}</span>
+                                <span className="font-mono text-[11px] text-zinc-600">{thirdCnt}</span>
                               )}
                             </button>
                           </li>
@@ -218,7 +218,7 @@ export default function CategoryMenu({ counts }: Props) {
                 e.stopPropagation();
                 handleSelect(null, null);
               }}
-              className="text-[10px] font-black uppercase tracking-widest text-red-400/80"
+              className="text-[11px] font-black uppercase tracking-widest text-red-400/80"
             >
               초기화
             </span>
@@ -255,7 +255,7 @@ export default function CategoryMenu({ counts }: Props) {
               {hasFilter && (
                 <button
                   onClick={() => handleSelect(null, null)}
-                  className="text-[10px] font-black uppercase tracking-widest text-red-400 flex items-center gap-1"
+                  className="text-[11px] font-black uppercase tracking-widest text-red-400 flex items-center gap-1"
                 >
                   <X className="w-3 h-3" />
                   초기화
@@ -300,7 +300,7 @@ export default function CategoryMenu({ counts }: Props) {
                   >
                     <span className="flex items-center gap-2 font-black text-sm">
                       {m.name}
-                      <span className="font-mono text-[10px] text-zinc-500">{cnt.toLocaleString()}</span>
+                      <span className="font-mono text-[11px] text-zinc-500">{cnt.toLocaleString()}</span>
                     </span>
                     <ChevronDown
                       size={16}
@@ -332,7 +332,7 @@ export default function CategoryMenu({ counts }: Props) {
                               )}
                             >
                               {sub.name}
-                              <span className="font-mono text-[10px] text-zinc-500">{subCnt}</span>
+                              <span className="font-mono text-[11px] text-zinc-500">{subCnt}</span>
                             </button>
                             <div className="flex flex-wrap gap-1.5">
                               {Object.values(sub.thirds).map((thirdName, i) => {
@@ -344,7 +344,7 @@ export default function CategoryMenu({ counts }: Props) {
                                     key={i}
                                     onClick={() => handleSelect(m.name, sub.name, thirdName)}
                                     className={cn(
-                                      "px-2.5 py-1 rounded-lg text-[11px] border transition-colors whitespace-nowrap",
+                                      "px-2.5 py-1 rounded-lg text-[12px] border transition-colors whitespace-nowrap",
                                       thirdActive
                                         ? "bg-blue-500 text-white border-blue-400"
                                         : "bg-zinc-950 text-zinc-400 border-white/5 hover:border-white/20 hover:text-white"
@@ -352,7 +352,7 @@ export default function CategoryMenu({ counts }: Props) {
                                   >
                                     {thirdName}
                                     {thirdCnt > 0 && (
-                                      <span className="ml-1 font-mono text-[9px] opacity-60">{thirdCnt}</span>
+                                      <span className="ml-1 font-mono text-[10px] opacity-60">{thirdCnt}</span>
                                     )}
                                   </button>
                                 );

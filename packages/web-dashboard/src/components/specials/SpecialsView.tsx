@@ -71,25 +71,25 @@ export default function SpecialsView({ raffles, flashSales }: SpecialsViewProps)
               {raffles.length > 0 ? raffles.map((raffle) => (
                 <div key={raffle.id} className="glass p-6 rounded-[32px] border-amber-500/10 bg-amber-500/[0.01] hover:bg-amber-500/[0.03] transition-all group cursor-pointer">
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-16 h-16 bg-zinc-900 rounded-2xl border border-white/5 flex items-center justify-center text-[10px] font-black text-zinc-700">
+                    <div className="w-16 h-16 bg-zinc-900 rounded-2xl border border-white/5 flex items-center justify-center text-[11px] font-black text-zinc-700">
                       {raffle.image}
                     </div>
                     <div className="bg-zinc-950 px-3 py-1 rounded-full border border-white/5 flex items-center space-x-2">
                       <Timer size={12} className="text-amber-500" />
-                      <span className="text-[10px] font-black text-zinc-300 uppercase">{raffle.endsIn}</span>
+                      <span className="text-[11px] font-black text-zinc-300 uppercase">{raffle.endsIn}</span>
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{raffle.brand}</p>
+                    <p className="text-[11px] font-black text-zinc-500 uppercase tracking-widest">{raffle.brand}</p>
                     <h3 className="text-xl font-black text-white group-hover:text-amber-400 transition-colors line-clamp-1">{raffle.title}</h3>
                   </div>
                   <div className="mt-6 pt-6 border-t border-white/5 flex justify-between items-end">
                     <div>
-                      <p className="text-[10px] font-bold text-zinc-600 uppercase mb-1">Entries</p>
+                      <p className="text-[11px] font-bold text-zinc-600 uppercase mb-1">Entries</p>
                       <p className="text-lg font-black text-white">{raffle.entries.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-bold text-zinc-600 uppercase mb-1">Winning Prob.</p>
+                      <p className="text-[11px] font-bold text-zinc-600 uppercase mb-1">Winning Prob.</p>
                       <p className="text-lg font-black text-emerald-500">{raffle.prob}</p>
                     </div>
                   </div>
@@ -133,19 +133,19 @@ export default function SpecialsView({ raffles, flashSales }: SpecialsViewProps)
                       <div className="flex items-center space-x-3">
                         <span className="font-mono text-xs font-black text-zinc-500">{sale.time}</span>
                         <span className={cn(
-                          "text-[9px] font-black px-2 py-0.5 rounded-full border uppercase",
+                          "text-[10px] font-black px-2 py-0.5 rounded-full border uppercase",
                           sale.status === 'Ongoing' ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-zinc-900 text-zinc-600 border-white/5"
                         )}>{sale.status}</span>
                       </div>
                       <h4 className="font-bold text-white leading-tight">{sale.name}</h4>
                       <div className="flex items-center space-x-4">
                         <span className="text-xs font-black text-emerald-400">{sale.discount}</span>
-                        <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">Stock: {sale.stock} units</span>
+                        <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-tighter">Stock: {sale.stock} units</span>
                       </div>
                    </div>
                 </div>
               )) : (
-                <div className="py-10 text-center text-zinc-700 font-black uppercase text-[10px] tracking-widest">
+                <div className="py-10 text-center text-zinc-700 font-black uppercase text-[11px] tracking-widest">
                   예정된 특가 일정이 없습니다.
                 </div>
               )}

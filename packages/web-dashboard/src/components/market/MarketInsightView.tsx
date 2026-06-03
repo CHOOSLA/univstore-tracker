@@ -138,7 +138,7 @@ export default function MarketInsightView({
               </div>
             </div>
             <div className="pt-10 flex flex-col space-y-4">
-               <div className="flex items-center justify-between text-[10px] font-black text-zinc-600 uppercase tracking-widest border-b border-white/5 pb-2">
+               <div className="flex items-center justify-between text-[11px] font-black text-zinc-600 uppercase tracking-widest border-b border-white/5 pb-2">
                   <span>Data Points</span>
                   <span className="text-white">{totalDataPoints.toLocaleString()}</span>
                </div>
@@ -163,7 +163,7 @@ export default function MarketInsightView({
                 </div>
                 <p className="text-2xl font-black text-white tracking-tight">역대 최저가 경신 매물</p>
               </div>
-              <span className="bg-amber-500/10 text-amber-500 text-[10px] font-black px-3 py-1.5 rounded-full border border-amber-500/20 uppercase tracking-widest shrink-0">
+              <span className="bg-amber-500/10 text-amber-500 text-[11px] font-black px-3 py-1.5 rounded-full border border-amber-500/20 uppercase tracking-widest shrink-0">
                 {goldenLows.length} Items Found
               </span>
             </div>
@@ -176,13 +176,13 @@ export default function MarketInsightView({
                       <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
                     </div>
                     <div className="min-w-0 space-y-0.5">
-                      <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
+                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
                       <p className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors truncate pr-4">{item.title}</p>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
                     {item.originalPrice && item.originalPrice > item.currentPrice && (
-                      <span className="text-[9px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded mr-2">
+                      <span className="text-[10px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded mr-2">
                         -{Math.round(((item.originalPrice - item.currentPrice) / item.originalPrice) * 100)}%
                       </span>
                     )}
@@ -190,7 +190,7 @@ export default function MarketInsightView({
                   </div>
                 </Link>
               )) : (
-                <div className="h-full flex items-center justify-center py-20 text-zinc-600 font-bold uppercase text-[10px] tracking-widest italic">Awaiting New Records...</div>
+                <div className="h-full flex items-center justify-center py-20 text-zinc-600 font-bold uppercase text-[11px] tracking-widest italic">Awaiting New Records...</div>
               )}
             </div>
           </div>
@@ -205,7 +205,7 @@ export default function MarketInsightView({
                 </div>
                 <p className="text-2xl font-black text-white tracking-tight">30일 평균가 대비 최대 하락</p>
               </div>
-              <span className="bg-blue-500/10 text-blue-500 text-[10px] font-black px-3 py-1.5 rounded-full border border-blue-500/20 uppercase tracking-widest shrink-0">
+              <span className="bg-blue-500/10 text-blue-500 text-[11px] font-black px-3 py-1.5 rounded-full border border-blue-500/20 uppercase tracking-widest shrink-0">
                 True Price Gap
               </span>
             </div>
@@ -234,11 +234,11 @@ export default function MarketInsightView({
                 {trueDeals.slice(0, 3).map((item, idx) => (
                   <Link key={item.id} href={`/product/${item.id}`} className="block bg-zinc-950/50 hover:bg-zinc-900/50 transition-all p-3 rounded-2xl border border-white/5 group">
                     <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-black text-zinc-500 uppercase">Rank 0{idx + 1}</span>
+                      <span className="text-[10px] font-black text-zinc-500 uppercase">Rank 0{idx + 1}</span>
                       <span className="text-xs font-black text-red-500">-{item.gapPercent}%</span>
                     </div>
                     <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors line-clamp-1 mt-1">{item.title}</p>
-                    <div className="flex justify-between items-center mt-2 text-[10px]">
+                    <div className="flex justify-between items-center mt-2 text-[11px]">
                       <span className="text-zinc-600">평균 ₩{item.avgPrice?.toLocaleString()}</span>
                       <span className="font-bold text-white font-mono">₩{item.currentPrice.toLocaleString()}</span>
                     </div>
@@ -262,7 +262,7 @@ export default function MarketInsightView({
                 </div>
                 <p className="text-2xl font-black text-white tracking-tight">48시간 단기 급락 피드</p>
               </div>
-              <Link href="/products?sort=discount" className="text-[9px] font-black text-zinc-500 hover:text-white uppercase tracking-widest flex items-center transition-colors">
+              <Link href="/products?sort=discount" className="text-[10px] font-black text-zinc-500 hover:text-white uppercase tracking-widest flex items-center transition-colors">
                 Explore <ChevronRight size={12} />
               </Link>
             </div>
@@ -276,8 +276,8 @@ export default function MarketInsightView({
                   
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
-                      <span className="text-[10px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded shrink-0">
+                      <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
+                      <span className="text-[11px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded shrink-0">
                         -{item.dropPercent}%
                       </span>
                     </div>
@@ -298,14 +298,14 @@ export default function MarketInsightView({
                     </div>
                     <div className="text-right">
                       {item.prevPrice && (
-                        <p className="text-[10px] text-zinc-600 line-through">₩{item.prevPrice.toLocaleString()}</p>
+                        <p className="text-[11px] text-zinc-600 line-through">₩{item.prevPrice.toLocaleString()}</p>
                       )}
                       <p className="font-black text-white text-base font-mono leading-none mt-1">₩{item.currentPrice.toLocaleString()}</p>
                     </div>
                   </div>
                 </Link>
               )) : (
-                <div className="col-span-3 py-12 text-center text-zinc-700 font-black uppercase text-[10px] tracking-widest italic">Scanning Flash Sales...</div>
+                <div className="col-span-3 py-12 text-center text-zinc-700 font-black uppercase text-[11px] tracking-widest italic">Scanning Flash Sales...</div>
               )}
             </div>
           </div>
@@ -320,7 +320,7 @@ export default function MarketInsightView({
                 </div>
                 <p className="text-2xl font-black text-white tracking-tight">목표 가격 임박 상품</p>
               </div>
-              <Link href="/alerts" className="text-[9px] font-black text-zinc-500 hover:text-white uppercase tracking-widest flex items-center transition-colors">
+              <Link href="/alerts" className="text-[10px] font-black text-zinc-500 hover:text-white uppercase tracking-widest flex items-center transition-colors">
                 Alerts <ChevronRight size={12} />
               </Link>
             </div>
@@ -329,21 +329,21 @@ export default function MarketInsightView({
               {nearTargets.length > 0 ? nearTargets.map((item) => (
                 <Link key={item.id} href={`/product/${item.id}`} className="flex items-center justify-between py-3 group">
                   <div className="min-w-0 pr-4">
-                    <span className="text-[8px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
+                    <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">{item.brand}</span>
                     <p className="text-xs font-bold text-white group-hover:text-blue-400 transition-colors truncate">{item.title}</p>
                   </div>
                   <div className="flex items-center space-x-4 shrink-0">
                     <div className="text-right">
-                      <p className="text-[10px] text-zinc-500">목표 ₩{item.targetPrice?.toLocaleString()}</p>
+                      <p className="text-[11px] text-zinc-500">목표 ₩{item.targetPrice?.toLocaleString()}</p>
                       <p className="text-sm font-black text-white font-mono mt-0.5">₩{item.currentPrice.toLocaleString()}</p>
                     </div>
-                    <span className="bg-red-500/10 text-red-500 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-red-500/20 tracking-tighter shrink-0">
+                    <span className="bg-red-500/10 text-red-500 text-[11px] font-black px-2.5 py-1.5 rounded-xl border border-red-500/20 tracking-tighter shrink-0">
                       +{item.gapPercent}%
                     </span>
                   </div>
                 </Link>
               )) : (
-                <div className="h-full flex items-center justify-center py-16 text-zinc-700 font-bold uppercase text-[10px] tracking-widest italic text-center">No Targets in Danger Zone</div>
+                <div className="h-full flex items-center justify-center py-16 text-zinc-700 font-bold uppercase text-[11px] tracking-widest italic text-center">No Targets in Danger Zone</div>
               )}
             </div>
           </div>

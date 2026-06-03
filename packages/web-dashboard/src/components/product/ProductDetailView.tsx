@@ -155,9 +155,9 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                 <div className="flex justify-between items-start">
                   <div className="space-y-3 md:space-y-4 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="bg-zinc-900 text-zinc-400 text-[9px] md:text-[10px] font-black px-2 py-1 rounded border border-white/5 uppercase tracking-widest whitespace-nowrap">{product.brand || 'Brand'}</span>
+                      <span className="bg-zinc-900 text-zinc-400 text-[10px] md:text-[11px] font-black px-2 py-1 rounded border border-white/5 uppercase tracking-widest whitespace-nowrap">{product.brand || 'Brand'}</span>
                       <span className={cn(
-                        "text-[9px] md:text-[10px] font-black px-2 py-1 rounded border uppercase tracking-widest whitespace-nowrap",
+                        "text-[10px] md:text-[11px] font-black px-2 py-1 rounded border uppercase tracking-widest whitespace-nowrap",
                         product.stockStatus === "Discontinued" ? "bg-zinc-700/20 text-zinc-400 border-zinc-600/30"
                           : product.stockStatus === "Low Stock" || product.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20"
                           : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
@@ -177,7 +177,7 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                 <div className="flex items-center justify-between border-t border-white/5 pt-6">
                   <div className="flex items-center space-x-2 text-zinc-500">
                     <Calendar size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">History Range</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest">History Range</span>
                   </div>
                   <div className="flex bg-zinc-900/50 p-1 rounded-xl border border-white/5">
                     {(['1M', '3M', '6M', 'ALL'] as RangeType[]).map((r) => (
@@ -185,7 +185,7 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                         key={r}
                         onClick={() => setRange(r)}
                         className={cn(
-                          "px-3 py-1.5 rounded-lg text-[10px] font-black transition-all",
+                          "px-3 py-1.5 rounded-lg text-[11px] font-black transition-all",
                           range === r ? "bg-white text-black shadow-lg" : "text-zinc-500 hover:text-zinc-300"
                         )}
                       >
@@ -237,7 +237,7 @@ export default function ProductDetailView({ product, history, existingAlerts, is
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/10 blur-[60px] -mr-16 -mt-16" />
               
               <div className="space-y-1">
-                <h3 className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-[0.2em]">Live Pricing Analysis</h3>
+                <h3 className="text-[11px] md:text-xs font-black text-zinc-500 uppercase tracking-[0.2em]">Live Pricing Analysis</h3>
                 <p className="text-xs md:text-sm text-zinc-400">Product ID: {product.id}</p>
               </div>
 
@@ -250,7 +250,7 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                   <div className="flex items-center space-x-2">
                     <span className="font-bold text-base md:text-lg">학생 할인가</span>
                     {originalPrice > currentPrice && (
-                      <span className="bg-red-500/10 text-red-500 text-[9px] md:text-[10px] font-black px-1.5 py-0.5 rounded border border-red-500/20">
+                      <span className="bg-red-500/10 text-red-500 text-[10px] md:text-[11px] font-black px-1.5 py-0.5 rounded border border-red-500/20">
                         -{(((originalPrice - currentPrice) / originalPrice) * 100).toFixed(1)}%
                       </span>
                     )}
@@ -266,12 +266,12 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                 )}
 
                 <div className="pt-4 md:pt-6 border-t border-white/5 space-y-1 md:space-y-2">
-                  <p className="text-[10px] md:text-xs font-black text-zinc-500 uppercase tracking-widest text-right">구매가</p>
+                  <p className="text-[11px] md:text-xs font-black text-zinc-500 uppercase tracking-widest text-right">구매가</p>
                   <p className="text-4xl md:text-6xl font-black text-white text-right tracking-tighter tabular-nums leading-none">
                     ₩{currentPrice.toLocaleString()}
                   </p>
                   {product.bestBenefit && (
-                    <p className="text-[10px] md:text-xs text-zinc-500 font-medium text-right">
+                    <p className="text-[11px] md:text-xs text-zinc-500 font-medium text-right">
                       결제수단/이벤트별 추가 할인은 univstore에서 확인
                     </p>
                   )}
@@ -313,7 +313,7 @@ export default function ProductDetailView({ product, history, existingAlerts, is
             {/* Metrics Dashboard */}
             <div className="grid grid-cols-2 gap-3 md:gap-4">
               <div className="glass p-5 md:p-6 rounded-[24px] md:rounded-[32px] border-white/[0.03] min-w-0">
-                <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-4 flex items-center">
+                <p className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest mb-4 flex items-center">
                   <History className="mr-1.5 w-2.5 h-2.5 md:w-3 md:h-3" /> Volatility
                 </p>
                 <div className="h-20 md:h-24 w-full">
@@ -327,19 +327,19 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
-                <p className="text-[9px] md:text-[10px] font-bold text-zinc-400 mt-3 md:mt-4 text-center italic leading-none truncate">
+                <p className="text-[10px] md:text-[11px] font-bold text-zinc-400 mt-3 md:mt-4 text-center italic leading-none truncate">
                   {currentPrice <= minPrice ? "Lowest recorded🎯" : "Market scan"}
                 </p>
               </div>
 
               <div className="glass p-5 md:p-6 rounded-[24px] md:rounded-[32px] border-white/[0.03] flex flex-col justify-between min-w-0">
                 <div className="space-y-2 md:space-y-4">
-                  <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest flex items-center">
+                  <p className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest flex items-center">
                     <Percent className="mr-1.5 w-2.5 h-2.5 md:w-3 md:h-3" /> Perk
                   </p>
                   <p className="text-xl md:text-2xl font-black text-white leading-none">Exclusive <br/> Benefit</p>
                 </div>
-                <div className="flex items-center text-blue-500 space-x-1 text-[10px] md:text-xs font-black uppercase tracking-tighter cursor-pointer hover:underline pt-2">
+                <div className="flex items-center text-blue-500 space-x-1 text-[11px] md:text-xs font-black uppercase tracking-tighter cursor-pointer hover:underline pt-2">
                   <span>Policy</span>
                   <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5" />
                 </div>
@@ -355,7 +355,7 @@ export default function ProductDetailView({ product, history, existingAlerts, is
             */}
 
             <div className="glass p-6 md:p-10 rounded-[32px] md:rounded-[40px] border-white/[0.03] space-y-4 md:space-y-6">
-               <div className="flex items-center space-x-2 text-zinc-400 font-bold text-[10px] md:text-xs uppercase tracking-widest">
+               <div className="flex items-center space-x-2 text-zinc-400 font-bold text-[11px] md:text-xs uppercase tracking-widest">
                   <Info className="w-3 h-3 md:w-3.5 md:h-3.5" />
                   <span>Insight</span>
                </div>

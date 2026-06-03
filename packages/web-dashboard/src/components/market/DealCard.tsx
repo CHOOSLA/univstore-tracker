@@ -73,14 +73,14 @@ export default function DealCard({ item, variant }: DealCardProps) {
         if (dropAmount <= 0) return null;
         return (
           <div className="pt-2 border-t border-white/[0.03] space-y-1.5">
-            <div className="text-[10px] md:text-xs text-zinc-400 font-semibold whitespace-nowrap">
+            <div className="text-[11px] md:text-xs text-zinc-400 font-semibold whitespace-nowrap">
               최근 1~2일간 <span className="text-red-400 font-black">₩{dropAmount.toLocaleString()}원</span> 하락
             </div>
             <div className="h-8 w-full flex items-center justify-center bg-zinc-950/20 rounded-lg px-2 border border-white/[0.02]">
               {hasHistory ? (
                 <Sparkline data={item.history!} color="#f87171" height={22} fullWidth />
               ) : (
-                <span className="text-[9px] text-zinc-700 font-bold uppercase tracking-wider">No Trend</span>
+                <span className="text-[10px] text-zinc-700 font-bold uppercase tracking-wider">No Trend</span>
               )}
             </div>
           </div>
@@ -91,7 +91,7 @@ export default function DealCard({ item, variant }: DealCardProps) {
         if (gapAmount <= 0) return null;
         return (
           <div className="pt-2 border-t border-white/[0.03]">
-            <div className="text-[10px] md:text-xs text-zinc-400 font-semibold whitespace-nowrap">
+            <div className="text-[11px] md:text-xs text-zinc-400 font-semibold whitespace-nowrap">
               평소보다 <span className="text-amber-400 font-black">₩{gapAmount.toLocaleString()}원</span> 더 저렴
             </div>
           </div>
@@ -103,7 +103,7 @@ export default function DealCard({ item, variant }: DealCardProps) {
         if (savedAmount <= 0) return null;
         return (
           <div className="pt-2 border-t border-white/[0.03]">
-            <div className="text-[10px] md:text-xs text-zinc-400 font-semibold whitespace-nowrap">
+            <div className="text-[11px] md:text-xs text-zinc-400 font-semibold whitespace-nowrap">
               정가대비 <span className="text-emerald-400 font-black">₩{savedAmount.toLocaleString()}원</span> 할인
             </div>
           </div>
@@ -115,7 +115,7 @@ export default function DealCard({ item, variant }: DealCardProps) {
         const ratio = Math.min(100, Math.round((targetCount / alertLimit) * 100));
         return (
           <div className="pt-2 border-t border-white/[0.03] space-y-1.5">
-            <div className="flex justify-between text-[10px] md:text-xs text-zinc-400 font-semibold whitespace-nowrap">
+            <div className="flex justify-between text-[11px] md:text-xs text-zinc-400 font-semibold whitespace-nowrap">
               <span>알림 대기</span>
               <span className="text-blue-400 font-black">{targetCount}명</span>
             </div>
@@ -176,7 +176,7 @@ export default function DealCard({ item, variant }: DealCardProps) {
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-zinc-700 text-[10px] md:text-xs font-black uppercase tracking-tighter px-1 text-center">
+          <div className="w-full h-full flex items-center justify-center text-zinc-700 text-[11px] md:text-xs font-black uppercase tracking-tighter px-1 text-center">
             NO IMAGE
           </div>
         )}
@@ -185,14 +185,14 @@ export default function DealCard({ item, variant }: DealCardProps) {
         <div className="absolute top-3 left-3 z-20">
           {variant === 'golden' ? (
             <span className={cn(
-              'px-2.5 py-1 rounded-lg text-[10px] md:text-xs font-black uppercase tracking-wider',
+              'px-2.5 py-1 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-wider',
               'bg-emerald-500 text-white shadow-[0_2px_8px_rgba(16,185,129,0.4)] border border-emerald-400/20'
             )}>
               역대 최저
             </span>
           ) : headlinePercent != null ? (
             <span className={cn(
-              'px-2.5 py-1 rounded-lg text-[10px] md:text-xs font-black border',
+              'px-2.5 py-1 rounded-lg text-[11px] md:text-xs font-black border',
               variant === 'flash' ? 'bg-red-500 text-white shadow-[0_2px_8px_rgba(239,68,68,0.4)] border-red-400/20' :
               variant === 'true' ? 'bg-amber-500 text-zinc-950 shadow-[0_2px_8px_rgba(245,158,11,0.4)] border-amber-400/20' :
               'bg-blue-500 text-white shadow-[0_2px_8px_rgba(59,130,246,0.4)] border-blue-400/20'
@@ -207,7 +207,7 @@ export default function DealCard({ item, variant }: DealCardProps) {
       <div className="space-y-3 flex-1 flex flex-col justify-between">
         <div className="space-y-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest leading-none truncate">{brand}</p>
+            <p className="text-[11px] md:text-xs font-bold text-zinc-500 uppercase tracking-widest leading-none truncate">{brand}</p>
             <PriceScoreBadge score={priceScore} />
           </div>
           <p className="text-xs md:text-sm font-bold text-white leading-snug group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[2.5em] break-keep">
@@ -221,14 +221,14 @@ export default function DealCard({ item, variant }: DealCardProps) {
             {/* 상단 할인율 & 이전 가격 노출 라인 */}
             {discountRate > 0 && oldPrice && oldPrice > currentPrice && (
               <div className="flex items-center space-x-2 mb-0.5">
-                <span className="text-red-500 text-[10px] md:text-sm font-black">{discountRate}%</span>
-                <span className="text-[8px] md:text-xs text-zinc-600 line-through font-bold">₩{oldPrice.toLocaleString()}</span>
+                <span className="text-red-500 text-[11px] md:text-sm font-black">{discountRate}%</span>
+                <span className="text-[10px] md:text-xs text-zinc-600 line-through font-bold">₩{oldPrice.toLocaleString()}</span>
               </div>
             )}
 
             {variant === 'target' && comparisonValue != null && (
               <div className="flex items-center space-x-2 mb-0.5">
-                <span className="text-blue-400 text-[10px] md:text-xs font-bold">
+                <span className="text-blue-400 text-[11px] md:text-xs font-bold">
                   알림 {comparisonValue}건
                 </span>
               </div>

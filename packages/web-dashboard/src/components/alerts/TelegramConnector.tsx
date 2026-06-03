@@ -64,7 +64,7 @@ export default function TelegramConnector({ botUsername }: TelegramConnectorProp
         </div>
         
         <div className="flex items-center space-x-3 bg-zinc-950 p-2.5 rounded-2xl border border-white/5 shrink-0">
-          <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest pl-3">Identifier:</span>
+          <span className="text-[11px] font-black text-zinc-500 uppercase tracking-widest pl-3">Identifier:</span>
           <span className="text-sm font-black text-blue-400 font-mono select-all bg-zinc-900 px-3 py-1.5 rounded-xl border border-white/5">{token}</span>
           <button 
             onClick={handleCopy}
@@ -91,7 +91,7 @@ export default function TelegramConnector({ botUsername }: TelegramConnectorProp
             <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
             <img src={qrCodeUrl} alt="Telegram Sync QR" className="w-full h-full object-contain relative z-10 filter invert dark:invert-0" />
           </div>
-          <div className="flex items-center space-x-1.5 text-zinc-600 text-[10px] font-black uppercase tracking-widest">
+          <div className="flex items-center space-x-1.5 text-zinc-600 text-[11px] font-black uppercase tracking-widest">
             <QrCode size={12} />
             <span>Mobile QR Scan</span>
           </div>

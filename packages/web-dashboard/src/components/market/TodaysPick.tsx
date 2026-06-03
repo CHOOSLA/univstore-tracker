@@ -53,7 +53,7 @@ export default function TodaysPick({ item }: Props) {
             </div>
 
             <div className="space-y-1.5">
-              <div className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{brand}</div>
+              <div className="text-[11px] font-black uppercase tracking-widest text-zinc-500">{brand}</div>
               <h2 className="text-2xl lg:text-3xl font-black text-white tracking-tight leading-tight">
                 {title}
               </h2>

@@ -140,7 +140,7 @@ export default function HomeSearchBar() {
         {/* 우측: 단축키 힌트 + 버튼 */}
         <div className="absolute right-3 flex items-center space-x-3">
           {!focused && !query && (
-            <kbd className="hidden sm:flex items-center space-x-1 px-2 py-1 bg-zinc-800 border border-white/10 rounded-lg text-[10px] font-black text-zinc-500 uppercase tracking-wider">
+            <kbd className="hidden sm:flex items-center space-x-1 px-2 py-1 bg-zinc-800 border border-white/10 rounded-lg text-[11px] font-black text-zinc-500 uppercase tracking-wider">
               <span>/</span>
             </kbd>
           )}

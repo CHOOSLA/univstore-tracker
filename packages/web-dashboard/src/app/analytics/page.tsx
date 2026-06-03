@@ -151,7 +151,7 @@ export default function AnalyticsPage() {
                     </BarChart>
                   </ResponsiveContainer>
                </div>
-               <p className="text-[10px] text-zinc-600 font-bold text-center italic uppercase tracking-tighter">Based on 1,240 active tracking items</p>
+               <p className="text-[11px] text-zinc-600 font-bold text-center italic uppercase tracking-tighter">Based on 1,240 active tracking items</p>
             </div>
           </div>
 
@@ -193,11 +193,11 @@ export default function AnalyticsPage() {
 function AnalyticMetric({ label, value, trend, isPositive }: any) {
   return (
     <div className="glass p-8 rounded-[32px] border-white/[0.03] flex flex-col justify-between">
-      <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest mb-4">{label}</p>
+      <p className="text-[11px] font-black text-zinc-600 uppercase tracking-widest mb-4">{label}</p>
       <div className="flex items-end justify-between">
         <p className="text-4xl font-black text-white tabular-nums leading-none">{value}</p>
         <div className={cn(
-          "flex items-center space-x-1 text-[11px] font-black px-2 py-1 rounded-lg border",
+          "flex items-center space-x-1 text-[12px] font-black px-2 py-1 rounded-lg border",
           isPositive === true ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : 
           isPositive === false ? "bg-red-500/10 text-red-500 border-red-500/20" :
           "bg-zinc-900 text-zinc-500 border-white/5"
@@ -219,7 +219,7 @@ function HealthItem({ icon: Icon, label, status, value, color }: any) {
         </div>
         <div>
           <p className="text-xs font-black text-white">{label}</p>
-          <p className="text-[10px] text-zinc-600 font-bold uppercase">{status}</p>
+          <p className="text-[11px] text-zinc-600 font-bold uppercase">{status}</p>
         </div>
       </div>
       <p className="font-mono text-xs font-bold text-zinc-400">{value}</p>

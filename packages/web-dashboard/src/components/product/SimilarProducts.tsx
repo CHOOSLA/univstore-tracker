@@ -28,7 +28,7 @@ export default function SimilarProducts({ items }: Props) {
           <h2 className="text-xl md:text-2xl font-black text-white tracking-tight uppercase">
             비슷한 가격대 상품
           </h2>
-          <p className="text-[10px] md:text-xs text-zinc-600 font-bold uppercase tracking-widest">
+          <p className="text-[11px] md:text-xs text-zinc-600 font-bold uppercase tracking-widest">
             Same Category · ±30% Price · {items.length} items
           </p>
         </div>
@@ -45,15 +45,15 @@ export default function SimilarProducts({ items }: Props) {
               {item.imageUrl ? (
                 <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[9px] text-zinc-800 font-black uppercase">No Image</div>
+                <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-800 font-black uppercase">No Image</div>
               )}
             </div>
             <div className="space-y-1.5 flex-1 flex flex-col">
               <div className="flex items-center justify-between gap-1.5">
-                <p className="text-[9px] md:text-[10px] font-black text-zinc-500 uppercase tracking-widest truncate">{item.brand}</p>
+                <p className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest truncate">{item.brand}</p>
                 <PriceScoreBadge score={item.priceScore} />
               </div>
-              <p className="text-[11px] md:text-xs font-bold text-white line-clamp-2 leading-snug min-h-[2.5em] group-hover:text-blue-400 transition-colors break-keep">
+              <p className="text-[12px] md:text-xs font-bold text-white line-clamp-2 leading-snug min-h-[2.5em] group-hover:text-blue-400 transition-colors break-keep">
                 {item.title}
               </p>
               <p className="text-sm md:text-base font-black text-white tabular-nums pt-1">

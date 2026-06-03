@@ -116,7 +116,7 @@ function SettingCard({ title, desc, status, icon: Icon, color, onClick, active, 
           <Loader2 size={18} className="text-zinc-500 animate-spin" />
         ) : (
           <>
-            <span className={cn("text-[10px] font-black uppercase tracking-widest", active ? "text-emerald-500" : "text-zinc-600")}>
+            <span className={cn("text-[11px] font-black uppercase tracking-widest", active ? "text-emerald-500" : "text-zinc-600")}>
               {status}
             </span>
             <div className={cn(
