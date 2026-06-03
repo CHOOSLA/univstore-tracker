@@ -44,6 +44,17 @@ export async function isWatched(productId: string): Promise<boolean> {
   return !!row;
 }
 
+/** 내 관심상품 productId 목록 (목록/카드 하트 초기상태용) */
+export async function getMyWatchlistIds(): Promise<string[]> {
+  const userId = await currentUserId();
+  if (!userId) return [];
+  const rows = await prisma.watchlistItem.findMany({
+    where: { userId },
+    select: { productId: true },
+  });
+  return rows.map((r) => r.productId);
+}
+
 /** 내 관심상품 목록 (가격/등급 포함) */
 export async function getMyWatchlist() {
   const userId = await currentUserId();

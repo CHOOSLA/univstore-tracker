@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import SearchBar from "@/components/products/SearchBar";
 import VirtualizedProductList from "@/components/products/VirtualizedProductList";
+import { getMyWatchlistIds } from "@/app/watchlist/actions";
 import CategoryMenu, { CategoryCounts } from "@/components/products/CategoryMenu";
 import { Suspense } from 'react';
 import { getSearchKeywords, getQueryVariants } from "@/lib/search-utils";
@@ -350,6 +351,7 @@ export default async function ProductsPage({
           initialItems={safeInitialItems}
           initialCursor={initialCursor}
           searchParams={{ q: searchQuery, brand: brandFilter, menuCategory, menuSubCategory, thirdCategory, sort: sortOption, filter: activeFilter }}
+          watchedIds={await getMyWatchlistIds()}
         />
       </main>
     </div>

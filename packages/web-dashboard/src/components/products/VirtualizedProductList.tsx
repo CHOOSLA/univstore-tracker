@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { CreditCard, Zap, Loader2, LayoutGrid, List } from "lucide-react";
+import { CreditCard, Loader2, LayoutGrid, List } from "lucide-react";
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
+import WatchlistButton from "@/components/product/WatchlistButton";
 
 type ViewMode = 'list' | 'card';
 
@@ -28,9 +29,12 @@ interface VirtualizedProductListProps {
   initialItems: Product[];
   initialCursor: string | null;
   searchParams: { q?: string; brand?: string; menuCategory?: string; menuSubCategory?: string; thirdCategory?: string; sort?: string; filter?: string };
+  /** 로그인 사용자의 관심상품 productId 목록 */
+  watchedIds?: string[];
 }
 
-export default function VirtualizedProductList({ initialItems, initialCursor, searchParams }: VirtualizedProductListProps) {
+export default function VirtualizedProductList({ initialItems, initialCursor, searchParams, watchedIds = [] }: VirtualizedProductListProps) {
+  const watchedSet = useMemo(() => new Set(watchedIds), [watchedIds]);
   const [items, setItems] = useState<Product[]>(initialItems);
   const [cursor, setCursor] = useState<string | null>(initialCursor);
   const [isLoading, setIsLoading] = useState(false);
@@ -233,8 +237,8 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
                       )}>
                         {item.stockStatus === "Out of Stock" ? "Sold Out" : "In Stock"}
                       </span>
-                      <div className="p-2 md:p-3 bg-zinc-900 rounded-xl md:rounded-2xl border border-white/5 group-hover:border-blue-500/50 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-all">
-                        <Zap size={16} className="md:w-[18px] md:h-[18px]" />
+                      <div className="relative z-20">
+                        <WatchlistButton productId={item.id} initialWatched={watchedSet.has(item.id)} variant="icon" />
                       </div>
                     </div>
                   </div>
@@ -262,7 +266,10 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
             : 0;
           const historyData = item.priceHistory.map(h => h.price).reverse();
           return (
-            <Link key={item.id} href={`/product/${item.id}`} className="glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] flex flex-col space-y-4 md:space-y-5 group glass-hover border-white/[0.03]" onClick={saveScrollState}>
+            <Link key={item.id} href={`/product/${item.id}`} className="relative glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] flex flex-col space-y-4 md:space-y-5 group glass-hover border-white/[0.03]" onClick={saveScrollState}>
+              <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20">
+                <WatchlistButton productId={item.id} initialWatched={watchedSet.has(item.id)} variant="icon" />
+              </div>
               <div className="w-full aspect-square bg-zinc-950 rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
                 <img src={item.imageUrl!} alt={item.title} className="w-full h-full object-cover" />
               </div>
