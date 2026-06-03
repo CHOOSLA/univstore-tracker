@@ -13,13 +13,7 @@ import { prisma } from "@/lib/prisma";
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
-  providers: [
-    Google,
-    Kakao({
-      // 카카오 프로필/이메일 동의항목 (콘솔에서 동의항목 활성화 필요)
-      authorization: { params: { scope: "profile_nickname profile_image account_email" } },
-    }),
-  ],
+  providers: [Google, Kakao],
   trustHost: true,
   session: { strategy: "database" },
   callbacks: {
