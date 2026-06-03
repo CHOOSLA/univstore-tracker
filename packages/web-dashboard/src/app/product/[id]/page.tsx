@@ -2,6 +2,7 @@ import React from 'react';
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import ProductDetailView from "@/components/product/ProductDetailView";
+import { auth } from "@/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -22,10 +23,14 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     price: h.price
   }));
 
-  const priceAlerts = await prisma.priceAlert.findMany({
-    where: { productId: id, isActive: true },
-    orderBy: { targetPrice: 'asc' }
-  });
+  // 로그인 사용자 본인의 목표가 알림만 표시
+  const session = await auth();
+  const priceAlerts = session?.user?.id
+    ? await prisma.priceAlert.findMany({
+        where: { productId: id, userId: session.user.id },
+        orderBy: { targetPrice: 'asc' }
+      })
+    : [];
 
   // 통신사(mno) 상품은 univstore에서 /mno/item/{id} 경로에 노출됨
   // menuSubCategories에 '통신사'가 포함된 상품은 Buy Now URL을 mno 경로로 분기해야

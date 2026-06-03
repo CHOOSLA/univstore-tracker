@@ -1,14 +1,18 @@
 import React from 'react';
-// import PriceAlertList from "@/components/alerts/PriceAlertList";
+import Link from 'next/link';
+import MyAlertList from "@/components/alerts/MyAlertList";
 import GlobalSettingsManager from "@/components/alerts/GlobalSettingsManager";
-import { getSystemConfig } from "./actions";
-import { Bell } from "lucide-react";
+import { getSystemConfig, getMyPriceAlerts } from "./actions";
+import { Bell, LogIn } from "lucide-react";
 import TelegramConnector from "@/components/alerts/TelegramConnector";
+import { auth } from "@/auth";
 
 export const dynamic = 'force-dynamic';
 
 export default async function AlertsPage() {
   const config = await getSystemConfig();
+  const session = await auth();
+  const myAlerts = session?.user?.id ? await getMyPriceAlerts() : [];
 
   return (
     <div className="pb-20 bg-zinc-950 min-h-screen">
@@ -25,10 +29,20 @@ export default async function AlertsPage() {
         {/* Telegram Sync & Personal Binding QR */}
         <TelegramConnector botUsername={config.TELEGRAM_BOT_USERNAME} />
 
-        {/* User Specific Alerts */}
-        {/* Price Target Alert 기능 비활성화로 인한 주석 처리
-        <PriceAlertList />
-        */}
+        {/* User Specific Alerts (계정 귀속 목표가 알림) */}
+        {session?.user ? (
+          <MyAlertList alerts={myAlerts as any} />
+        ) : (
+          <div className="glass p-10 rounded-[40px] border-white/[0.04] text-center space-y-4">
+            <p className="text-zinc-400">로그인하면 상품별 목표가 알림을 설정하고 한곳에서 관리할 수 있습니다.</p>
+            <Link
+              href="/products"
+              className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-500 hover:text-blue-400"
+            >
+              <LogIn size={14} /> 상품에서 로그인 후 목표가 설정
+            </Link>
+          </div>
+        )}
 
         {/* System Wide Global Settings */}
         <GlobalSettingsManager initialConfig={config} />

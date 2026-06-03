@@ -2,19 +2,38 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 
-export async function createPriceAlert(productId: string, targetPrice: number, subscriberToken?: string) {
+/** 로그인한 사용자 id 반환, 없으면 null */
+async function currentUserId(): Promise<string | null> {
+  const session = await auth();
+  return session?.user?.id ?? null;
+}
+
+/**
+ * 목표가 알림 생성/수정 (계정 귀속).
+ * 같은 상품에 이미 알림이 있으면 목표가만 갱신.
+ */
+export async function createPriceAlert(productId: string, targetPrice: number) {
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: "로그인이 필요합니다." };
+  if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
+    return { success: false, error: "목표가가 올바르지 않습니다." };
+  }
   try {
-    await prisma.priceAlert.create({
-      data: {
-        productId,
-        targetPrice,
-        isActive: true,
-        subscriberToken
-      }
-    });
+    const existing = await prisma.priceAlert.findFirst({ where: { userId, productId } });
+    if (existing) {
+      await prisma.priceAlert.update({
+        where: { id: existing.id },
+        data: { targetPrice, isActive: true },
+      });
+    } else {
+      await prisma.priceAlert.create({
+        data: { productId, targetPrice, isActive: true, userId },
+      });
+    }
     revalidatePath(`/product/${productId}`);
-    revalidatePath('/alerts');
+    revalidatePath("/alerts");
     return { success: true };
   } catch (err: any) {
     console.error("❌ PriceAlert 생성 실패:", err.message);
@@ -23,12 +42,13 @@ export async function createPriceAlert(productId: string, targetPrice: number, s
 }
 
 export async function deletePriceAlert(id: number) {
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: "로그인이 필요합니다." };
   try {
-    const alert = await prisma.priceAlert.delete({
-      where: { id }
-    });
-    revalidatePath(`/product/${alert.productId}`);
-    revalidatePath('/alerts');
+    // 소유자 검증 후 삭제 (deleteMany로 userId 조건 강제)
+    const res = await prisma.priceAlert.deleteMany({ where: { id, userId } });
+    if (res.count === 0) return { success: false, error: "알림을 찾을 수 없습니다." };
+    revalidatePath("/alerts");
     return { success: true };
   } catch (err: any) {
     console.error("❌ PriceAlert 삭제 실패:", err.message);
@@ -37,18 +57,37 @@ export async function deletePriceAlert(id: number) {
 }
 
 export async function togglePriceAlert(id: number, isActive: boolean) {
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: "로그인이 필요합니다." };
   try {
-    const alert = await prisma.priceAlert.update({
-      where: { id },
-      data: { isActive }
-    });
-    revalidatePath(`/product/${alert.productId}`);
-    revalidatePath('/alerts');
+    const res = await prisma.priceAlert.updateMany({ where: { id, userId }, data: { isActive } });
+    if (res.count === 0) return { success: false, error: "알림을 찾을 수 없습니다." };
+    revalidatePath("/alerts");
     return { success: true };
   } catch (err: any) {
     console.error("❌ PriceAlert 토글 실패:", err.message);
     return { success: false, error: err.message };
   }
+}
+
+/** 내 목표가 알림 목록 (현재가 포함) */
+export async function getMyPriceAlerts() {
+  const userId = await currentUserId();
+  if (!userId) return [];
+  return prisma.priceAlert.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      productId: true,
+      targetPrice: true,
+      isActive: true,
+      lastNotifiedAt: true,
+      product: {
+        select: { title: true, brand: true, imageUrl: true, currentPrice: true },
+      },
+    },
+  });
 }
 
 export async function getSystemConfig() {

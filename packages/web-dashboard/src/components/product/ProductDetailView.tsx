@@ -346,13 +346,12 @@ export default function ProductDetailView({ product, history, existingAlerts, is
               </div>
             </div>
 
-            {/* Price Alert Center - 비활성화로 인한 주석 처리
-            <PriceAlertControl 
-              productId={product.id} 
+            {/* Price Alert Center (계정 귀속 목표가 알림) */}
+            <PriceAlertControl
+              productId={product.id}
               currentPrice={currentPrice}
-              existingAlerts={existingAlerts} 
+              existingAlerts={existingAlerts}
             />
-            */}
 
             <div className="glass p-6 md:p-10 rounded-[32px] md:rounded-[40px] border-white/[0.03] space-y-4 md:space-y-6">
                <div className="flex items-center space-x-2 text-zinc-400 font-bold text-[11px] md:text-xs uppercase tracking-widest">
