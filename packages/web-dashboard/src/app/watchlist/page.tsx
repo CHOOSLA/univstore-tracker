@@ -1,8 +1,9 @@
 import React from "react";
 import Link from "next/link";
-import { Heart, LogIn } from "lucide-react";
+import { Heart, LogIn, TrendingDown, Target, Sparkles } from "lucide-react";
 import { auth } from "@/auth";
 import { getMyWatchlist } from "./actions";
+import { getMyPriceAlerts } from "@/app/alerts/actions";
 import PriceScoreBadge from "@/components/common/PriceScoreBadge";
 import WatchlistButton from "@/components/product/WatchlistButton";
 
@@ -10,7 +11,36 @@ export const dynamic = "force-dynamic";
 
 export default async function WatchlistPage() {
   const session = await auth();
-  const items = session?.user?.id ? await getMyWatchlist() : [];
+  const loggedIn = !!session?.user?.id;
+  const [items, alerts] = loggedIn
+    ? await Promise.all([getMyWatchlist(), getMyPriceAlerts()])
+    : [[], []];
+
+  // 목표가 맵 (productId → 최저 목표가)
+  const targetMap = new Map<string, number>();
+  for (const a of alerts) {
+    const prev = targetMap.get(a.productId);
+    if (prev === undefined || a.targetPrice < prev) targetMap.set(a.productId, a.targetPrice);
+  }
+
+  // 인사이트 분류
+  const enriched = items.map((it) => {
+    const current = Number(it.product.currentPrice ?? 0);
+    const score = it.product.priceScore ?? null;
+    const target = targetMap.get(it.productId);
+    const targetReached = target !== undefined && current > 0 && current <= target;
+    const atLow = score !== null && score >= 90;      // 역대최저 진입
+    const nearLow = score !== null && score >= 70;     // 최저권
+    return { ...it, current, score, target, targetReached, atLow, nearLow };
+  });
+
+  const atLowCount = enriched.filter((e) => e.atLow).length;
+  const reachedCount = enriched.filter((e) => e.targetReached).length;
+  // 주목 피드: 목표 도달 또는 최저권 이상, priceScore 높은 순
+  const feed = enriched
+    .filter((e) => e.targetReached || e.nearLow)
+    .sort((a, b) => (b.targetReached ? 1 : 0) - (a.targetReached ? 1 : 0) || (b.score ?? 0) - (a.score ?? 0))
+    .slice(0, 6);
 
   return (
     <div className="pb-24 bg-zinc-950 min-h-screen">
@@ -22,6 +52,70 @@ export default async function WatchlistPage() {
           <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">관심상품</h1>
           <p className="text-zinc-400 text-base md:text-lg">담아둔 상품의 현재가와 가격 등급을 한곳에서.</p>
         </section>
+
+        {loggedIn && items.length > 0 && (
+          <section className="space-y-6">
+            {/* 요약 칩 */}
+            <div className="grid grid-cols-3 gap-3 md:gap-4">
+              <div className="glass p-4 md:p-6 rounded-3xl border-white/[0.04] text-center">
+                <p className="text-2xl md:text-4xl font-black text-white tabular-nums">{items.length}</p>
+                <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-zinc-500 mt-1">담은 상품</p>
+              </div>
+              <div className="glass p-4 md:p-6 rounded-3xl border-amber-500/20 bg-amber-500/[0.03] text-center">
+                <p className="text-2xl md:text-4xl font-black text-amber-400 tabular-nums">{atLowCount}</p>
+                <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-zinc-500 mt-1">역대최저 진입</p>
+              </div>
+              <div className="glass p-4 md:p-6 rounded-3xl border-emerald-500/20 bg-emerald-500/[0.03] text-center">
+                <p className="text-2xl md:text-4xl font-black text-emerald-400 tabular-nums">{reachedCount}</p>
+                <p className="text-[10px] md:text-[11px] font-black uppercase tracking-widest text-zinc-500 mt-1">목표가 도달</p>
+              </div>
+            </div>
+
+            {/* 주목 피드 */}
+            {feed.length > 0 && (
+              <div className="glass p-5 md:p-8 rounded-[32px] border-blue-500/20 bg-blue-500/[0.02] space-y-4">
+                <div className="flex items-center gap-2 text-blue-400">
+                  <Sparkles size={18} />
+                  <h2 className="text-lg font-black text-white tracking-tight">주목할 상품</h2>
+                </div>
+                <div className="space-y-2">
+                  {feed.map((e) => (
+                    <Link
+                      key={e.id}
+                      href={`/product/${e.productId}`}
+                      className="flex items-center gap-3 md:gap-4 p-3 rounded-2xl hover:bg-white/[0.03] transition-colors"
+                    >
+                      {e.product.imageUrl ? (
+                        <img src={e.product.imageUrl} alt="" className="w-12 h-12 rounded-xl object-cover bg-white shrink-0" />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-zinc-900 shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black text-white truncate">{e.product.title}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {e.targetReached ? (
+                            <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
+                              <Target size={10} /> 목표 도달
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                              <TrendingDown size={10} /> {e.atLow ? "역대최저" : "최저권"}
+                            </span>
+                          )}
+                          <span className="text-xs font-bold text-zinc-400 tabular-nums">₩{e.current.toLocaleString()}</span>
+                          {e.target !== undefined && (
+                            <span className="text-[11px] text-zinc-600">목표 ₩{e.target.toLocaleString()}</span>
+                          )}
+                        </div>
+                      </div>
+                      <PriceScoreBadge score={e.score} />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {!session?.user ? (
           <div className="glass p-12 rounded-[32px] border-white/[0.04] text-center space-y-4 max-w-lg mx-auto">
