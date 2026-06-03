@@ -1,0 +1,87 @@
+import React from "react";
+import Link from "next/link";
+import { Heart, LogIn } from "lucide-react";
+import { auth } from "@/auth";
+import { getMyWatchlist } from "./actions";
+import PriceScoreBadge from "@/components/common/PriceScoreBadge";
+import WatchlistButton from "@/components/product/WatchlistButton";
+
+export const dynamic = "force-dynamic";
+
+export default async function WatchlistPage() {
+  const session = await auth();
+  const items = session?.user?.id ? await getMyWatchlist() : [];
+
+  return (
+    <div className="pb-24 bg-zinc-950 min-h-screen">
+      <main className="max-w-7xl mx-auto px-4 md:px-6 pt-12 space-y-10">
+        <section className="space-y-4 text-center">
+          <div className="mx-auto w-16 h-16 bg-red-500/10 rounded-3xl flex items-center justify-center mb-4">
+            <Heart className="text-red-500" size={32} fill="currentColor" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">관심상품</h1>
+          <p className="text-zinc-400 text-base md:text-lg">담아둔 상품의 현재가와 가격 등급을 한곳에서.</p>
+        </section>
+
+        {!session?.user ? (
+          <div className="glass p-12 rounded-[32px] border-white/[0.04] text-center space-y-4 max-w-lg mx-auto">
+            <p className="text-zinc-400">로그인하면 관심상품을 저장하고 가격 등급을 모아볼 수 있습니다.</p>
+            <Link
+              href="/products"
+              className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-500 hover:text-blue-400"
+            >
+              <LogIn size={14} /> 상품에서 로그인 후 담기
+            </Link>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="glass p-12 rounded-[32px] border-white/[0.04] text-center space-y-4 max-w-lg mx-auto">
+            <Heart className="mx-auto text-zinc-700" size={32} />
+            <p className="text-zinc-500">담아둔 관심상품이 없습니다.</p>
+            <Link href="/products" className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-widest text-blue-500 hover:text-blue-400">
+              상품 둘러보기
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
+            {items.map((item) => {
+              const current = Number(item.product.currentPrice ?? 0);
+              const original = Number(item.product.originalPrice ?? 0);
+              const discount = original > 0 && original > current ? Math.round(((original - current) / original) * 100) : 0;
+              return (
+                <div key={item.id} className="glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] flex flex-col space-y-4 group border-white/[0.03] relative">
+                  <div className="absolute top-4 right-4 md:top-6 md:right-6">
+                    <WatchlistButton productId={item.productId} initialWatched variant="icon" />
+                  </div>
+                  <Link href={`/product/${item.productId}`} className="flex flex-col space-y-4">
+                    <div className="aspect-square rounded-2xl overflow-hidden bg-white">
+                      {item.product.imageUrl ? (
+                        <img src={item.product.imageUrl} alt={item.product.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-zinc-900" />
+                      )}
+                    </div>
+                    <div className="space-y-2 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 truncate">{item.product.brand || "Brand"}</p>
+                        <PriceScoreBadge score={item.product.priceScore} />
+                      </div>
+                      <p className="text-sm font-black text-white leading-tight line-clamp-2">{item.product.title}</p>
+                      <div className="flex items-baseline gap-2 pt-1">
+                        <span className="text-lg md:text-xl font-black text-white tabular-nums">
+                          ₩{current > 0 ? current.toLocaleString() : "---"}
+                        </span>
+                        {discount > 0 && (
+                          <span className="text-xs font-black text-red-400">-{discount}%</span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

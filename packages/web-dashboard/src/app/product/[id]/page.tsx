@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import ProductDetailView from "@/components/product/ProductDetailView";
 import { auth } from "@/auth";
+import { isWatched } from "@/app/watchlist/actions";
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +24,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     price: h.price
   }));
 
-  // 로그인 사용자 본인의 목표가 알림만 표시
+  // 로그인 사용자 본인의 목표가 알림 + 관심상품 여부
   const session = await auth();
   const priceAlerts = session?.user?.id
     ? await prisma.priceAlert.findMany({
@@ -31,6 +32,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         orderBy: { targetPrice: 'asc' }
       })
     : [];
+  const watched = session?.user?.id ? await isWatched(id) : false;
 
   // 통신사(mno) 상품은 univstore에서 /mno/item/{id} 경로에 노출됨
   // menuSubCategories에 '통신사'가 포함된 상품은 Buy Now URL을 mno 경로로 분기해야
@@ -80,6 +82,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       externalUrl={externalUrl}
       mnoOption={mnoOption ? JSON.parse(JSON.stringify(mnoOption)) : null}
       similar={similar}
+      watched={watched}
     />
   );
 }

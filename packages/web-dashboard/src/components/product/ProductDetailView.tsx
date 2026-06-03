@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import PriceAlertControl from "./PriceAlertControl";
+import WatchlistButton from "./WatchlistButton";
 import MnoCalculator from "./MnoCalculator";
 import PriceScoreBadge from "../common/PriceScoreBadge";
 import SimilarProducts, { SimilarItem } from "./SimilarProducts";
@@ -57,11 +58,13 @@ interface ProductDetailViewProps {
   mnoOption?: import("./MnoCalculator").MnoOptionData | null;
   /** 유사 상품. 비어있으면 섹션 생략 */
   similar?: SimilarItem[];
+  /** 로그인 사용자의 관심상품 등록 여부 */
+  watched?: boolean;
 }
 
 type RangeType = '1M' | '3M' | '6M' | 'ALL';
 
-export default function ProductDetailView({ product, history, existingAlerts, isMnoItem = false, externalUrl, mnoOption, similar }: ProductDetailViewProps) {
+export default function ProductDetailView({ product, history, existingAlerts, isMnoItem = false, externalUrl, mnoOption, similar, watched = false }: ProductDetailViewProps) {
   // externalUrl이 주입되면 그대로, 아니면 isMnoItem 분기로 fallback
   const buyNowUrl = externalUrl ?? (isMnoItem
     ? `https://www.univstore.com/mno/item/${product.id}`
@@ -297,12 +300,7 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                     <ExternalLink className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                   </a>
                 )}
-                {/* Price Target Alert 기능 비활성화로 인한 Track 버튼 주석 처리
-                <button className="flex items-center justify-center space-x-2 bg-zinc-900 border border-white/5 text-white h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-800 transition-all">
-                  <Zap className="w-4 h-4 md:w-[18px] md:h-[18px]" />
-                  <span>Track</span>
-                </button>
-                */}
+                <WatchlistButton productId={product.id} initialWatched={watched} variant="detail" />
               </div>
 
               {mnoOption && (
