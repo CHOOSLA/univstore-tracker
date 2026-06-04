@@ -161,7 +161,13 @@ async function enqueueTasks(ids, isPriority = false) {
  * → 다음 cycle은 PM2 cron_restart가 진입 시 enqueueTasks(NX)로 다시 채웁니다.
  */
 async function finishTask(id) {
-  await redis.hdel(RETRY_COUNT_KEY, id);
+  // 재시도 카운터 정리는 best-effort. Redis 일시 장애(MISCONF 등)로 실패해도
+  // 크롤 루프를 죽이지 않도록 흡수한다.
+  try {
+    await redis.hdel(RETRY_COUNT_KEY, id);
+  } catch (err) {
+    console.error(`⚠️ finishTask Redis 오류 (ID ${id}), 무시: ${err.message}`);
+  }
 }
 
 /**
@@ -169,15 +175,24 @@ async function finishTask(id) {
  * 임계값 초과 시 큐에 다시 넣지 않고 영구 제외 (다음 cycle에 사이트맵으로 재진입).
  */
 async function failTask(id) {
-  const retries = await redis.hincrby(RETRY_COUNT_KEY, id, 1);
+  // 디스크 풀 등으로 Redis가 stop-writes-on-bgsave-error 상태에 빠지면
+  // hincrby/zadd가 MISCONF로 throw한다. 과거 이 throw가 catch 블록 안에서
+  // 다시 던져져 프로세스를 죽였다(autorestart:false라 12h cron까지 박제).
+  // 재시도 기록은 best-effort이므로 실패를 흡수하고 루프를 계속 살린다.
+  // 누락된 item은 다음 cycle 사이트맵 재진입으로 복구된다.
+  try {
+    const retries = await redis.hincrby(RETRY_COUNT_KEY, id, 1);
 
-  if (retries >= MAX_IMMEDIATE_RETRIES) {
-    // 임계값 초과: 큐에 다시 넣지 않고 영구 실패 처리 (다음 cycle에 재시도)
-    await redis.hdel(RETRY_COUNT_KEY, id);
-    console.warn(`⏳ [ID ${id}] ${retries}회 연속 실패, 이번 cycle에서 제외`);
-  } else {
-    // 정상 범위: score=0으로 큐 맨 앞에 다시 추가
-    await redis.zadd(TASK_QUEUE_KEY, 0, id);
+    if (retries >= MAX_IMMEDIATE_RETRIES) {
+      // 임계값 초과: 큐에 다시 넣지 않고 영구 실패 처리 (다음 cycle에 재시도)
+      await redis.hdel(RETRY_COUNT_KEY, id);
+      console.warn(`⏳ [ID ${id}] ${retries}회 연속 실패, 이번 cycle에서 제외`);
+    } else {
+      // 정상 범위: score=0으로 큐 맨 앞에 다시 추가
+      await redis.zadd(TASK_QUEUE_KEY, 0, id);
+    }
+  } catch (err) {
+    console.error(`⚠️ failTask Redis 오류 (ID ${id}), 건너뜀: ${err.message}`);
   }
 }
 
