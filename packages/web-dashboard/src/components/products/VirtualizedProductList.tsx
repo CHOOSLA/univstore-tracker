@@ -226,13 +226,13 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
                       <p className="text-lg md:text-2xl font-black text-white tracking-tighter tabular-nums leading-tight">₩{currentPrice.toLocaleString()}</p>
                     </div>
                   </div>
-                  <div className="hidden lg:flex lg:col-span-2 flex-col items-center justify-center space-y-2 relative z-0">
-                    <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color={parseFloat(dropRate) > 10 ? "#ef4444" : "#3b82f6"} />
+                  <div className="hidden lg:flex lg:col-span-2 flex-col items-center justify-center space-y-2 relative z-0 px-4">
+                    <Sparkline data={historyData.length > 1 ? historyData : [currentPrice, currentPrice]} color={parseFloat(dropRate) > 10 ? "#ef4444" : "#3b82f6"} fullWidth height={36} />
                   </div>
-                  <div className="hidden md:block md:col-span-3 lg:col-span-2 text-right relative z-0">
+                  <div className="hidden md:block md:col-span-3 lg:col-span-2 text-right relative">
                     <div className="flex items-center justify-end space-x-4">
                       <span className={cn(
-                        "hidden xl:block text-[11px] font-black px-2.5 py-1 rounded-lg border uppercase tracking-widest",
+                        "hidden lg:block text-[11px] font-black px-2.5 py-1 rounded-lg border uppercase tracking-widest",
                         item.stockStatus === "Out of Stock" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                       )}>
                         {item.stockStatus === "Out of Stock" ? "Sold Out" : "In Stock"}

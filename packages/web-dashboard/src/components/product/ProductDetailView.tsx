@@ -281,12 +281,12 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                 </div>
               </div>
 
-              <div className="flex w-full">
+              <div className="flex w-full gap-3">
                 {/* 외부 도메인이라 next/link 대신 일반 anchor 사용
                     (next/link로 외부 URL을 쓰면 라우터가 가로채서 클릭이 무시되는 케이스가 있음) */}
                 {product.stockStatus === "Discontinued" ? (
                   // 단종 상품: univstore가 홈으로 redirect하므로 외부 링크 비활성
-                  <div className="flex w-full items-center justify-center space-x-2 bg-zinc-900 text-zinc-500 h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base border border-white/5 cursor-not-allowed select-none">
+                  <div className="flex flex-1 items-center justify-center space-x-2 bg-zinc-900 text-zinc-500 h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base border border-white/5 cursor-not-allowed select-none">
                     <span>판매 종료</span>
                   </div>
                 ) : (
@@ -294,13 +294,13 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                     href={buyNowUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex w-full items-center justify-center space-x-2 bg-white text-black h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-200 transition-all"
+                    className="flex flex-1 items-center justify-center space-x-2 bg-white text-black h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base hover:bg-zinc-200 transition-all"
                   >
                     <span>Buy Now</span>
                     <ExternalLink className="w-4 h-4 md:w-[18px] md:h-[18px]" />
                   </a>
                 )}
-                <WatchlistButton productId={product.id} initialWatched={watched} variant="detail" />
+                <WatchlistButton productId={product.id} initialWatched={watched} variant="detail" className="shrink-0" />
               </div>
 
               {mnoOption && (
