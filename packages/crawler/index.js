@@ -11,6 +11,18 @@ const {
 } = require('./lib/filters');
 const { XMLParser } = require('fast-xml-parser');
 
+/**
+ * 관리자 헬스 알림 발송. HEALTH_ALERTS_ENABLED(SystemConfig)가 'false'면 스킵(기본 on).
+ * 크롤러 차단·세션 만료 등 운영 이벤트 시 호출 → /admin 토글로 제어된다.
+ */
+async function notifyAdminHealth(message) {
+  try {
+    const cfg = await prisma.systemConfig.findUnique({ where: { key: 'HEALTH_ALERTS_ENABLED' } });
+    if (cfg && cfg.value === 'false') return;
+  } catch (_) { /* config 조회 실패 시 기본 발송 */ }
+  await sendTelegramAlert(message).catch(() => {});
+}
+
 async function discoverAllProductIds(page) {
   console.log("🔍 사이트맵(item.xml) 분석하여 전체 상품 ID 수집 중...");
   try {
@@ -236,10 +248,18 @@ async function run() {
     } catch (err) {
       if (err instanceof SessionExpiredError) {
         console.error("🔄 세션 만료 감지. 재로그인 시도...");
+        await notifyAdminHealth("🔐 *세션 만료 감지*\n\n크롤러 세션이 만료되어 재로그인을 시도합니다.");
         for (const id of batchIds) await failTask(id);
         const loginPage = await browserContext.newPage();
-        try { await checkLogin(loginPage); } catch (e) { await sleep(300000); process.exit(1); }
-        finally { await loginPage.close(); }
+        try {
+          await checkLogin(loginPage);
+        } catch (e) {
+          await notifyAdminHealth("🚨 *재로그인 실패*\n\n세션 복구에 실패해 크롤러를 종료합니다. 수동 점검이 필요합니다.");
+          await sleep(300000);
+          process.exit(1);
+        } finally {
+          await loginPage.close();
+        }
         continue;
       }
 
@@ -251,9 +271,9 @@ async function run() {
         if (guardResult.action === 'DISABLED') {
           const alert = `🚨 *DirectApi 자동 비활성화*\n\n임계값(1시간 ${guardResult.count}회) 도달로 페이지 모드로 폴백합니다. 1시간 동안 추가 차단이 없으면 자동 복귀됩니다.`;
           console.error(alert.replace(/\*/g, ''));
-          sendTelegramAlert(alert).catch(() => {});
+          notifyAdminHealth(alert);
         } else {
-          sendTelegramAlert(`⚠️ 차단 발생 (윈도우 내 ${guardResult.count}회): ${err.message}`).catch(() => {});
+          notifyAdminHealth(`⚠️ 차단 발생 (윈도우 내 ${guardResult.count}회): ${err.message}`);
         }
 
         for (const id of batchIds) await failTask(id);
