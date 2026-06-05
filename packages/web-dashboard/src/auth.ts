@@ -17,6 +17,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   session: { strategy: "database" },
   callbacks: {
+    // 탈퇴(soft delete)된 계정은 로그인 차단. 데이터는 보존되며 deletedAt만 세팅됨.
+    async signIn({ user }) {
+      if (user?.id) {
+        const existing = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { deletedAt: true },
+        });
+        if (existing?.deletedAt) return false;
+      }
+      return true;
+    },
     // database 세션: user(DB row)의 id를 세션에 노출 → 서버 액션에서 소유자 식별
     session({ session, user }) {
       if (session.user) session.user.id = user.id;

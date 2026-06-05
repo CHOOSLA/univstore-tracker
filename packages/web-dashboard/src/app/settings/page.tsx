@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { getSystemConfig } from "@/app/alerts/actions";
 import { isAdmin } from "@/lib/admin";
 import TelegramConnector from "@/components/alerts/TelegramConnector";
+import AccountSection from "@/components/settings/AccountSection";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,13 @@ export default async function SettingsPage() {
         </section>
 
         {session?.user ? (
-          <TelegramConnector botUsername={config.TELEGRAM_BOT_USERNAME} />
+          <>
+            <TelegramConnector botUsername={config.TELEGRAM_BOT_USERNAME} />
+            <AccountSection
+              initialName={session.user.name ?? ""}
+              email={session.user.email ?? null}
+            />
+          </>
         ) : (
           <div className="glass p-10 rounded-[40px] border-white/[0.04] text-center space-y-4">
             <p className="text-zinc-400">로그인하면 텔레그램 알림 채널을 연동할 수 있습니다.</p>
