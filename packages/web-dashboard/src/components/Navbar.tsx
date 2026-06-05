@@ -53,7 +53,7 @@ export function Navbar() {
 
   return (
     <nav className={cn(
-      "sticky top-0 z-[100] border-b border-white/5 px-4 md:px-6 h-20 flex justify-between items-center mb-4 transition-all duration-300",
+      "sticky top-0 z-[100] relative border-b border-white/5 px-4 md:px-6 h-20 flex justify-between items-center mb-4 transition-all duration-300",
       isMenuOpen ? "bg-zinc-950" : "glass"
     )}>
       {/* Logo */}
@@ -62,8 +62,8 @@ export function Navbar() {
         <span className="text-xl font-black tracking-tighter text-white">UnivWatch.</span>
       </Link>
       
-      {/* Desktop Navigation */}
-      <div className="hidden md:flex items-center space-x-1 bg-zinc-900/50 p-1 rounded-xl border border-white/5">
+      {/* Desktop Navigation — 좌측 로고/우측 액션 폭과 무관하게 화면 정중앙 고정 */}
+      <div className="hidden md:flex items-center space-x-1 bg-zinc-900/50 p-1 rounded-xl border border-white/5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
           return (
@@ -85,11 +85,6 @@ export function Navbar() {
 
       {/* Right Actions */}
       <div className="flex items-center space-x-4 relative z-[110]">
-        <div className="hidden sm:flex px-3 py-1.5 bg-zinc-950 border border-white/5 rounded-full items-center space-x-2">
-          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-          <span className="text-[11px] font-black text-zinc-400 uppercase tracking-tighter">System Online</span>
-        </div>
-
         {/* Desktop Auth */}
         <div className="hidden md:block">
           <AuthButton variant="desktop" />
@@ -136,10 +131,6 @@ export function Navbar() {
         )}>
           <div className="w-full">
             <AuthButton variant="mobile" />
-          </div>
-          <div className="px-4 py-2 bg-zinc-900 border border-white/5 rounded-full flex items-center space-x-2">
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="text-[11px] font-black text-zinc-400 uppercase tracking-widest">System Online</span>
           </div>
           <p className="text-[10px] font-bold text-zinc-700 uppercase tracking-[0.4em]">UnivWatch Intel Engine</p>
         </div>
