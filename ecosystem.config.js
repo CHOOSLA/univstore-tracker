@@ -2,16 +2,16 @@ module.exports = {
   apps: [
     {
       name: "univ-worker",
-      script: "npm",
-      args: "run worker:dev",
+      script: "node",
+      args: "packages/worker/index.js",
       env: {
         NODE_ENV: "development",
       }
     },
     {
       name: "univ-crawler",
-      script: "npm",
-      args: "run crawler:dev",
+      script: "node",
+      args: "packages/crawler/index.js",
       // cycle 완료 시 process.exit(0)으로 정상 종료 → stop_exit_codes로 재시작 안 함(cron 대기).
       // crash(비정상 종료)는 autorestart로 즉시 복구 → PROGRESS_KEY 기준 mid-cycle 이어받음.
       // 과거 autorestart:false라 디스크 풀→Redis MISCONF crash 시 12h cron까지 박제됐음.

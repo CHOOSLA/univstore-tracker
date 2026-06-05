@@ -28,16 +28,17 @@ export async function updateMyName(name: string) {
 }
 
 /**
- * 회원 탈퇴 (soft delete).
- * deletedAt만 세팅해 데이터(관심상품·알림·연동)는 보존하고, 세션을 즉시 삭제해
- * 강제 로그아웃한다. 이후 로그인은 auth signIn 콜백에서 차단된다.
+ * 회원 탈퇴 (완전 삭제).
+ * User를 삭제하면 Account/Session/WatchlistItem/PriceAlert가 전부 cascade 삭제된다.
+ * 같은 소셜 계정으로 재로그인하면 adapter가 새 User를 생성해 새 계정처럼 시작된다.
  */
 export async function deleteMyAccount() {
   const userId = await currentUserId();
   if (!userId) return { success: false, error: "로그인이 필요합니다." };
   try {
-    await prisma.user.update({ where: { id: userId }, data: { deletedAt: new Date() } });
-    await prisma.session.deleteMany({ where: { userId } });
+    // 텔레그램 연동행은 onDelete: SetNull이라 떠도는 익명행이 남으므로 먼저 제거
+    await prisma.telegramSubscriber.deleteMany({ where: { userId } });
+    await prisma.user.delete({ where: { id: userId } });
     return { success: true };
   } catch (err: any) {
     console.error("❌ 회원 탈퇴 실패:", err.message);

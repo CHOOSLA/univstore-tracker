@@ -85,7 +85,7 @@ export default function AccountSection({ initialName, email }: Props) {
             <div className="flex items-start gap-2 text-red-400">
               <AlertTriangle size={16} className="mt-0.5 shrink-0" />
               <p className="text-sm font-bold leading-relaxed">
-                탈퇴하면 즉시 로그아웃되고 이후 로그인이 차단됩니다. 관심상품·알림 데이터는 보존되며, 복구는 관리자 문의가 필요합니다.
+                탈퇴하면 계정과 모든 데이터(관심상품·목표가·텔레그램 연동)가 삭제되고 즉시 로그아웃됩니다. 같은 소셜 계정으로 다시 로그인하면 새 계정으로 시작됩니다.
               </p>
             </div>
             <div className="flex gap-2">
