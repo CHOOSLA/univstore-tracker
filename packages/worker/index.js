@@ -31,6 +31,23 @@ if (bot) {
       await bot.sendMessage(subscriberChatId, "❌ 연동 처리 도중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
     }
   });
+
+  // 토큰 없는 bare /start: 이미 봇과 대화방이 있는 사용자가 QR로 재진입하면
+  // 딥링크 토큰이 실리지 않고 "/start"만 전송된다. 토큰이 없으면 어느 계정인지
+  // 알 수 없으므로 연동을 수행하지 않고 현재 상태만 안내한다(무반응 방지).
+  bot.onText(/^\/start\s*$/, async (msg) => {
+    const cid = msg.chat.id.toString();
+    try {
+      const sub = await prisma.telegramSubscriber.findFirst({ where: { chatId: cid } });
+      if (sub) {
+        await bot.sendMessage(cid, "✅ *이미 연동되어 있습니다.*\n\n설정하신 목표가·관심상품(역대최저) 알림을 이 채팅방에서 받게 됩니다.", { parse_mode: 'Markdown' });
+      } else {
+        await bot.sendMessage(cid, "👋 *UnivWatch 알림 연동 안내*\n\n연동은 사이트 *설정* 페이지의 *QR 코드* 또는 *[텔레그램 연동 시작]* 버튼으로 진행해 주세요.\n해당 링크에는 계정 식별 토큰이 포함되어 있어 한 번에 연결됩니다.", { parse_mode: 'Markdown' });
+      }
+    } catch (err) {
+      console.error("❌ bare /start 처리 실패:", err.message);
+    }
+  });
 }
 
 
