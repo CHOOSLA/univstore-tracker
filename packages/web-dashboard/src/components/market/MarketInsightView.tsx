@@ -320,8 +320,8 @@ export default function MarketInsightView({
                 </div>
                 <p className="text-2xl font-black text-white tracking-tight">목표 가격 임박 상품</p>
               </div>
-              <Link href="/alerts" className="text-[10px] font-black text-zinc-500 hover:text-white uppercase tracking-widest flex items-center transition-colors">
-                Alerts <ChevronRight size={12} />
+              <Link href="/watchlist" className="text-[10px] font-black text-zinc-500 hover:text-white uppercase tracking-widest flex items-center transition-colors">
+                Watchlist <ChevronRight size={12} />
               </Link>
             </div>
 

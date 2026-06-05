@@ -6,6 +6,7 @@ import { getMyWatchlist } from "./actions";
 import { getMyPriceAlerts } from "@/app/alerts/actions";
 import PriceScoreBadge from "@/components/common/PriceScoreBadge";
 import WatchlistButton from "@/components/product/WatchlistButton";
+import WatchlistTargetControl from "@/components/product/WatchlistTargetControl";
 
 export const dynamic = "force-dynamic";
 
@@ -16,18 +17,18 @@ export default async function WatchlistPage() {
     ? await Promise.all([getMyWatchlist(), getMyPriceAlerts()])
     : [[], []];
 
-  // 목표가 맵 (productId → 최저 목표가)
-  const targetMap = new Map<string, number>();
+  // 목표가 맵 (productId → 최저 목표가 알림 {id, targetPrice})
+  const alertMap = new Map<string, { id: number; targetPrice: number }>();
   for (const a of alerts) {
-    const prev = targetMap.get(a.productId);
-    if (prev === undefined || a.targetPrice < prev) targetMap.set(a.productId, a.targetPrice);
+    const prev = alertMap.get(a.productId);
+    if (!prev || a.targetPrice < prev.targetPrice) alertMap.set(a.productId, { id: a.id, targetPrice: a.targetPrice });
   }
 
   // 인사이트 분류
   const enriched = items.map((it) => {
     const current = Number(it.product.currentPrice ?? 0);
     const score = it.product.priceScore ?? null;
-    const target = targetMap.get(it.productId);
+    const target = alertMap.get(it.productId)?.targetPrice;
     const targetReached = target !== undefined && current > 0 && current <= target;
     const atLow = score !== null && score >= 90;      // 역대최저 진입
     const nearLow = score !== null && score >= 70;     // 최저권
@@ -170,6 +171,11 @@ export default async function WatchlistPage() {
                       </div>
                     </div>
                   </Link>
+                  <WatchlistTargetControl
+                    productId={item.productId}
+                    currentPrice={current}
+                    alert={alertMap.get(item.productId) ?? null}
+                  />
                 </div>
               );
             })}

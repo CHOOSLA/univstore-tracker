@@ -32,8 +32,14 @@ export async function createPriceAlert(productId: string, targetPrice: number) {
         data: { productId, targetPrice, isActive: true, userId },
       });
     }
+    // 목표가는 추적(찜) 상품의 속성이다. 단일 리스트 일관성을 위해 자동으로 관심상품에 담는다.
+    await prisma.watchlistItem.upsert({
+      where: { userId_productId: { userId, productId } },
+      update: {},
+      create: { userId, productId },
+    });
     revalidatePath(`/product/${productId}`);
-    revalidatePath("/alerts");
+    revalidatePath("/watchlist");
     return { success: true };
   } catch (err: any) {
     console.error("❌ PriceAlert 생성 실패:", err.message);
@@ -48,6 +54,7 @@ export async function deletePriceAlert(id: number) {
     // 소유자 검증 후 삭제 (deleteMany로 userId 조건 강제)
     const res = await prisma.priceAlert.deleteMany({ where: { id, userId } });
     if (res.count === 0) return { success: false, error: "알림을 찾을 수 없습니다." };
+    revalidatePath("/watchlist");
     revalidatePath("/alerts");
     return { success: true };
   } catch (err: any) {

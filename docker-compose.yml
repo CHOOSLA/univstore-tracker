@@ -57,6 +57,7 @@ services:
       - AUTH_GOOGLE_SECRET=${AUTH_GOOGLE_SECRET}
       - AUTH_KAKAO_ID=${AUTH_KAKAO_ID}
       - AUTH_KAKAO_SECRET=${AUTH_KAKAO_SECRET}
+      - ADMIN_EMAILS=${ADMIN_EMAILS}
     depends_on:
       - postgres
       - redis
