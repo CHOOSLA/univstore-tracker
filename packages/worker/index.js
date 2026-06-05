@@ -158,7 +158,6 @@ async function handlePriceUpdate(payload) {
     configs.forEach(c => configMap[c.key] = c.value);
     
     const telegramEnabled = configMap['TELEGRAM_ENABLED'] !== 'false';
-    const minDropRate = parseInt(configMap['MIN_DROP_RATE'] || '10');
 
     // 2. 계정 귀속 목표가 알림: 현재가가 목표가 이하로 떨어진 활성 알림 처리
     //    (raw price 기준. 텔레그램 연동된 계정에만 푸시, 인앱 표시는 항상 동작)
@@ -195,38 +194,42 @@ async function handlePriceUpdate(payload) {
       }
     }
 
-    // 3. 기존의 단순 가격 하락 알림 로직 (설정한 최소 하락율 이상일 때만 발송) -> 모든 구독자 대상 브로드캐스트로 확장
-    if (lastRecord && price < lastRecord.price) {
-      const dropPercent = (((lastRecord.price - price) / lastRecord.price) * 100);
-      
-      if (dropPercent >= minDropRate) {
-        await prisma.systemLog.create({
-          data: { type: 'ALERT', service: 'Worker', message: `가격 하락 감지: [${brand}] ${title} (-${dropPercent.toFixed(1)}%)` }
-        });
+    // 3. 찜 기반 개인 하락 알림: 역대 최저가를 경신할 때만, 그 상품을 찜한 사용자에게만 푸시.
+    //    (직전 가격 대비 % 전역 브로드캐스트 폐기 → 노이즈 큰 전송 대신 "관심 등록 + 역대최저" 신호만.
+    //     중복 방지는 Redis TTL로 처리하여 스키마 변경을 피한다.)
+    const prevLowest = allHistory.length > 0 ? Math.min(...allHistory.map(h => h.price)) : null;
+    const isNewLow = prevLowest !== null && price < prevLowest;
 
-        if (telegramEnabled && bot) {
-          const message = `🚨 *가격 하락 알림 (${minDropRate}% 이상)!*\n\n📦 *상품명*: ${title}\n💰 *현재가*: ${price.toLocaleString()}원\n📉 *하락폭*: -${(lastRecord.price - price).toLocaleString()}원 (${dropPercent.toFixed(1)}%)\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
-          
-          /* 기존 관리자 단일 알림 전송 (주석 처리 보존)
-          if (chatId) {
-            await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' });
-          }
-          */
+    if (isNewLow) {
+      await prisma.systemLog.create({
+        data: { type: 'ALERT', service: 'Worker', message: `역대최저 경신: [${brand}] ${title} ₩${price.toLocaleString()} (이전최저 ₩${prevLowest.toLocaleString()})` }
+      }).catch(() => {});
 
-          // 1. 관리자에게 우선 발송
-          if (chatId) {
-            await bot.sendMessage(chatId, message, { parse_mode: 'Markdown' }).catch(err => console.error(`❌ Admin alert failed: ${err.message}`));
-          }
+      if (telegramEnabled && bot) {
+        // 이 상품을 찜한 사용자들
+        const watchers = await prisma.watchlistItem.findMany({ where: { productId: id } });
 
-          // 2. 모든 등록 사용자에게 브로드캐스트 발송 (40ms Throttling spacing 적용)
-          const subscribers = await prisma.telegramSubscriber.findMany();
+        for (const w of watchers) {
+          // 상품×사용자 일 1회 중복 방지 (Redis 24h TTL, 스키마 변경 회피)
+          const dedupKey = `univstore:drop_notified:${w.userId}:${id}`;
+          let alreadySent = false;
+          try { alreadySent = (await redis.exists(dedupKey)) === 1; } catch (_) {}
+          if (alreadySent) continue;
 
-          for (const sub of subscribers) {
-            if (sub.chatId) {
-              await new Promise(r => setTimeout(r, 40));
-              await bot.sendMessage(sub.chatId, message, { parse_mode: 'Markdown' })
-                .catch(err => console.error(`❌ Broadcast alert failed for chatId ${sub.chatId}: ${err.message}`));
-            }
+          // 사용자 계정에 연동된 텔레그램 chatId (미연동 시 스킵 — 인앱 표시는 항상 동작)
+          const sub = await prisma.telegramSubscriber.findFirst({
+            where: { userId: w.userId, NOT: { chatId: '' } },
+          });
+          if (!sub || !sub.chatId) continue;
+
+          const message = `📉 *역대 최저가 경신!*\n\n📦 *상품명*: ${title}\n💰 *현재가*: ${price.toLocaleString()}원 (역대최저)\n📊 *이전 최저*: ${prevLowest.toLocaleString()}원\n🎁 *혜택*: ${bestBenefit || '기본'}\n🔗 [바로가기](https://www.univstore.com/item/${id})`;
+
+          await new Promise(r => setTimeout(r, 40));
+          try {
+            await bot.sendMessage(sub.chatId, message, { parse_mode: 'Markdown' });
+            await redis.set(dedupKey, '1', 'EX', 86400).catch(() => {});
+          } catch (err) {
+            console.error(`❌ 하락 알림 발송 실패 (user ${w.userId}, product ${id}): ${err.message}`);
           }
         }
       }
