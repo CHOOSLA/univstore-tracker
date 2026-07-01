@@ -34,15 +34,15 @@ export default async function ProductsPage({
     let idsRow: { id: string }[] = [];
     if (activeFilter === 'flash') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
-        WITH price_48h_ago AS (
+        WITH price_baseline AS (
           SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
           FROM "PriceHistory" ph
-          WHERE ph.timestamp >= NOW() - INTERVAL '48 hours' AND ph.timestamp < NOW() - INTERVAL '24 hours'
-          ORDER BY ph."productId", ph.timestamp ASC
+          WHERE ph.timestamp < NOW() - INTERVAL '24 hours'
+          ORDER BY ph."productId", ph.timestamp DESC
         )
         SELECT p.id
         FROM "Product" p
-        JOIN price_48h_ago old ON p.id = old."productId"
+        JOIN price_baseline old ON p.id = old."productId"
         WHERE p."currentPrice" < old.price
           AND p."currentPrice" >= 10000
           AND ((old.price - p."currentPrice")::numeric / old.price::numeric) < 0.7
@@ -68,16 +68,16 @@ export default async function ProductsPage({
       `;
     } else if (activeFilter === 'target') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
-        WITH alert_counts AS (
-          SELECT "productId", COUNT(*)::int as alerts_count
-          FROM "PriceAlert"
-          WHERE "isActive" = true
+        WITH watch_counts AS (
+          SELECT "productId", COUNT(*)::int as watch_count
+          FROM "WatchlistItem"
           GROUP BY "productId"
         )
         SELECT p.id
         FROM "Product" p
-        JOIN alert_counts ac ON p.id = ac."productId"
+        JOIN watch_counts wc ON p.id = wc."productId"
         WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
+        ORDER BY wc.watch_count DESC
       `;
     } else if (activeFilter === 'defense') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`

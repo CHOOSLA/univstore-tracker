@@ -67,17 +67,19 @@ export default async function MarketPage() {
     `,
     // C. Flash Drops (48시간 대비 최근 급하락 - DISTINCT ON 최신 가격 조인 최적화)
     prisma.$queryRaw<any[]>`
-      WITH price_48h_ago AS (
+      WITH price_baseline AS (
+        -- 24시간 이전의 '가장 최근' 가격을 기준으로 사용.
+        -- 정확한 48~24h 밴드에 의존하지 않아 수집 공백(크롤러 정지 등)에도 견딤.
         SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
         FROM "PriceHistory" ph
-        WHERE ph.timestamp >= NOW() - INTERVAL '48 hours' AND ph.timestamp < NOW() - INTERVAL '24 hours'
-        ORDER BY ph."productId", ph.timestamp ASC
+        WHERE ph.timestamp < NOW() - INTERVAL '24 hours'
+        ORDER BY ph."productId", ph.timestamp DESC
       )
       SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", p."priceScore", old.price as "prevPrice",
              (old.price - p."currentPrice") as "dropAmount",
              ROUND(((old.price - p."currentPrice")::numeric / old.price::numeric) * 100, 1) as "dropPercent"
       FROM "Product" p
-      JOIN price_48h_ago old ON p.id = old."productId"
+      JOIN price_baseline old ON p.id = old."productId"
       WHERE p."currentPrice" < old.price
         AND p."currentPrice" >= 10000
         AND ((old.price - p."currentPrice")::numeric / old.price::numeric) < 0.7
@@ -85,19 +87,18 @@ export default async function MarketPage() {
       ORDER BY "dropPercent" DESC
       LIMIT 12
     `,
-    // D. Most Hunted (전체 사용자 알림 최다 등록 저격 상품 - DISTINCT ON 조인 제거)
+    // D. Most Hunted (관심상품 최다 등록 저격 상품 - WatchlistItem 집계)
     prisma.$queryRaw<any[]>`
-      WITH alert_counts AS (
-        SELECT "productId", COUNT(*)::int as alerts_count
-        FROM "PriceAlert"
-        WHERE "isActive" = true
+      WITH watch_counts AS (
+        SELECT "productId", COUNT(*)::int as watch_count
+        FROM "WatchlistItem"
         GROUP BY "productId"
       )
-      SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", p."priceScore", ac.alerts_count as "targetPrice"
+      SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", p."priceScore", wc.watch_count as "targetPrice"
       FROM "Product" p
-      JOIN alert_counts ac ON p.id = ac."productId"
+      JOIN watch_counts wc ON p.id = wc."productId"
       WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
-      ORDER BY ac.alerts_count DESC
+      ORDER BY wc.watch_count DESC
       LIMIT 12
     `
   ]);
