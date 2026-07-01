@@ -81,10 +81,13 @@ export default async function HomePage() {
     color: group.brand === 'Apple' ? "text-zinc-50" : "text-blue-400"
   })).sort((a, b) => b.count - a.count).slice(0, 4);
 
+  // 큰 수치는 한국어 컴팩트 표기로 (1,426,779 → "143만") — 카드 폭 초과/… 잘림 방지
+  const fmtCompact = (n: number) => new Intl.NumberFormat('ko-KR', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+
   // 상단 4구 매트릭
   const metrics = [
     { title: "전체 상품", value: totalProductsCount.toLocaleString(), sub: "Data Scale", icon: Package, accent: "text-blue-500" },
-    { title: "누적 데이터", value: totalHistoryCount.toLocaleString(), sub: "Price History", icon: Database, accent: "text-purple-500" },
+    { title: "누적 데이터", value: fmtCompact(totalHistoryCount), sub: "Price History", icon: Database, accent: "text-purple-500" },
     { title: "브랜드 수", value: brandGroups.length, sub: "Active Brands", icon: Zap, accent: "text-amber-500" },
     { title: "서버 상태", value: "ONLINE", sub: "Sync Active", icon: Clock, accent: "text-emerald-500" },
   ];
@@ -371,13 +374,13 @@ export default async function HomePage() {
 
 function MetricCard({ title, value, sub, icon: Icon, accent }: any) {
   return (
-    <div className="glass p-5 md:p-8 rounded-[32px] md:rounded-[40px] flex flex-col md:flex-row items-start justify-between border-white/[0.03] group hover:border-white/10 transition-all">
-      <div className="order-2 md:order-1 mt-4 md:mt-0">
+    <div className="glass p-5 md:p-8 rounded-[32px] md:rounded-[40px] flex flex-col md:flex-row items-start justify-between gap-3 md:gap-4 border-white/[0.03] group hover:border-white/10 transition-all">
+      <div className="order-2 md:order-1 mt-4 md:mt-0 min-w-0 flex-1">
         <p className="text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-2 md:mb-4">{title}</p>
-        <p className="text-2xl md:text-5xl font-black text-white tabular-nums tracking-tighter">{value}</p>
+        <p className="text-2xl md:text-4xl xl:text-5xl font-black text-white tabular-nums tracking-tighter">{value}</p>
         <p className={cn("text-[10px] md:text-[11px] font-bold mt-2 md:mt-4 uppercase tracking-widest opacity-80", accent)}>{sub}</p>
       </div>
-      <div className={cn("order-1 md:order-2 p-3 md:p-4 bg-zinc-950/50 rounded-xl md:rounded-2xl border border-white/5 group-hover:scale-110 transition-transform", accent)}>
+      <div className={cn("order-1 md:order-2 shrink-0 p-3 md:p-4 bg-zinc-950/50 rounded-xl md:rounded-2xl border border-white/5 group-hover:scale-110 transition-transform", accent)}>
         <Icon size={18} />
       </div>
     </div>

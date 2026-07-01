@@ -40,14 +40,22 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(!!initialCursor);
   const [mounted, setMounted] = useState(false);
-  const [view, setView] = useState<ViewMode>('list');
+  // 기본 카드뷰. 마운트 시 localStorage에 저장된 사용자 선택으로 복원.
+  const [view, setViewState] = useState<ViewMode>('card');
+
+  const setView = useCallback((v: ViewMode) => {
+    setViewState(v);
+    try { localStorage.setItem('explorer-view', v); } catch {}
+  }, []);
   const [isRestored, setIsRestored] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    if (window.innerWidth < 768) {
-      setView('card');
-    }
+    // 저장된 뷰 선택 복원 (없으면 기본 card 유지)
+    try {
+      const saved = localStorage.getItem('explorer-view');
+      if (saved === 'list' || saved === 'card') setViewState(saved);
+    } catch {}
 
     // 뒤로가기 시 스크롤 위치 및 데이터 상태 복원
     const storageKey = `univwatch_list_cache_${JSON.stringify(searchParams)}`;

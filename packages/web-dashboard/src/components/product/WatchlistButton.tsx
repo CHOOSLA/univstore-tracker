@@ -63,7 +63,7 @@ export default function WatchlistButton({ productId, initialWatched = false, var
     <button
       onClick={handleClick}
       className={cn(
-        "flex items-center justify-center gap-2 h-12 md:h-14 px-5 rounded-xl md:rounded-2xl font-black text-sm md:text-base border transition-all whitespace-nowrap",
+        "flex items-center justify-center gap-2 h-12 md:h-14 w-[132px] md:w-[150px] shrink-0 rounded-xl md:rounded-2xl font-black text-sm md:text-base border transition-all whitespace-nowrap",
         watched
           ? "bg-red-500/10 border-red-500/30 text-red-400"
           : "bg-zinc-900 border-white/5 text-white hover:bg-zinc-800",
