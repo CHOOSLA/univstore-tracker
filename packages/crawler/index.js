@@ -118,6 +118,13 @@ async function run() {
     await initContext.close();
   } catch (err) {
     console.error("❌ 초기화 에러:", err.message);
+    // 로그인 단계 실패(세션 만료/2FA 재요구)는 waitForURL 타임아웃으로 표면화된다.
+    // 조용히 죽고 cron 재시작만 반복되던 사각지대 → 관리자에게 알림.
+    const isLoginStuck = /waitForURL|Timeout|authenticate|2fa/i.test(err.message || '');
+    const msg = isLoginStuck
+      ? "🔐 *크롤러 로그인 실패 (세션 만료/2FA)*\n\n로그인 단계에서 멈췄습니다. 서버에서 `node packages/crawler/prime-session.js`로 세션을 재수립해야 합니다."
+      : `🚨 *크롤러 초기화 실패*\n\n${err.message}`;
+    await notifyAdminHealth(msg);
     await initContext.close();
     process.exit(1);
   }
@@ -182,7 +189,8 @@ async function run() {
         where: { id: 'singleton' },
         data: { lastStatus: 'COMPLETED', currentIndex: totalItems, lastHeartbeat: new Date() }
       }).catch(() => {});
-      sendTelegramAlert(`✅ *Crawler cycle 완료*\n\n${processedCount}건 처리. 다음 cron(12h)에 자동 재시작.`).catch(() => {});
+      // await 필수: fire-and-forget이면 아래 process.exit(0)가 HTTP 전송 전에 프로세스를 죽여 알림이 유실됨
+      await sendTelegramAlert(`✅ *Crawler cycle 완료*\n\n${processedCount}건 처리. 다음 cron(12h)에 자동 재시작.`).catch(() => {});
       await browserContext.close().catch(() => {});
       await prisma.$disconnect().catch(() => {});
       await redis.quit().catch(() => {});
