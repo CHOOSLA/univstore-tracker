@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { cn } from "@/lib/utils";
 import AuthButton from "@/components/AuthButton";
 
@@ -10,13 +11,15 @@ const NAV_ITEMS = [
   { name: 'Dashboard', href: '/' },
   { name: 'Explorer', href: '/products' },
   { name: 'Market', href: '/market' },
-  { name: 'Terminal', href: '/terminal' },
+  { name: 'Terminal', href: '/terminal', adminOnly: true },
   { name: 'Watchlist', href: '/watchlist' },
   { name: 'Settings', href: '/settings' },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.isAdmin;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -42,7 +45,7 @@ export function Navbar() {
 
       {/* Desktop Navigation — 좌측 로고/우측 액션 폭과 무관하게 화면 정중앙 고정 */}
       <div className="hidden md:flex items-center space-x-1 bg-zinc-900/50 p-1 rounded-xl border border-white/5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => {
           const isActive = pathname === item.href || (item.href !== '/' && pathname?.startsWith(item.href));
           return (
             <Link

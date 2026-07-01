@@ -1,12 +1,17 @@
 import React from 'react';
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import Redis from 'ioredis';
 import TerminalView from "@/components/terminal/TerminalView";
 import { getStorageMetrics } from "./actions";
+import { isAdmin } from "@/lib/admin";
 
 export const dynamic = 'force-dynamic';
 
 export default async function TerminalPage() {
+  // 관리자 전용. 비관리자는 홈으로 리다이렉트 (URL 직접 접근 차단)
+  if (!(await isAdmin())) redirect('/');
+
   // 1. Redis 큐 사이즈 조회
   const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
   const url = new URL(redisUrl);

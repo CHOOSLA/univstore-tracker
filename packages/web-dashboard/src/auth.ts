@@ -18,8 +18,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "database" },
   callbacks: {
     // database 세션: user(DB row)의 id를 세션에 노출 → 서버 액션에서 소유자 식별
+    // isAdmin: ADMIN_EMAILS 화이트리스트 매칭. 클라이언트(Navbar 등)에서 관리 메뉴 노출 제어용.
+    // (admin.ts를 import하면 auth↔admin 순환참조라 여기서 인라인 계산)
     session({ session, user }) {
-      if (session.user) session.user.id = user.id;
+      if (session.user) {
+        session.user.id = user.id;
+        const admins = (process.env.ADMIN_EMAILS || "")
+          .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+        session.user.isAdmin = !!user.email && admins.includes(user.email.toLowerCase());
+      }
       return session;
     },
   },
