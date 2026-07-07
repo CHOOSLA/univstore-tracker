@@ -128,17 +128,20 @@ describe('DirectApiFilter', () => {
     expect(mockCtx.apiHandled).toBeUndefined();
   });
 
-  // 신 API 응답 래퍼: { statusCode:'SUCCESS', result:{ item, paymentDiscountList } }
-  const mockNewApi = (status, item, paymentDiscountList = []) => ({
+  // DirectApiFilter가 res.text() 후 JSON.parse 하므로 두 메서드 모두 stub
+  const mockJsonResponse = (status, data) => ({
     status: () => status,
-    json: async () => ({ statusCode: 'SUCCESS', result: { item, paymentDiscountList } }),
+    text: async () => JSON.stringify(data),
+    json: async () => data,
   });
 
   it('isRecoveryMode + 이미지 있는 API 응답은 API 경로로 처리한다', async () => {
     mockCtx.isRecoveryMode = true;
-    mockCtx.browserContext.request.get.mockResolvedValue(mockNewApi(200, {
-      id: 13704, brandName: 'X', frontName: 'Y', price1: 100, discountRate: 0,
-      thumbnailUrl: 'https://image.univstore.com/x.jpg', hasStock: true,
+    mockCtx.browserContext.request.get.mockResolvedValue(mockJsonResponse(200, {
+      id: 13704,
+      brand_name: 'X', front_name: 'Y',
+      price1: 100, price2: 90,
+      thumbnail_url: 'https://image.univstore.com/x.jpg',
     }));
     await filter.process(mockCtx);
     expect(mockCtx.apiHandled).toBe(true);
@@ -147,34 +150,41 @@ describe('DirectApiFilter', () => {
 
   it('isRecoveryMode + 이미지 없는 API 응답은 페이지 fallback으로 위임한다', async () => {
     mockCtx.isRecoveryMode = true;
-    mockCtx.browserContext.request.get.mockResolvedValue(mockNewApi(200, {
-      id: 13704, brandName: 'X', frontName: 'Y', price1: 100, discountRate: 0,
-      thumbnailUrl: null, hasStock: true,
+    mockCtx.browserContext.request.get.mockResolvedValue(mockJsonResponse(200, {
+      id: 13704,
+      brand_name: 'X', front_name: 'Y',
+      price1: 100, price2: 90,
+      thumbnail_url: null,
     }));
     await filter.process(mockCtx);
     expect(mockCtx.apiHandled).toBeUndefined();
   });
 
-  it('API 응답을 itemInfo로 매핑하고 apiHandled를 set한다 (할인율 역산 포함)', async () => {
-    mockCtx.browserContext.request.get.mockResolvedValue(mockNewApi(200, {
-      id: 13704, brandName: '비오엠', frontName: '듀이립밤',
-      price1: 7700, discountRate: 23, // 정가 역산: 7700/(1-0.23)=10000
-      thumbnailUrl: 'https://image.univstore.com/x.jpg',
-      categoryName: '뷰티', brandItemCategoryName: '뷰티', hasStock: true,
-    }, [{ cartTabName: '카카오페이머니 할인' }]));
+  it('API 응답을 itemInfo로 매핑하고 apiHandled를 set한다', async () => {
+    mockCtx.browserContext.request.get.mockResolvedValue(mockJsonResponse(200, {
+      id: 13704,
+      brand_name: '비오엠',
+      front_name: '듀이립밤',
+      price1: 15000,
+      price2: 7700,
+      thumbnail_url: 'https://image.univstore.com/x.jpg',
+      benefit: '무료배송',
+      item_category_name: '뷰티',
+      brand_item_category_name: '뷰티',
+      has_stock: true,
+    }));
     await filter.process(mockCtx);
     expect(mockCtx.apiHandled).toBe(true);
     expect(mockCtx.itemInfo.price).toBe('7700');
-    expect(mockCtx.itemInfo.originalPrice).toBe('10000');
+    expect(mockCtx.itemInfo.originalPrice).toBe('15000');
     expect(mockCtx.itemInfo.brand).toBe('비오엠');
     expect(mockCtx.itemInfo.stockStatus).toBe('In Stock');
-    expect(mockCtx.itemInfo.bestBenefit).toBe('카카오페이머니 할인');
   });
 
-  it('ITEM_NOT_FOUND는 단종 상품으로 마킹하고 shouldSkip', async () => {
+  it('200 OK + 빈 body는 단종 상품으로 마킹하고 shouldSkip', async () => {
     mockCtx.browserContext.request.get.mockResolvedValue({
-      status: () => 400,
-      json: async () => ({ statusCode: 'FAIL', errorCode: 'ITEM_NOT_FOUND', result: '' }),
+      status: () => 200,
+      text: async () => '',
     });
     await filter.process(mockCtx);
     expect(mockCtx.shouldSkip).toBe(true);
@@ -186,11 +196,13 @@ describe('DirectApiFilter', () => {
     await expect(filter.process(mockCtx)).rejects.toMatchObject({ name: 'BlockDetectedError' });
   });
 
-  it('SUCCESS가 아닌 기타 응답은 apiHandled를 set하지 않고 페이지 fallback으로 위임한다', async () => {
-    mockCtx.browserContext.request.get.mockResolvedValue({
-      status: () => 500,
-      json: async () => ({ statusCode: 'FAIL', result: '' }),
-    });
+  it('401은 SessionExpiredError를 던진다', async () => {
+    mockCtx.browserContext.request.get.mockResolvedValue({ status: () => 401 });
+    await expect(filter.process(mockCtx)).rejects.toMatchObject({ name: 'SessionExpiredError' });
+  });
+
+  it('기타 4xx는 apiHandled를 set하지 않고 페이지 fallback으로 위임한다', async () => {
+    mockCtx.browserContext.request.get.mockResolvedValue({ status: () => 404 });
     await filter.process(mockCtx);
     expect(mockCtx.apiHandled).toBeUndefined();
   });
