@@ -1,4 +1,4 @@
-const { prisma, redis, withPrismaRetry, sleep, BlockDetectedError, SessionExpiredError, sendTelegramAlert } = require('./engine');
+const { prisma, redis, withPrismaRetry, sleep, BlockDetectedError, SessionExpiredError } = require('./engine');
 const { blockGuard } = require('./blockGuard');
 const { extractMnoOption } = require('./mnoExtract');
 
@@ -58,19 +58,6 @@ class DirectApiFilter {
     const status = res.status();
     if (status === 403 || status === 429 || status === 405) {
       throw new BlockDetectedError(`Bot detected via API (HTTP ${status})`, status);
-    }
-
-    // 신 API가 인증(401)을 요구하기 시작하면 = univstore가 공개 API를 조인 것.
-    // 크롤러 수집이 불안정해지므로 1시간 1회 관리자 알림 후 페이지 fallback으로 위임.
-    if (status === 401) {
-      try {
-        const first = await redis.set('univstore:api_auth_required', '1', 'EX', 3600, 'NX');
-        if (first !== null) {
-          await sendTelegramAlert('🚨 *신 API 인증 요구 전환 감지*\n\nweb-api.univstore.com이 인증(401)을 요구하기 시작했습니다.\n크롤러는 페이지 fallback으로 동작하나 수집이 불안정해질 수 있어 대응이 필요합니다.').catch(() => {});
-        }
-      } catch (_) { /* redis 장애 시 알림만 skip */ }
-      console.warn(`⚠️ [ID ${ctx.id}] 신 API 401 인증 요구 - 페이지 fallback으로 위임`);
-      return;
     }
 
     let apiData;
