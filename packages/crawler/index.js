@@ -14,12 +14,23 @@ const { XMLParser } = require('fast-xml-parser');
 /**
  * 관리자 헬스 알림 발송. HEALTH_ALERTS_ENABLED(SystemConfig)가 'false'면 스킵(기본 on).
  * 크롤러 차단·세션 만료 등 운영 이벤트 시 호출 → /admin 토글로 제어된다.
+ * @param {string} message 발송 문구
+ * @param {{dedupKey?: string, ttlSec?: number}} [opts] dedupKey 지정 시 ttlSec 동안 중복 발송 억제(스팸 방지)
  */
-async function notifyAdminHealth(message) {
+async function notifyAdminHealth(message, opts = {}) {
   try {
     const cfg = await prisma.systemConfig.findUnique({ where: { key: 'HEALTH_ALERTS_ENABLED' } });
     if (cfg && cfg.value === 'false') return;
   } catch (_) { /* config 조회 실패 시 기본 발송 */ }
+
+  // 중복 억제: 무효 상품이 가짜 세션만료를 반복 유발해도 알림은 ttl당 1회만 나가게 한다.
+  if (opts.dedupKey) {
+    try {
+      const set = await redis.set(`univstore:health_alert:${opts.dedupKey}`, '1', 'EX', opts.ttlSec || 1800, 'NX');
+      if (set === null) return; // 이미 최근에 보냄 → 스킵
+    } catch (_) { /* redis 장애 시 그냥 발송 */ }
+  }
+
   await sendTelegramAlert(message).catch(() => {});
 }
 
@@ -256,7 +267,8 @@ async function run() {
     } catch (err) {
       if (err instanceof SessionExpiredError) {
         console.error("🔄 세션 만료 감지. 재로그인 시도...");
-        await notifyAdminHealth("🔐 *세션 만료 감지*\n\n크롤러 세션이 만료되어 재로그인을 시도합니다.");
+        // 무효 상품(API 404 → 페이지 학생인증 게이트)이 가짜 세션만료를 반복 유발 → 30분 1회로 억제
+        await notifyAdminHealth("🔐 *세션 만료 감지*\n\n크롤러 세션이 만료되어 재로그인을 시도합니다.", { dedupKey: 'session_expiry', ttlSec: 1800 });
         for (const id of batchIds) await failTask(id);
         const loginPage = await browserContext.newPage();
         try {
