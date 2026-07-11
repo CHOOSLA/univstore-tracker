@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { CreditCard, Loader2, LayoutGrid, List } from "lucide-react";
+import { CreditCard, Loader2, LayoutGrid, List, Star } from "lucide-react";
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
 import WatchlistButton from "@/components/product/WatchlistButton";
@@ -22,6 +22,8 @@ interface Product {
   menuCategories?: string[];
   menuSubCategories?: string[];
   thirdCategories?: string[];
+  reviewCount?: number | null;
+  reviewAvgGrade?: number | null;
   priceHistory: { price: number }[];
 }
 
@@ -285,6 +287,13 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
                   <p className="text-xs md:text-base font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[2.5rem] md:h-[3rem]">
                     {item.title}
                   </p>
+                  {(item.reviewCount ?? 0) > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Star size={11} className="text-amber-400 fill-amber-400" />
+                      <span className="text-[11px] font-black text-amber-400">{(item.reviewAvgGrade ?? 0).toFixed(1)}</span>
+                      <span className="text-[10px] font-bold text-zinc-600">({(item.reviewCount ?? 0).toLocaleString()})</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col">
                   {discountRate > 0 && (

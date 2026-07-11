@@ -134,7 +134,9 @@ export default async function ProductsPage({
           take: 14,
         },
       },
-      orderBy: sortOption === 'latest' ? { updatedAt: 'desc' } : undefined,
+      orderBy: sortOption === 'latest' ? { updatedAt: 'desc' }
+        : sortOption === 'rating' ? [{ reviewAvgGrade: { sort: 'desc', nulls: 'last' } }, { reviewCount: 'desc' }]
+        : undefined,
       // 검색어가 있으면 relevance 정렬 위해 더 많이 가져와 candidate 풀을 늘림
       take: searchQuery ? 400 : 100,
     }),
@@ -261,6 +263,7 @@ export default async function ProductsPage({
               {[
                 ...(searchQuery ? [{ id: 'relevance', label: 'Relevance' }] : []),
                 { id: 'latest', label: 'Latest' },
+                { id: 'rating', label: '★ Rating' },
                 { id: 'discount', label: '% Off' },
                 { id: 'price-asc', label: 'Low Price' }
               ].map((opt) => (

@@ -111,7 +111,9 @@ export async function GET(request: Request) {
           take: 14,
         },
       },
-      orderBy: sort === 'latest' ? { updatedAt: 'desc' } : undefined,
+      orderBy: sort === 'latest' ? { updatedAt: 'desc' }
+        : sort === 'rating' ? [{ reviewAvgGrade: { sort: 'desc', nulls: 'last' } }, { reviewCount: 'desc' }]
+        : undefined,
     });
 
     // 메모리 정렬이 필요한 경우 (할인율 등)
