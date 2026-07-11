@@ -127,51 +127,51 @@ export default async function HomePage() {
 
         {/* --- [명확한 3개 액션 카드] --- */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-          {/* 역대 최저 */}
+          {/* 역대 최저 → 마켓 역대최저 섹션 */}
           <Link
-            href="/products?filter=golden"
-            className="group relative overflow-hidden rounded-2xl md:rounded-3xl border border-amber-500/20 bg-amber-500/[0.06] hover:bg-amber-500/[0.1] hover:border-amber-500/40 p-5 md:p-6 transition-all hover:-translate-y-0.5 flex flex-col justify-between min-h-[130px] md:min-h-[150px]"
+            href="/market#golden"
+            className="group relative overflow-hidden rounded-2xl md:rounded-3xl border border-amber-500/25 bg-amber-500/[0.07] hover:bg-amber-500/[0.14] hover:border-amber-400/60 p-5 md:p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_-8px_rgba(245,158,11,0.35)] flex flex-col justify-between min-h-[150px] md:min-h-[170px]"
           >
-            <div className="flex items-center justify-between">
-              <Trophy className="w-5 h-5 md:w-6 md:h-6 text-amber-400" />
-              <ArrowRight size={16} className="text-amber-400/50 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
-            </div>
+            <Trophy className="w-6 h-6 md:w-7 md:h-7 text-amber-400" />
             <div>
               <p className="text-3xl md:text-4xl font-black text-amber-400 tabular-nums leading-none">{goldenCount.toLocaleString()}</p>
-              <p className="text-xs md:text-sm font-black text-white mt-1.5">역대 최저가</p>
+              <p className="text-sm md:text-base font-black text-white mt-1.5">역대 최저가</p>
               <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-0.5">지금이 가장 쌀 때인 상품</p>
             </div>
+            <span className="inline-flex items-center gap-1 text-[11px] md:text-xs font-black text-amber-400 uppercase tracking-wider mt-3 border-t border-amber-500/15 pt-3">
+              보러가기 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </span>
           </Link>
 
-          {/* 평균 대비 급락 */}
+          {/* 평균 대비 급락 → 마켓 True Deals 섹션 */}
           <Link
-            href="/products?filter=true"
-            className="group relative overflow-hidden rounded-2xl md:rounded-3xl border border-red-500/20 bg-red-500/[0.06] hover:bg-red-500/[0.1] hover:border-red-500/40 p-5 md:p-6 transition-all hover:-translate-y-0.5 flex flex-col justify-between min-h-[130px] md:min-h-[150px]"
+            href="/market#true"
+            className="group relative overflow-hidden rounded-2xl md:rounded-3xl border border-red-500/25 bg-red-500/[0.07] hover:bg-red-500/[0.14] hover:border-red-400/60 p-5 md:p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_-8px_rgba(239,68,68,0.35)] flex flex-col justify-between min-h-[150px] md:min-h-[170px]"
           >
-            <div className="flex items-center justify-between">
-              <Flame className="w-5 h-5 md:w-6 md:h-6 text-red-400" />
-              <ArrowRight size={16} className="text-red-400/50 group-hover:text-red-400 group-hover:translate-x-1 transition-all" />
-            </div>
+            <Flame className="w-6 h-6 md:w-7 md:h-7 text-red-400" />
             <div>
               <p className="text-3xl md:text-4xl font-black text-red-400 tabular-nums leading-none">{trueDealsCount.toLocaleString()}</p>
-              <p className="text-xs md:text-sm font-black text-white mt-1.5">평소보다 급락</p>
+              <p className="text-sm md:text-base font-black text-white mt-1.5">평소보다 급락</p>
               <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-0.5">한 달 평균가보다 크게 떨어짐</p>
             </div>
+            <span className="inline-flex items-center gap-1 text-[11px] md:text-xs font-black text-red-400 uppercase tracking-wider mt-3 border-t border-red-500/15 pt-3">
+              보러가기 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </span>
           </Link>
 
           {/* 마켓 전체 */}
           <Link
             href="/market"
-            className="group relative overflow-hidden rounded-2xl md:rounded-3xl border border-blue-500/20 bg-blue-500/[0.06] hover:bg-blue-500/[0.1] hover:border-blue-500/40 p-5 md:p-6 transition-all hover:-translate-y-0.5 flex flex-col justify-between min-h-[130px] md:min-h-[150px] col-span-2 md:col-span-1"
+            className="group relative overflow-hidden rounded-2xl md:rounded-3xl border border-blue-500/25 bg-blue-500/[0.07] hover:bg-blue-500/[0.14] hover:border-blue-400/60 p-5 md:p-6 transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_10px_30px_-8px_rgba(59,130,246,0.35)] flex flex-col justify-between min-h-[150px] md:min-h-[170px] col-span-2 md:col-span-1"
           >
-            <div className="flex items-center justify-between">
-              <BarChart3 className="w-5 h-5 md:w-6 md:h-6 text-blue-400" />
-              <ArrowRight size={16} className="text-blue-400/50 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
-            </div>
+            <BarChart3 className="w-6 h-6 md:w-7 md:h-7 text-blue-400" />
             <div>
               <p className="text-xl md:text-2xl font-black text-white leading-tight">전체 마켓 보기</p>
-              <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-1">오늘의 픽·핫딜·카테고리별 분석</p>
+              <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-1">오늘의 픽·핫딜을 한눈에</p>
             </div>
+            <span className="inline-flex items-center gap-1 text-[11px] md:text-xs font-black text-blue-400 uppercase tracking-wider mt-3 border-t border-blue-500/15 pt-3">
+              마켓 열기 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </span>
           </Link>
         </div>
 

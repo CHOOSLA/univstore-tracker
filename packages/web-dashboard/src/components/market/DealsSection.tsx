@@ -9,12 +9,13 @@ interface Props {
   items: DealItem[];
   variant: DealVariant;
   watchedIds?: string[];
+  id?: string;
 }
 
-export default function DealsSection({ title, description, icon, items, variant, watchedIds = [] }: Props) {
+export default function DealsSection({ title, description, icon, items, variant, watchedIds = [], id }: Props) {
   const watchedSet = new Set(watchedIds);
   return (
-    <section className="space-y-6">
+    <section id={id} className="space-y-6 scroll-mt-24">
       <header className="flex items-center justify-between gap-3 md:gap-4 border-b border-white/5 pb-3 px-2">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <div className="text-zinc-400 shrink-0">{icon}</div>

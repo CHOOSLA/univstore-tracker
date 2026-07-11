@@ -202,6 +202,7 @@ export default async function MarketPage() {
           icon={<TrendingDown size={16} />}
           items={flashDrops}
           variant="flash"
+          id="flash"
           watchedIds={watchedIds}
         />
 
@@ -211,6 +212,7 @@ export default async function MarketPage() {
           icon={<Flame size={16} />}
           items={trueDeals}
           variant="true"
+          id="true"
           watchedIds={watchedIds}
         />
 
@@ -220,6 +222,7 @@ export default async function MarketPage() {
           icon={<Trophy size={16} />}
           items={goldenLows}
           variant="golden"
+          id="golden"
           watchedIds={watchedIds}
         />
 
@@ -230,6 +233,7 @@ export default async function MarketPage() {
           icon={<Target size={16} />}
           items={mostHunted}
           variant="target"
+          id="target"
           watchedIds={watchedIds}
         />
 
