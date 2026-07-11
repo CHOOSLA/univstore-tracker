@@ -20,6 +20,7 @@ export interface DealItem {
   targetPrice?: number | null;
   history?: number[];
   priceScore?: number | null;
+  soldOut?: boolean;
 }
 
 interface DealCardProps {
@@ -110,6 +111,7 @@ export default function DealCard({ item, variant, initialWatched = false }: Deal
       footer={footer}
       showScore
       showSparkline={showSparkline}
+      soldOut={item.soldOut}
       overlay={<WatchlistButton productId={item.id} initialWatched={initialWatched} variant="icon" />}
     />
   );

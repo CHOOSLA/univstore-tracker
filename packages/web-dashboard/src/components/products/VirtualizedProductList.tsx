@@ -289,6 +289,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
               showRating
               showSparkline
               showScore={false}
+              soldOut={item.stockStatus === 'Out of Stock'}
               onClick={saveScrollState}
               overlay={<WatchlistButton productId={item.id} initialWatched={watchedSet.has(item.id)} variant="icon" />}
             />

@@ -91,17 +91,17 @@ const getMarketData = unstable_cache(async () => {
       ORDER BY "dropPercent" DESC
       LIMIT 12
     `,
-    // D. Most Hunted (관심상품 최다 등록 저격 상품 - WatchlistItem 집계)
+    // D. Most Hunted (관심상품 최다 등록). 관심 맥락이라 품절도 포함(회색 표시), 단종만 제외.
     prisma.$queryRaw<any[]>`
       WITH watch_counts AS (
         SELECT "productId", COUNT(*)::int as watch_count
         FROM "WatchlistItem"
         GROUP BY "productId"
       )
-      SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", p."priceScore", wc.watch_count as "targetPrice"
+      SELECT p.id, p.title, p.brand, p."imageUrl", p."currentPrice", p."priceScore", p."stockStatus", wc.watch_count as "targetPrice"
       FROM "Product" p
       JOIN watch_counts wc ON p.id = wc."productId"
-      WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" NOT IN ('Discontinued', 'Out of Stock')
+      WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
       ORDER BY wc.watch_count DESC
       LIMIT 12
     `
@@ -153,6 +153,7 @@ const getMarketData = unstable_cache(async () => {
     targetPrice: item.targetPrice ? Number(item.targetPrice) : null,
     history: historyMap[item.id] || [],
     priceScore: item.priceScore !== null && item.priceScore !== undefined ? Number(item.priceScore) : null,
+    soldOut: item.stockStatus === 'Out of Stock',
   });
 
   const flashDrops = flashDropsRaw.map(mapRawItem);
@@ -164,7 +165,7 @@ const getMarketData = unstable_cache(async () => {
   const todaysPick = flashDrops[0] ?? trueDeals[0] ?? goldenLows[0] ?? null;
 
   return { flashDrops, trueDeals, goldenLows, mostHunted, brandDefense, todaysPick, totalSavings, totalProducts, activeAlerts };
-}, ['market-data-v2'], { revalidate: 600 });
+}, ['market-data-v3'], { revalidate: 600 });
 
 export default async function MarketPage() {
   const totalCategories = 8;

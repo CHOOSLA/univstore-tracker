@@ -1,4 +1,5 @@
 import React from "react";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Heart, LogIn, TrendingDown, Target, Sparkles } from "lucide-react";
 import { auth } from "@/auth";
@@ -142,17 +143,23 @@ export default async function WatchlistPage() {
               const current = Number(item.product.currentPrice ?? 0);
               const original = Number(item.product.originalPrice ?? 0);
               const discount = original > 0 && original > current ? Math.round(((original - current) / original) * 100) : 0;
+              const soldOut = item.product.stockStatus === 'Out of Stock';
               return (
                 <div key={item.id} className="glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] flex flex-col space-y-4 group border-white/[0.03] relative">
-                  <div className="absolute top-4 right-4 md:top-6 md:right-6">
+                  <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20">
                     <WatchlistButton productId={item.productId} initialWatched variant="icon" />
                   </div>
                   <Link href={`/product/${item.productId}`} className="flex flex-col space-y-4">
-                    <div className="aspect-square rounded-2xl overflow-hidden bg-white">
+                    <div className="aspect-square rounded-2xl overflow-hidden bg-white relative">
                       {item.product.imageUrl ? (
-                        <img src={item.product.imageUrl} alt={item.product.title} className="w-full h-full object-cover" />
+                        <img src={item.product.imageUrl} alt={item.product.title} className={cn("w-full h-full object-cover", soldOut && "grayscale opacity-50")} />
                       ) : (
                         <div className="w-full h-full bg-zinc-900" />
+                      )}
+                      {soldOut && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <span className="px-3 py-1.5 rounded-lg bg-zinc-800/90 border border-white/15 text-zinc-200 text-xs md:text-sm font-black uppercase tracking-widest">품절</span>
+                        </div>
                       )}
                     </div>
                     <div className="space-y-2 min-w-0">

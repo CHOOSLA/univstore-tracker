@@ -97,10 +97,10 @@ export default async function ProductsPage({
     filteredIds = idsRow.map(r => r.id);
   }
 
-  // 1. 기본 필터 정의 (array 컬럼은 has 연산자로 N:M 필터링)
+  // 1. 기본 필터 정의. Explorer는 품절도 노출(회색 처리)하되 단종만 제외 → 존재 인지 + 검색 가능.
   const whereClause = {
     AND: [
-      { imageUrl: { not: null }, stockStatus: { notIn: ['Discontinued', 'Out of Stock'] } },
+      { imageUrl: { not: null }, stockStatus: { not: 'Discontinued' } },
       brandFilter ? { brand: brandFilter } : {},
       // 카테고리 필터: 선택 노드 하위 리프 id 집합으로. 매칭 리프 없으면 빈 결과 가드.
       categoryCode ? { categoryId: { in: categoryLeafIds && categoryLeafIds.length > 0 ? categoryLeafIds : [-1] } } : {},

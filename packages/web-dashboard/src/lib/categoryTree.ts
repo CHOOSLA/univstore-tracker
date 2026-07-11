@@ -13,7 +13,8 @@ export type CatNode = {
   children: CatNode[];
 };
 
-const VISIBLE = { imageUrl: { not: null }, stockStatus: { notIn: ["Discontinued", "Out of Stock"] } } as const;
+// Explorer 카운트는 품절 포함(회색 노출 대상), 단종만 제외
+const VISIBLE = { imageUrl: { not: null }, stockStatus: { not: "Discontinued" } } as const;
 
 /**
  * Category 테이블 → 카운트 포함 3단 트리.

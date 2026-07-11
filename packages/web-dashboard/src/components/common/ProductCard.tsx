@@ -38,6 +38,8 @@ export interface ProductCardProps {
   showRating?: boolean;
   showScore?: boolean;
   showSparkline?: boolean;
+  /** 품절: 이미지 회색 + 품절 배지 (클릭은 가능) */
+  soldOut?: boolean;
   /** 카드 우상단 오버레이 (예: 관심 하트 버튼) */
   overlay?: React.ReactNode;
   onClick?: () => void;
@@ -51,7 +53,7 @@ export interface ProductCardProps {
 export default function ProductCard({
   id, title, brand, imageUrl, currentPrice, originalPrice, priceScore,
   reviewCount, reviewAvgGrade, history, headlineBadge, footer,
-  showRating = false, showScore = true, showSparkline = false, overlay, onClick, className,
+  showRating = false, showScore = true, showSparkline = false, soldOut = false, overlay, onClick, className,
 }: ProductCardProps) {
   const discountRate = originalPrice && originalPrice > currentPrice
     ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
@@ -72,11 +74,16 @@ export default function ProductCard({
       <div className="w-full aspect-square bg-zinc-950 rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 relative">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+          <img src={imageUrl} alt={title} className={cn("w-full h-full object-cover", soldOut && "grayscale opacity-50")} />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-zinc-700 text-[11px] md:text-xs font-black uppercase tracking-tighter">NO IMAGE</div>
         )}
-        {headlineBadge && (
+        {soldOut && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
+            <span className="px-3 py-1.5 rounded-lg bg-zinc-800/90 border border-white/15 text-zinc-200 text-xs md:text-sm font-black uppercase tracking-widest">품절</span>
+          </div>
+        )}
+        {!soldOut && headlineBadge && (
           <div className="absolute top-3 left-3 z-20">
             <span className={cn("px-2.5 py-1 rounded-lg text-[11px] md:text-xs font-black uppercase tracking-wider border", TONE[headlineBadge.tone])}>
               {headlineBadge.text}

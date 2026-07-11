@@ -83,7 +83,7 @@ export async function GET(request: Request) {
 
   const where: any = {
     AND: [
-      { imageUrl: { not: null }, stockStatus: { notIn: ['Discontinued', 'Out of Stock'] } },
+      { imageUrl: { not: null }, stockStatus: { not: 'Discontinued' } },
       brand ? { brand } : {},
       categoryCode ? { categoryId: { in: categoryLeafIds && categoryLeafIds.length > 0 ? categoryLeafIds : [-1] } } : {},
       filteredIds ? { id: { in: filteredIds } } : activeFilter ? { id: { in: [] } } : {}, // activeFilter가 있지만 매칭되는 ID가 없는 경우를 위한 빈 리스트 가드
