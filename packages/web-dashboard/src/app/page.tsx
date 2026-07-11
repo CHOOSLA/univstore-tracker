@@ -138,8 +138,8 @@ export default async function HomePage() {
               <p className="text-sm md:text-base font-black text-white mt-1.5">역대 최저가</p>
               <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-0.5">지금이 가장 쌀 때인 상품</p>
             </div>
-            <span className="inline-flex items-center gap-1 text-[11px] md:text-xs font-black text-amber-400 uppercase tracking-wider mt-3 border-t border-amber-500/15 pt-3">
-              보러가기 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            <span className="flex items-center justify-center gap-2 w-full mt-4 py-2.5 md:py-3 rounded-xl bg-amber-500/15 group-hover:bg-amber-500 text-amber-300 group-hover:text-zinc-950 text-sm md:text-base font-black uppercase tracking-wider transition-colors">
+              보러가기 <ArrowRight size={17} className="group-hover:translate-x-1 transition-transform" />
             </span>
           </Link>
 
@@ -154,8 +154,8 @@ export default async function HomePage() {
               <p className="text-sm md:text-base font-black text-white mt-1.5">평소보다 급락</p>
               <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-0.5">한 달 평균가보다 크게 떨어짐</p>
             </div>
-            <span className="inline-flex items-center gap-1 text-[11px] md:text-xs font-black text-red-400 uppercase tracking-wider mt-3 border-t border-red-500/15 pt-3">
-              보러가기 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            <span className="flex items-center justify-center gap-2 w-full mt-4 py-2.5 md:py-3 rounded-xl bg-red-500/15 group-hover:bg-red-500 text-red-300 group-hover:text-white text-sm md:text-base font-black uppercase tracking-wider transition-colors">
+              보러가기 <ArrowRight size={17} className="group-hover:translate-x-1 transition-transform" />
             </span>
           </Link>
 
@@ -169,8 +169,8 @@ export default async function HomePage() {
               <p className="text-xl md:text-2xl font-black text-white leading-tight">전체 마켓 보기</p>
               <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-1">오늘의 픽·핫딜을 한눈에</p>
             </div>
-            <span className="inline-flex items-center gap-1 text-[11px] md:text-xs font-black text-blue-400 uppercase tracking-wider mt-3 border-t border-blue-500/15 pt-3">
-              마켓 열기 <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            <span className="flex items-center justify-center gap-2 w-full mt-4 py-2.5 md:py-3 rounded-xl bg-blue-500/15 group-hover:bg-blue-500 text-blue-300 group-hover:text-white text-sm md:text-base font-black uppercase tracking-wider transition-colors">
+              마켓 열기 <ArrowRight size={17} className="group-hover:translate-x-1 transition-transform" />
             </span>
           </Link>
         </div>
