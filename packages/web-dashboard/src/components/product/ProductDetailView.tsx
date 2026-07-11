@@ -28,7 +28,8 @@ import {
   TrendingDown,
   Percent,
   ChevronRight,
-  Calendar
+  Calendar,
+  Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +48,8 @@ interface ProductDetailViewProps {
     stockStatus: string | null;
     bestBenefit: string | null;
     priceScore?: number | null;
+    reviewCount?: number | null;
+    reviewAvgGrade?: number | null;
   };
   history: PriceHistoryEntry[];
   existingAlerts: { id: number, targetPrice: number }[];
@@ -166,6 +169,13 @@ export default function ProductDetailView({ product, history, existingAlerts, is
                           : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                       )}>{product.stockStatus === "Discontinued" ? "판매 종료" : (product.stockStatus || 'In Stock')}</span>
                       <PriceScoreBadge score={product.priceScore} />
+                      {(product.reviewCount ?? 0) > 0 && (
+                        <span className="flex items-center gap-1 bg-amber-500/10 text-amber-400 text-[10px] md:text-[11px] font-black px-2 py-1 rounded border border-amber-500/20 whitespace-nowrap">
+                          <Star size={11} className="fill-amber-400" />
+                          {(product.reviewAvgGrade ?? 0).toFixed(1)}
+                          <span className="text-amber-400/60">({(product.reviewCount ?? 0).toLocaleString()})</span>
+                        </span>
+                      )}
                     </div>
                     <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tighter break-keep">
                       {product.title}

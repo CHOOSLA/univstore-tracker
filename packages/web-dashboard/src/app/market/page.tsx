@@ -5,6 +5,8 @@ import TodaysPick from "@/components/market/TodaysPick";
 import DealsSection from "@/components/market/DealsSection";
 import MarketPulse from "@/components/market/MarketPulse";
 import BrandDefenseBanner from "@/components/market/BrandDefenseBanner";
+import CategoryEfficiency from "@/components/market/CategoryEfficiency";
+import { getCategoryDiscountYield } from "@/lib/categoryTree";
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +23,9 @@ export default async function MarketPage() {
   const totalProducts = await prisma.product.count();
   const activeAlerts = await prisma.priceAlert.count({ where: { isActive: true } });
   const totalCategories = 8;
+
+  // 대분류별 학생 할인 효율 (카테고리 트리 롤업)
+  const categoryYield = await getCategoryDiscountYield();
 
   // 2. 프리미엄 브랜드 가격 장벽 붕괴 쿼리 (역정규화 필드 활용해 무거운 Median 조인 제거)
   const brandDefenseRaw = await prisma.$queryRaw<any[]>`
@@ -216,6 +221,9 @@ export default async function MarketPage() {
           items={mostHunted}
           variant="target"
         />
+
+        {/* 대분류별 학생 할인 효율 랭킹 */}
+        <CategoryEfficiency categories={categoryYield} />
 
         <MarketPulse
           totalProducts={totalProducts}

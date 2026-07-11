@@ -77,6 +77,54 @@ export async function getLeafIdsForCode(code: string): Promise<number[]> {
   return leaves;
 }
 
+export type CategoryYield = {
+  category: string;
+  dealCount: number;
+  avgDiscount: number; // % (정가 대비 학생가 할인율 평균)
+  score: number;
+};
+
+/**
+ * 대분류(depth1)별 학생 할인 효율.
+ * 리프 categoryId별 집계를 트리 루트(대분류)로 롤업.
+ * avgDiscount = 평균 (originalPrice-currentPrice)/originalPrice, score = 딜수 × 할인율.
+ */
+export async function getCategoryDiscountYield(): Promise<CategoryYield[]> {
+  const cats = await prisma.category.findMany({ select: { id: true, name: true, depth: true, parentId: true } });
+  const byId = new Map(cats.map((c) => [c.id, c]));
+  const rootOf = (id: number): { id: number; name: string } | null => {
+    let c = byId.get(id);
+    while (c && c.depth > 1 && c.parentId != null) c = byId.get(c.parentId);
+    return c ? { id: c.id, name: c.name } : null;
+  };
+
+  const rows = await prisma.$queryRaw<{ categoryId: number; deals: bigint; avgdisc: number }[]>`
+    SELECT "categoryId",
+           COUNT(*)::bigint AS deals,
+           AVG(("originalPrice" - "currentPrice")::numeric / "originalPrice")::float AS avgdisc
+    FROM "Product"
+    WHERE "categoryId" IS NOT NULL AND "originalPrice" > 0 AND "currentPrice" < "originalPrice"
+      AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'
+    GROUP BY "categoryId"
+  `;
+
+  const agg = new Map<number, { name: string; deals: number; weightedSum: number }>();
+  for (const r of rows) {
+    const root = rootOf(r.categoryId);
+    if (!root) continue;
+    const deals = Number(r.deals);
+    const a = agg.get(root.id) || { name: root.name, deals: 0, weightedSum: 0 };
+    a.deals += deals;
+    a.weightedSum += r.avgdisc * deals;
+    agg.set(root.id, a);
+  }
+
+  return [...agg.values()].map((a) => {
+    const avgDiscount = a.deals > 0 ? (a.weightedSum / a.deals) * 100 : 0;
+    return { category: a.name, dealCount: a.deals, avgDiscount, score: (a.deals * avgDiscount) / 100 };
+  });
+}
+
 /**
  * 카테고리 code → 루트까지의 경로(브레드크럼용). [대분류, 중분류, 소분류]
  */
