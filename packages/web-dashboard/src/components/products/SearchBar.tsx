@@ -43,37 +43,31 @@ export default function SearchBar() {
   };
 
   return (
-    <div className="relative flex-1 group">
-      <Search className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${isPending ? 'text-blue-500' : 'text-zinc-500'}`} size={18} />
-      
-      <input 
-        type="text" 
+    <div className="relative w-full flex items-center rounded-2xl border border-white/10 bg-zinc-900/60 transition-all duration-200 focus-within:border-blue-500/60 focus-within:bg-zinc-900 focus-within:shadow-[0_0_30px_rgba(59,130,246,0.12)]">
+      <Search className={`absolute left-5 transition-colors ${isPending ? 'text-blue-400' : 'text-zinc-500'}`} size={20} />
+
+      <input
+        type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="Search by brand, name, or product ID..." 
-        className="w-full bg-transparent border-none rounded-2xl py-4 pl-14 pr-12 text-sm focus:outline-none placeholder:text-zinc-600 font-medium text-white"
+        placeholder="상품명 · 브랜드 · 상품ID 검색..."
+        className="w-full bg-transparent border-none rounded-2xl py-4 md:py-5 pl-14 pr-36 text-sm md:text-base focus:outline-none placeholder:text-zinc-600 font-medium text-white"
       />
 
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center space-x-2">
+      <div className="absolute right-3 flex items-center gap-2">
         {query && !isPending && (
-          <button 
-            onClick={clearSearch}
-            className="p-1 hover:bg-white/10 rounded-full text-zinc-500 hover:text-white transition-colors"
-          >
+          <button onClick={clearSearch} className="p-1.5 hover:bg-white/10 rounded-full text-zinc-500 hover:text-white transition-colors">
             <X size={16} />
           </button>
         )}
-        
-        {isPending && (
-          <Loader2 className="text-blue-500 animate-spin" size={18} />
-        )}
-        
-        <button 
+        {isPending && <Loader2 className="text-blue-400 animate-spin" size={18} />}
+        <button
           onClick={() => handleSearch(query)}
-          className="hidden md:block px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white text-[11px] font-black uppercase tracking-widest rounded-lg border border-white/5 transition-all"
+          disabled={isPending}
+          className="flex items-center gap-1.5 px-4 md:px-5 py-2 md:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-black uppercase tracking-widest transition-colors shadow-lg shadow-blue-600/20"
         >
-          Enter
+          검색
         </button>
       </div>
     </div>

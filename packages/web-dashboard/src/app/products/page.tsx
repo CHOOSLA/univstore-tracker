@@ -249,15 +249,16 @@ export default async function ProductsPage({
               )}
             </div>
           )}
-          <div className="flex flex-col lg:flex-row gap-3 md:gap-4 bg-zinc-900/30 p-2 md:p-3 rounded-2xl md:rounded-[32px] border border-white/5 backdrop-blur-md">
-            <Suspense fallback={<div className="flex-1 h-12 bg-zinc-900/50 animate-pulse rounded-2xl" />}>
-              <div className="flex-1">
-                <SearchBar />
-              </div>
+          {/* 스크롤 시 상단 고정되는 검색·필터 바 (navbar h-20 아래) */}
+          <div className="sticky top-[84px] z-40 space-y-3 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-zinc-950/85 backdrop-blur-xl border-b border-white/5">
+            {/* 검색: 전체폭 prominent */}
+            <Suspense fallback={<div className="h-14 md:h-16 bg-zinc-900/50 animate-pulse rounded-2xl" />}>
+              <SearchBar />
             </Suspense>
-            
-            <div className="flex items-center space-x-2 px-2 md:px-4 lg:border-l border-white/5 overflow-x-auto no-scrollbar py-1 md:py-0">
-              <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Sort</span>
+
+            {/* 필터: 정렬 + 브랜드 (한 줄, 가로 스크롤) */}
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+              <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest shrink-0 hidden md:block">정렬</span>
               {[
                 ...(searchQuery ? [{ id: 'relevance', label: 'Relevance' }] : []),
                 { id: 'latest', label: 'Latest' },
@@ -272,22 +273,20 @@ export default async function ProductsPage({
                     query: { ...(searchQuery ? { q: searchQuery } : {}), ...(brandFilter ? { brand: brandFilter } : {}), ...(categoryCode ? { category: categoryCode } : {}), ...(activeFilter ? { filter: activeFilter } : {}), sort: opt.id }
                   }}
                   className={cn(
-                    "px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
+                    "px-3 md:px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
                     sortOption === opt.id ? "bg-white text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
                   )}
                 >
                   {opt.label}
                 </Link>
               ))}
-            </div>
-
-            <div className="flex items-center space-x-2 px-2 md:px-4 lg:border-l border-white/5 overflow-x-auto no-scrollbar py-1 md:py-0">
-              <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Brand</span>
+              <span className="w-px h-5 bg-white/10 mx-1 shrink-0" />
+              <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest shrink-0 hidden md:block">브랜드</span>
               <Link href={{
                 pathname: '/products',
                 query: { ...(searchQuery ? { q: searchQuery } : {}), ...(categoryCode ? { category: categoryCode } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}), ...(activeFilter ? { filter: activeFilter } : {}) }
               }} className={cn(
-                "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
+                "px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
                 !brandFilter ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
               )}>All</Link>
               {['Apple', '삼성'].map(b => (
@@ -298,7 +297,7 @@ export default async function ProductsPage({
                     query: { brand: b, ...(searchQuery ? { q: searchQuery } : {}), ...(categoryCode ? { category: categoryCode } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}), ...(activeFilter ? { filter: activeFilter } : {}) }
                   }}
                   className={cn(
-                    "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
+                    "px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
                     brandFilter === b ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
                   )}
                 >
@@ -306,12 +305,12 @@ export default async function ProductsPage({
                 </Link>
               ))}
             </div>
-          </div>
 
-          {/* 라이브 카테고리 메가메뉴 (Category 테이블 기반 8×65×300+ 트리) */}
-          <Suspense fallback={<div className="h-14 bg-zinc-900/30 rounded-2xl animate-pulse" />}>
-            <CategoryMenu tree={categoryTree} />
-          </Suspense>
+            {/* 라이브 카테고리 메가메뉴 */}
+            <Suspense fallback={<div className="h-12 bg-zinc-900/30 rounded-2xl animate-pulse" />}>
+              <CategoryMenu tree={categoryTree} />
+            </Suspense>
+          </div>
         </div>
 
         {/* Virtualized Infinite List */}

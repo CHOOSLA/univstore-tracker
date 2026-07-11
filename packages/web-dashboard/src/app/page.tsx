@@ -182,8 +182,8 @@ export default async function HomePage() {
            ))}
         </div>
 
-        {/* --- [Search Bar] --- */}
-        <section>
+        {/* --- [Search Bar: 스크롤 시 상단 고정] --- */}
+        <section className="sticky top-[84px] z-40 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-zinc-950/85 backdrop-blur-xl">
           <HomeSearchBar />
         </section>
 

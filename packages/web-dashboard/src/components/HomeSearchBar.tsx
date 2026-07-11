@@ -112,8 +112,8 @@ export default function HomeSearchBar() {
       <div className={cn(
         'relative flex items-center rounded-[28px] border transition-all duration-300',
         focused
-          ? 'border-blue-500/60 bg-zinc-900/80 shadow-[0_0_40px_rgba(59,130,246,0.12)]'
-          : 'border-white/8 bg-zinc-900/40 hover:border-white/15'
+          ? 'border-blue-500/60 bg-zinc-900 shadow-[0_0_40px_rgba(59,130,246,0.15)]'
+          : 'border-white/15 bg-zinc-900/70 shadow-lg shadow-black/20 hover:border-white/30 hover:bg-zinc-900/90'
       )}>
 
         {/* 검색 아이콘 */}
