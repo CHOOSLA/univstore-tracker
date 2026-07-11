@@ -34,39 +34,54 @@ async function notifyAdminHealth(message, opts = {}) {
   await sendTelegramAlert(message).catch(() => {});
 }
 
+// 신 사이트는 sitemap/item.xml을 폐기(404). 전체 상품 ID는 web-api의 브랜드별
+// 상품 목록(커서 페이징)을 순회해 수집한다. 모든 상품은 브랜드에 귀속되므로 전수 커버.
+const WEBAPI = 'https://web-api.univstore.com/api/v1';
+
 async function discoverAllProductIds(page) {
-  console.log("🔍 사이트맵(item.xml) 분석하여 전체 상품 ID 수집 중...");
+  console.log("🔍 web-api 브랜드 목록 순회로 전체 상품 ID 수집 중...");
+  const apiGet = async (path) => {
+    const res = await page.request.get(`${WEBAPI}${path}`, {
+      headers: { 'Referer': 'https://www.univstore.com/', 'Origin': 'https://www.univstore.com' },
+      timeout: 20000,
+    });
+    const status = res.status();
+    if (status === 403 || status === 429 || status === 405) {
+      throw new BlockDetectedError(`web-api 접근 차단됨 (HTTP ${status})`, status);
+    }
+    if (status !== 200) return null;
+    return res.json().catch(() => null);
+  };
+
   try {
-    const sitemapUrl = 'https://www.univstore.com/sitemap/item.xml';
-    const response = await page.goto(sitemapUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
-    
-    if (response.status() === 403 || response.status() === 429 || response.status() === 405) {
-      throw new BlockDetectedError(`사이트맵 접근 차단됨 (HTTP ${response.status()})`, response.status());
+    const brandsJson = await apiGet('/brands');
+    const brands = Array.isArray(brandsJson?.result) ? brandsJson.result
+      : (brandsJson?.result?.data || []);
+    const brandIds = brands.map(b => b.id).filter(id => id != null);
+    console.log(`  브랜드 ${brandIds.length}개 확인. 상품 목록 순회 시작...`);
+
+    const idSet = new Set();
+    for (const bid of brandIds) {
+      let cursor = null;
+      for (let guard = 0; guard < 200; guard++) { // 브랜드당 페이지 상한(무한루프 방지)
+        const q = `/brands/${bid}/items?limit=500${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`;
+        const j = await apiGet(q);
+        const r = j?.result;
+        if (!r || !Array.isArray(r.data)) break;
+        for (const it of r.data) { if (it.id != null) idSet.add(String(it.id)); }
+        if (!r.hasNext || !r.nextCursor) break;
+        cursor = r.nextCursor;
+        await sleep(30);
+      }
+      await sleep(20); // 브랜드 간 예의상 지터
     }
 
-    const rawContent = await page.content();
-    let xmlData = rawContent;
-    if (!rawContent.includes('<urlset')) {
-      xmlData = await page.evaluate(() => document.documentElement.textContent);
-    }
-    
-    const xmlMatch = xmlData.match(/<\?xml[\s\S]*<\/urlset>/i) || xmlData.match(/<urlset[\s\S]*<\/urlset>/i);
-    xmlData = xmlMatch ? xmlMatch[0] : xmlData;
-    
-    const parser = new XMLParser({ ignoreAttributes: false, alwaysCreateTextNode: false });
-    const jsonObj = parser.parse(xmlData);
-    if (!jsonObj.urlset || !jsonObj.urlset.url) return [];
-    const urlArray = Array.isArray(jsonObj.urlset.url) ? jsonObj.urlset.url : [jsonObj.urlset.url];
-    const ids = urlArray.map(u => {
-      const loc = typeof u.loc === 'string' ? u.loc : (u.loc?.['#text'] || '');
-      return loc.match(/\/item\/(\d+)/)?.[1];
-    }).filter(id => !!id);
-    
+    const ids = [...idSet];
     console.log(`✅ 총 ${ids.length}개의 상품 ID를 확보했습니다.`);
     return ids;
   } catch (err) {
     if (err instanceof BlockDetectedError) throw err;
-    console.error("❌ 사이트맵 수집 실패:", err.message);
+    console.error("❌ 상품 ID 수집 실패:", err.message);
     return [];
   }
 }
