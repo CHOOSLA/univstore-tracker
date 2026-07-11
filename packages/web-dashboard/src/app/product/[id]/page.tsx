@@ -58,7 +58,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         FROM "Product"
         WHERE id != ${id}
           AND "imageUrl" IS NOT NULL
-          AND "stockStatus" != 'Discontinued'
+          AND "stockStatus" NOT IN ('Discontinued', 'Out of Stock')
           AND "currentPrice" BETWEEN ${Math.floor(currentPrice * 0.7)} AND ${Math.ceil(currentPrice * 1.3)}
           AND ("menuSubCategories" && ${subCats}::text[] OR "thirdCategories" && ${thirdCats}::text[])
         ORDER BY ABS("currentPrice" - ${currentPrice})

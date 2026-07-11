@@ -51,7 +51,7 @@ export default async function ProductsPage({
         WHERE p."currentPrice" < old.price
           AND p."currentPrice" >= 10000
           AND ((old.price - p."currentPrice")::numeric / old.price::numeric) < 0.7
-          AND p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
+          AND p."imageUrl" IS NOT NULL AND p."stockStatus" NOT IN ('Discontinued', 'Out of Stock')
       `;
     } else if (activeFilter === 'true') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
@@ -61,7 +61,7 @@ export default async function ProductsPage({
           AND "currentPrice" >= 10000
           AND "medianPrice30d" > 0
           AND (("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) < 0.6
-          AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'
+          AND "imageUrl" IS NOT NULL AND "stockStatus" NOT IN ('Discontinued', 'Out of Stock')
       `;
     } else if (activeFilter === 'golden') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
@@ -69,7 +69,7 @@ export default async function ProductsPage({
         FROM "Product"
         WHERE "currentPrice" <= "lowestPrice"
           AND "lowestPrice" < "highestPrice"
-          AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'
+          AND "imageUrl" IS NOT NULL AND "stockStatus" NOT IN ('Discontinued', 'Out of Stock')
       `;
     } else if (activeFilter === 'target') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
@@ -81,7 +81,7 @@ export default async function ProductsPage({
         SELECT p.id
         FROM "Product" p
         JOIN watch_counts wc ON p.id = wc."productId"
-        WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
+        WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" NOT IN ('Discontinued', 'Out of Stock')
         ORDER BY wc.watch_count DESC
       `;
     } else if (activeFilter === 'defense') {
@@ -91,7 +91,7 @@ export default async function ProductsPage({
         WHERE brand IN ('Apple', 'Apple(애플)', 'Samsung', 'Samsung(삼성)', '삼성전자', '삼성', 'LG', 'LG전자', 'Sony', '소니', 'Dell', '델', 'HP', 'Lenovo', '레노버', 'Asus', '에이수스', 'Logitech', '로지텍', 'Intel', 'AMD', 'Nvidia')
           AND "currentPrice" < "medianPrice30d" * 0.92
           AND "medianPrice30d" > 0
-          AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'
+          AND "imageUrl" IS NOT NULL AND "stockStatus" NOT IN ('Discontinued', 'Out of Stock')
       `;
     }
     filteredIds = idsRow.map(r => r.id);
@@ -100,7 +100,7 @@ export default async function ProductsPage({
   // 1. 기본 필터 정의 (array 컬럼은 has 연산자로 N:M 필터링)
   const whereClause = {
     AND: [
-      { imageUrl: { not: null }, stockStatus: { not: 'Discontinued' } },
+      { imageUrl: { not: null }, stockStatus: { notIn: ['Discontinued', 'Out of Stock'] } },
       brandFilter ? { brand: brandFilter } : {},
       // 카테고리 필터: 선택 노드 하위 리프 id 집합으로. 매칭 리프 없으면 빈 결과 가드.
       categoryCode ? { categoryId: { in: categoryLeafIds && categoryLeafIds.length > 0 ? categoryLeafIds : [-1] } } : {},

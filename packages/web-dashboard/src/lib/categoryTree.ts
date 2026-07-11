@@ -13,7 +13,7 @@ export type CatNode = {
   children: CatNode[];
 };
 
-const VISIBLE = { imageUrl: { not: null }, stockStatus: { not: "Discontinued" } } as const;
+const VISIBLE = { imageUrl: { not: null }, stockStatus: { notIn: ["Discontinued", "Out of Stock"] } } as const;
 
 /**
  * Category 테이블 → 카운트 포함 3단 트리.
