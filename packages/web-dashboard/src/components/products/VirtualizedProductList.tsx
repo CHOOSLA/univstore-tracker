@@ -6,6 +6,7 @@ import { CreditCard, Loader2, LayoutGrid, List, Star } from "lucide-react";
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
 import WatchlistButton from "@/components/product/WatchlistButton";
+import ProductCard from "@/components/common/ProductCard";
 
 type ViewMode = 'list' | 'card';
 
@@ -274,60 +275,23 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
             : 0;
           const historyData = item.priceHistory.map(h => h.price).reverse();
           return (
-            <Link key={item.id} href={`/product/${item.id}`} className="relative glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] flex flex-col space-y-4 md:space-y-5 group glass-hover border-white/[0.03]" onClick={saveScrollState}>
-              <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20">
-                <WatchlistButton productId={item.id} initialWatched={watchedSet.has(item.id)} variant="icon" />
-              </div>
-              <div className="w-full aspect-square bg-zinc-950 rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
-                <img src={item.imageUrl!} alt={item.title} className="w-full h-full object-cover" />
-              </div>
-              <div className="space-y-2 md:space-y-3 flex-1">
-                <div className="space-y-1">
-                  <p className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest">{item.brand || 'Brand'}</p>
-                  <p className="text-xs md:text-base font-bold text-white line-clamp-2 leading-snug group-hover:text-blue-400 transition-colors h-[2.5rem] md:h-[3rem]">
-                    {item.title}
-                  </p>
-                  {(item.reviewCount ?? 0) > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Star size={11} className="text-amber-400 fill-amber-400" />
-                      <span className="text-[11px] font-black text-amber-400">{(item.reviewAvgGrade ?? 0).toFixed(1)}</span>
-                      <span className="text-[10px] font-bold text-zinc-600">({(item.reviewCount ?? 0).toLocaleString()})</span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col">
-                  {discountRate > 0 && (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-red-500 text-xs md:text-sm font-black">{discountRate}%</span>
-                      <span className="text-[11px] md:text-xs text-zinc-600 line-through font-bold">₩{oldPrice.toLocaleString()}</span>
-                    </div>
-                  )}
-                  <p className="text-base md:text-2xl font-black text-white leading-tight">
-                    ₩{currentPrice > 0 ? currentPrice.toLocaleString() : '---'}
-                  </p>
-                </div>
-              </div>
-              <div className="pt-3 md:pt-4 border-t border-white/5 space-y-3 md:space-y-4">
-                <div className="flex justify-between items-end">
-                  <p className="text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-widest">7D Trend Feed</p>
-                  {historyData.length > 1 && (
-                    <div className="flex items-center space-x-1">
-                      <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[7px] md:text-[10px] font-black text-emerald-500 uppercase">Live</span>
-                    </div>
-                  )}
-                </div>
-                <div className="h-10 md:h-12 w-full">
-                  {historyData.length > 1 ? (
-                    <Sparkline data={historyData} color="#3b82f6" height={40} fullWidth />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center border border-dashed border-zinc-800 rounded-lg">
-                      <p className="text-[10px] font-black text-zinc-700 uppercase tracking-widest">Awaiting Data</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Link>
+            <ProductCard
+              key={item.id}
+              id={item.id}
+              title={item.title}
+              brand={item.brand}
+              imageUrl={item.imageUrl}
+              currentPrice={currentPrice}
+              originalPrice={item.originalPrice}
+              reviewCount={item.reviewCount}
+              reviewAvgGrade={item.reviewAvgGrade}
+              history={historyData}
+              showRating
+              showSparkline
+              showScore={false}
+              onClick={saveScrollState}
+              overlay={<WatchlistButton productId={item.id} initialWatched={watchedSet.has(item.id)} variant="icon" />}
+            />
           );
         })}
       </div>
