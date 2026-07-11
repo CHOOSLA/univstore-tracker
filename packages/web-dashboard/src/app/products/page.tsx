@@ -220,9 +220,7 @@ export default async function ProductsPage({
                   query: {
                     ...(searchQuery ? { q: searchQuery } : {}),
                     ...(brandFilter ? { brand: brandFilter } : {}),
-                    ...(menuCategory ? { menuCategory } : {}),
-                    ...(menuSubCategory ? { menuSubCategory } : {}),
-                    ...(thirdCategory ? { thirdCategory } : {}),
+                    ...(categoryCode ? { category: categoryCode } : {}),
                     ...(sortOption !== 'latest' ? { sort: sortOption } : {}),
                   }
                 }}

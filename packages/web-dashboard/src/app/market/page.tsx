@@ -8,6 +8,7 @@ import BrandDefenseBanner from "@/components/market/BrandDefenseBanner";
 import CategoryEfficiency from "@/components/market/CategoryEfficiency";
 import { getCategoryDiscountYield } from "@/lib/categoryTree";
 
+// 페이지는 동적 렌더(빌드시 DB 없음)하되, 무거운 쿼리는 unstable_cache로 데이터 캐시.
 export const dynamic = 'force-dynamic';
 
 export default async function MarketPage() {

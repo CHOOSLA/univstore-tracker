@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
+
+// 카테고리/집계는 sync-categories(일 1회)로만 바뀜 → 데이터 캐시(15분)로 DB 부하 제거.
+const CACHE_TTL = 900;
 
 export type CatNode = {
   id: number;
@@ -15,7 +19,7 @@ const VISIBLE = { imageUrl: { not: null }, stockStatus: { not: "Discontinued" } 
  * Category 테이블 → 카운트 포함 3단 트리.
  * 리프 카운트(현재 노출 상품 수)를 상위로 롤업한다.
  */
-export async function getCategoryTreeWithCounts(): Promise<CatNode[]> {
+export const getCategoryTreeWithCounts = unstable_cache(async (): Promise<CatNode[]> => {
   const [cats, grouped] = await Promise.all([
     prisma.category.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.product.groupBy({
@@ -46,13 +50,13 @@ export async function getCategoryTreeWithCounts(): Promise<CatNode[]> {
   };
   roots.forEach(rollup);
   return roots;
-}
+}, ["category-tree-counts"], { revalidate: CACHE_TTL });
 
 /**
  * 카테고리 code(어느 depth든) → 그 하위의 모든 리프 category id 배열.
  * 상품 필터(categoryId in leafIds)에 사용.
  */
-export async function getLeafIdsForCode(code: string): Promise<number[]> {
+export const getLeafIdsForCode = unstable_cache(async (code: string): Promise<number[]> => {
   const cats = await prisma.category.findMany({ select: { id: true, code: true, parentId: true } });
   const start = cats.find((c) => c.code === code);
   if (!start) return [];
@@ -75,7 +79,7 @@ export async function getLeafIdsForCode(code: string): Promise<number[]> {
     else stack.push(...ch);
   }
   return leaves;
-}
+}, ["leaf-ids-for-code"], { revalidate: CACHE_TTL });
 
 export type CategoryYield = {
   category: string;
@@ -89,7 +93,7 @@ export type CategoryYield = {
  * 리프 categoryId별 집계를 트리 루트(대분류)로 롤업.
  * avgDiscount = 평균 (originalPrice-currentPrice)/originalPrice, score = 딜수 × 할인율.
  */
-export async function getCategoryDiscountYield(): Promise<CategoryYield[]> {
+export const getCategoryDiscountYield = unstable_cache(async (): Promise<CategoryYield[]> => {
   const cats = await prisma.category.findMany({ select: { id: true, name: true, depth: true, parentId: true } });
   const byId = new Map(cats.map((c) => [c.id, c]));
   const rootOf = (id: number): { id: number; name: string } | null => {
@@ -123,12 +127,12 @@ export async function getCategoryDiscountYield(): Promise<CategoryYield[]> {
     const avgDiscount = a.deals > 0 ? (a.weightedSum / a.deals) * 100 : 0;
     return { category: a.name, dealCount: a.deals, avgDiscount, score: (a.deals * avgDiscount) / 100 };
   });
-}
+}, ["category-discount-yield"], { revalidate: CACHE_TTL });
 
 /**
  * 카테고리 code → 루트까지의 경로(브레드크럼용). [대분류, 중분류, 소분류]
  */
-export async function getCategoryPath(code: string): Promise<{ code: string; name: string }[]> {
+export const getCategoryPath = unstable_cache(async (code: string): Promise<{ code: string; name: string }[]> => {
   const cats = await prisma.category.findMany({ select: { id: true, code: true, name: true, parentId: true } });
   const byId = new Map(cats.map((c) => [c.id, c]));
   let cur = cats.find((c) => c.code === code);
@@ -138,4 +142,4 @@ export async function getCategoryPath(code: string): Promise<{ code: string; nam
     cur = cur.parentId != null ? byId.get(cur.parentId) : undefined;
   }
   return path;
-}
+}, ["category-path"], { revalidate: CACHE_TTL });
