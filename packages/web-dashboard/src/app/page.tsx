@@ -78,12 +78,11 @@ export default async function HomePage() {
     prisma.crawlerStatus.findUnique({ where: { id: 'singleton' } }).catch(() => null)
   ]);
 
-  // 서버 상태: 크롤러 heartbeat 기준 실제 판정 (15분 내 갱신 = 가동중)
+  // 서버 상태: 크롤러는 12h cron 주기로 도는 배치라, cycle 사이 idle을 죽음으로 오판하지 않도록
+  // 마지막 heartbeat가 13h(주기 + 여유) 이내면 파이프라인 정상으로 본다.
   const hbAge = crawlerStatus?.lastHeartbeat ? Date.now() - new Date(crawlerStatus.lastHeartbeat).getTime() : Infinity;
-  const isCrawlerLive = hbAge < 15 * 60 * 1000;
-  const serverStatus = isCrawlerLive
-    ? (crawlerStatus?.lastStatus === 'COMPLETED' ? 'IDLE' : 'ONLINE')
-    : 'OFFLINE';
+  const isCrawlerLive = hbAge < 13 * 60 * 60 * 1000;
+  const serverStatus = isCrawlerLive ? 'ONLINE' : 'OFFLINE';
 
   const goldenCount = Number(goldenCountRow?.[0]?.count ?? 0);
   const trueDealsCount = Number(trueDealsCountRow?.[0]?.count ?? 0);
