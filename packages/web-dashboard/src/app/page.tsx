@@ -23,6 +23,9 @@ import { prisma } from "@/lib/prisma";
 import { getStorageMetrics } from "./terminal/actions";
 import HomeSearchBar from "@/components/HomeSearchBar";
 import PriceScoreBadge from "@/components/common/PriceScoreBadge";
+import ProductCard from "@/components/common/ProductCard";
+import WatchlistButton from "@/components/product/WatchlistButton";
+import { getMyWatchlistIds } from "@/app/watchlist/actions";
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +87,9 @@ export default async function HomePage() {
 
   const goldenCount = Number(goldenCountRow?.[0]?.count ?? 0);
   const trueDealsCount = Number(trueDealsCountRow?.[0]?.count ?? 0);
+
+  // 로그인 사용자의 관심상품 (추천 PICK 카드 하트 초기상태)
+  const watchedSet = new Set(await getMyWatchlistIds());
 
   const categoryStats = brandGroups.map(group => ({
     label: group.brand || 'Etc',
@@ -196,70 +202,22 @@ export default async function HomePage() {
               {dailyPicks.length > 0 ? dailyPicks.map((pick) => {
                 const item = pick.product;
                 const currentPrice = item.priceHistory[0]?.price || 0;
-                const originalPrice = item.originalPrice || currentPrice;
-                const discountRate = originalPrice > 0 && originalPrice > currentPrice
-                  ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
-                  : 0;
                 const historyData = item.priceHistory.map(h => h.price).reverse();
-                
                 return (
-                  <Link key={item.id} href={`/product/${item.id}`} className="glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] flex flex-col space-y-4 md:space-y-5 group glass-hover border-white/[0.03]">
-                    {/* 상단: 사진 */}
-                    <div className="w-full aspect-square bg-zinc-950 rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
-                      {item.imageUrl ? (
-                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[11px] text-zinc-800 font-black uppercase tracking-tighter px-1 text-center">NO IMAGE</div>
-                      )}
-                    </div>
-
-                    {/* 중간: 이름 & 가격 */}
-                    <div className="space-y-2 md:space-y-3 flex-1">
-                       <div className="space-y-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest truncate">{item.brand || 'Brand'}</p>
-                            <PriceScoreBadge score={(item as any).priceScore} />
-                          </div>
-                          <p className="text-xs md:text-base font-bold text-white leading-snug group-hover:text-blue-400 transition-colors line-clamp-2 min-h-[2.5em] break-keep">
-                            {item.title}
-                          </p>
-                       </div>
-
-                       <div className="flex flex-col">
-                          {discountRate > 0 && (
-                            <div className="flex items-center space-x-2">
-                              <span className="text-red-500 text-[11px] md:text-sm font-black">{discountRate}%</span>
-                              <span className="text-[10px] md:text-xs text-zinc-600 line-through font-bold">₩{originalPrice.toLocaleString()}</span>
-                            </div>
-                          )}
-                          <p className="text-base md:text-2xl font-black text-white leading-tight">
-                            ₩{currentPrice > 0 ? currentPrice.toLocaleString() : '---'}
-                          </p>
-                       </div>
-                    </div>
-
-                    {/* 하단: 트렌드 (Full Width 복구) */}
-                    <div className="pt-3 md:pt-4 border-t border-white/5 space-y-3 md:space-y-4">
-                       <div className="flex justify-between items-end">
-                          <p className="text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-widest">7D Trend Feed</p>
-                          {historyData.length > 1 && (
-                            <div className="flex items-center space-x-1">
-                               <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                               <span className="text-[7px] md:text-[10px] font-black text-emerald-500 uppercase">Live</span>
-                            </div>
-                          )}
-                       </div>
-                       <div className="h-10 md:h-12 w-full">
-                          {historyData.length > 1 ? (
-                            <Sparkline data={historyData} color="#3b82f6" height={48} fullWidth />
-                          ) : (
-                            <div className="h-full w-full flex items-center justify-center border border-dashed border-zinc-800 rounded-lg">
-                               <p className="text-[10px] font-black text-zinc-700 uppercase tracking-widest">Awaiting Data</p>
-                            </div>
-                          )}
-                       </div>
-                    </div>
-                  </Link>
+                  <ProductCard
+                    key={item.id}
+                    id={item.id}
+                    title={item.title}
+                    brand={item.brand}
+                    imageUrl={item.imageUrl}
+                    currentPrice={currentPrice}
+                    originalPrice={item.originalPrice}
+                    priceScore={(item as any).priceScore}
+                    history={historyData}
+                    showScore
+                    showSparkline
+                    overlay={<WatchlistButton productId={item.id} initialWatched={watchedSet.has(item.id)} variant="icon" />}
+                  />
                 );
               }) : (
                 <div className="col-span-full py-10 text-center text-zinc-700 font-black uppercase text-xs tracking-widest italic">Syncing Recommendations...</div>

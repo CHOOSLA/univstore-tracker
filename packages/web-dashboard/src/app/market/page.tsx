@@ -5,8 +5,6 @@ import TodaysPick from "@/components/market/TodaysPick";
 import DealsSection from "@/components/market/DealsSection";
 import MarketPulse from "@/components/market/MarketPulse";
 import BrandDefenseBanner from "@/components/market/BrandDefenseBanner";
-import CategoryEfficiency from "@/components/market/CategoryEfficiency";
-import { getCategoryDiscountYield } from "@/lib/categoryTree";
 import { getMyWatchlistIds } from "@/app/watchlist/actions";
 import { unstable_cache } from "next/cache";
 
@@ -26,9 +24,6 @@ const getMarketData = unstable_cache(async () => {
 
   const totalProducts = await prisma.product.count();
   const activeAlerts = await prisma.priceAlert.count({ where: { isActive: true } });
-
-  // 대분류별 학생 할인 효율 (카테고리 트리 롤업)
-  const categoryYield = await getCategoryDiscountYield();
 
   // 2. 프리미엄 브랜드 가격 장벽 붕괴 쿼리 (역정규화 필드 활용해 무거운 Median 조인 제거)
   const brandDefenseRaw = await prisma.$queryRaw<any[]>`
@@ -167,14 +162,14 @@ const getMarketData = unstable_cache(async () => {
 
   const todaysPick = flashDrops[0] ?? trueDeals[0] ?? goldenLows[0] ?? null;
 
-  return { flashDrops, trueDeals, goldenLows, mostHunted, brandDefense, todaysPick, totalSavings, totalProducts, activeAlerts, categoryYield };
+  return { flashDrops, trueDeals, goldenLows, mostHunted, brandDefense, todaysPick, totalSavings, totalProducts, activeAlerts };
 }, ['market-data-v1'], { revalidate: 600 });
 
 export default async function MarketPage() {
   const totalCategories = 8;
   // 딜 데이터(캐시)와 사용자별 관심상품(비캐시)을 병렬 조회
   const [data, watchedIds] = await Promise.all([getMarketData(), getMyWatchlistIds()]);
-  const { flashDrops, trueDeals, goldenLows, mostHunted, brandDefense, todaysPick, totalSavings, totalProducts, activeAlerts, categoryYield } = data;
+  const { flashDrops, trueDeals, goldenLows, mostHunted, brandDefense, todaysPick, totalSavings, totalProducts, activeAlerts } = data;
 
   return (
     <div className="pb-24 bg-zinc-950 text-zinc-100 min-h-screen overflow-x-clip">
@@ -237,9 +232,6 @@ export default async function MarketPage() {
           variant="target"
           watchedIds={watchedIds}
         />
-
-        {/* 대분류별 학생 할인 효율 랭킹 */}
-        <CategoryEfficiency categories={categoryYield} />
 
         <MarketPulse
           totalProducts={totalProducts}
