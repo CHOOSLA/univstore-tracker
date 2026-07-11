@@ -7,11 +7,14 @@ import MarketPulse from "@/components/market/MarketPulse";
 import BrandDefenseBanner from "@/components/market/BrandDefenseBanner";
 import CategoryEfficiency from "@/components/market/CategoryEfficiency";
 import { getCategoryDiscountYield } from "@/lib/categoryTree";
+import { getMyWatchlistIds } from "@/app/watchlist/actions";
+import { unstable_cache } from "next/cache";
 
-// 페이지는 동적 렌더(빌드시 DB 없음)하되, 무거운 쿼리는 unstable_cache로 데이터 캐시.
+// 페이지는 동적 렌더(빌드시 DB 없음)하되, 무거운 딜 쿼리는 unstable_cache로 데이터 캐시.
 export const dynamic = 'force-dynamic';
 
-export default async function MarketPage() {
+// 마켓 딜 데이터는 전역(사용자 무관)이라 10분 캐시 → market 진입 시 매번 무거운 쿼리 재실행하던 병목 제거.
+const getMarketData = unstable_cache(async () => {
   // 1. 누적 차익 SQL 연산 (역정규화 필드 사용하여 최적화)
   const [savingsRow] = await prisma.$queryRaw<{ sum: number | null }[]>`
     SELECT COALESCE(SUM("originalPrice" - "currentPrice"), 0)::bigint AS sum
@@ -23,7 +26,6 @@ export default async function MarketPage() {
 
   const totalProducts = await prisma.product.count();
   const activeAlerts = await prisma.priceAlert.count({ where: { isActive: true } });
-  const totalCategories = 8;
 
   // 대분류별 학생 할인 효율 (카테고리 트리 롤업)
   const categoryYield = await getCategoryDiscountYield();
@@ -165,6 +167,15 @@ export default async function MarketPage() {
 
   const todaysPick = flashDrops[0] ?? trueDeals[0] ?? goldenLows[0] ?? null;
 
+  return { flashDrops, trueDeals, goldenLows, mostHunted, brandDefense, todaysPick, totalSavings, totalProducts, activeAlerts, categoryYield };
+}, ['market-data-v1'], { revalidate: 600 });
+
+export default async function MarketPage() {
+  const totalCategories = 8;
+  // 딜 데이터(캐시)와 사용자별 관심상품(비캐시)을 병렬 조회
+  const [data, watchedIds] = await Promise.all([getMarketData(), getMyWatchlistIds()]);
+  const { flashDrops, trueDeals, goldenLows, mostHunted, brandDefense, todaysPick, totalSavings, totalProducts, activeAlerts, categoryYield } = data;
+
   return (
     <div className="pb-24 bg-zinc-950 text-zinc-100 min-h-screen overflow-x-clip">
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 space-y-12">
@@ -196,6 +207,7 @@ export default async function MarketPage() {
           icon={<TrendingDown size={16} />}
           items={flashDrops}
           variant="flash"
+          watchedIds={watchedIds}
         />
 
         <DealsSection
@@ -204,6 +216,7 @@ export default async function MarketPage() {
           icon={<Flame size={16} />}
           items={trueDeals}
           variant="true"
+          watchedIds={watchedIds}
         />
 
         <DealsSection
@@ -212,6 +225,7 @@ export default async function MarketPage() {
           icon={<Trophy size={16} />}
           items={goldenLows}
           variant="golden"
+          watchedIds={watchedIds}
         />
 
         {/* 4. 최다 알림 등록 "Most Hunted" 저격 섹션 */}
@@ -221,6 +235,7 @@ export default async function MarketPage() {
           icon={<Target size={16} />}
           items={mostHunted}
           variant="target"
+          watchedIds={watchedIds}
         />
 
         {/* 대분류별 학생 할인 효율 랭킹 */}

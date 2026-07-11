@@ -8,9 +8,11 @@ interface Props {
   icon: React.ReactNode;
   items: DealItem[];
   variant: DealVariant;
+  watchedIds?: string[];
 }
 
-export default function DealsSection({ title, description, icon, items, variant }: Props) {
+export default function DealsSection({ title, description, icon, items, variant, watchedIds = [] }: Props) {
+  const watchedSet = new Set(watchedIds);
   return (
     <section className="space-y-6">
       <header className="flex items-center justify-between gap-3 md:gap-4 border-b border-white/5 pb-3 px-2">
@@ -37,7 +39,7 @@ export default function DealsSection({ title, description, icon, items, variant 
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {items.map(item => (
-            <DealCard key={item.id} item={item} variant={variant} />
+            <DealCard key={item.id} item={item} variant={variant} initialWatched={watchedSet.has(item.id)} />
           ))}
         </div>
       )}

@@ -1,5 +1,6 @@
 import React from 'react';
 import ProductCard, { BadgeTone } from '../common/ProductCard';
+import WatchlistButton from '../product/WatchlistButton';
 
 export type DealVariant = 'flash' | 'true' | 'golden' | 'target';
 
@@ -24,12 +25,13 @@ export interface DealItem {
 interface DealCardProps {
   item: DealItem;
   variant: DealVariant;
+  initialWatched?: boolean;
 }
 
 /**
  * 마켓 딜 카드. 통합 ProductCard에 variant별 옵션(배지·footer·스파크라인)을 매핑.
  */
-export default function DealCard({ item, variant }: DealCardProps) {
+export default function DealCard({ item, variant, initialWatched = false }: DealCardProps) {
   const { currentPrice } = item;
 
   // variant별 헤드라인 배지 / 정가(할인선) / footer
@@ -108,6 +110,7 @@ export default function DealCard({ item, variant }: DealCardProps) {
       footer={footer}
       showScore
       showSparkline={showSparkline}
+      overlay={<WatchlistButton productId={item.id} initialWatched={initialWatched} variant="icon" />}
     />
   );
 }
