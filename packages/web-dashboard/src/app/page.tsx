@@ -13,7 +13,9 @@ import {
   Sparkles,
   ArrowRight,
   Database,
-  BarChart3
+  BarChart3,
+  Trophy,
+  Flame
 } from "lucide-react";
 import { Sparkline } from "@/components/Sparkline";
 import { cn } from "@/lib/utils";
@@ -35,7 +37,8 @@ export default async function HomePage() {
     storage, 
     dbStats,
     goldenCountRow,
-    trueDealsCountRow
+    trueDealsCountRow,
+    crawlerStatus
   ] = await Promise.all([
     prisma.product.count(),
     prisma.priceHistory.count(),
@@ -68,8 +71,16 @@ export default async function HomePage() {
     getStorageMetrics(),
     prisma.$queryRaw<{ size: string }[]>`SELECT pg_size_pretty(pg_database_size('univstore')) as size`.catch(() => [{ size: '0 MB' }]),
     prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint FROM "Product" WHERE "currentPrice" <= "lowestPrice" AND "lowestPrice" < "highestPrice" AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'`,
-    prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint FROM "Product" WHERE "currentPrice" < "medianPrice30d" AND "currentPrice" >= 10000 AND "medianPrice30d" > 0 AND (("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) < 0.6 AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'`
+    prisma.$queryRaw<{ count: bigint }[]>`SELECT COUNT(*)::bigint FROM "Product" WHERE "currentPrice" < "medianPrice30d" AND "currentPrice" >= 10000 AND "medianPrice30d" > 0 AND (("medianPrice30d" - "currentPrice")::numeric / "medianPrice30d"::numeric) < 0.6 AND "imageUrl" IS NOT NULL AND "stockStatus" != 'Discontinued'`,
+    prisma.crawlerStatus.findUnique({ where: { id: 'singleton' } }).catch(() => null)
   ]);
+
+  // 서버 상태: 크롤러 heartbeat 기준 실제 판정 (15분 내 갱신 = 가동중)
+  const hbAge = crawlerStatus?.lastHeartbeat ? Date.now() - new Date(crawlerStatus.lastHeartbeat).getTime() : Infinity;
+  const isCrawlerLive = hbAge < 15 * 60 * 1000;
+  const serverStatus = isCrawlerLive
+    ? (crawlerStatus?.lastStatus === 'COMPLETED' ? 'IDLE' : 'ONLINE')
+    : 'OFFLINE';
 
   const goldenCount = Number(goldenCountRow?.[0]?.count ?? 0);
   const trueDealsCount = Number(trueDealsCountRow?.[0]?.count ?? 0);
@@ -82,85 +93,81 @@ export default async function HomePage() {
   })).sort((a, b) => b.count - a.count).slice(0, 4);
 
   // 큰 수치는 한국어 컴팩트 표기로 (1,426,779 → "143만") — 카드 폭 초과/… 잘림 방지
-  const fmtCompact = (n: number) => new Intl.NumberFormat('ko-KR', { notation: 'compact', maximumFractionDigits: 1 }).format(n);
+  const fmtCompact = (n: number) => new Intl.NumberFormat('ko-KR', { notation: 'compact', maximumFractionDigits: 0 }).format(n);
 
   // 상단 4구 매트릭
   const metrics = [
     { title: "전체 상품", value: totalProductsCount.toLocaleString(), sub: "Data Scale", icon: Package, accent: "text-blue-500" },
     { title: "누적 데이터", value: fmtCompact(totalHistoryCount), sub: "Price History", icon: Database, accent: "text-purple-500" },
     { title: "브랜드 수", value: brandGroups.length, sub: "Active Brands", icon: Zap, accent: "text-amber-500" },
-    { title: "서버 상태", value: "ONLINE", sub: "Sync Active", icon: Clock, accent: "text-emerald-500" },
+    { title: "서버 상태", value: serverStatus, sub: isCrawlerLive ? "Sync Active" : "Sync Halted", icon: Clock, accent: serverStatus === 'OFFLINE' ? "text-red-500" : "text-emerald-500" },
   ];
 
   return (
     <div className="min-h-screen pb-20 bg-zinc-950">
       <main className="max-w-7xl mx-auto px-4 md:px-6 space-y-12">
         
-        {/* --- [Hero Section: Responsive Typography] --- */}
+        {/* --- [Hero Section] --- */}
         <section className="space-y-4 text-center md:text-left pt-8 md:pt-12">
           <h1 className="text-4xl md:text-7xl font-black tracking-tight text-white leading-[1.1] md:leading-[1.1]">
-            Real-Time <span className="text-blue-500 italic">Insights</span> <br />
-            From UnivStore.
+            학생가, <span className="text-blue-500 italic">가장 쌀 때</span> <br />
+            딱 알려드려요.
           </h1>
-          <p className="text-zinc-400 max-w-3xl text-base md:text-xl font-medium leading-relaxed">
-            33,000+ 데이터 포인트가 증명하는 시장의 무결성. <br className="hidden md:block" />
-            UnivWatch는 자체 분산 수집 파이프라인을 통해 가공되지 않은 실시간 가격 변동을 정밀 분석합니다.
+          <p className="text-zinc-400 max-w-2xl text-base md:text-xl font-medium leading-relaxed">
+            UnivStore 전 상품의 학생 할인가를 매일 추적합니다. 역대 최저가에 도달했거나
+            평소보다 크게 떨어진 상품만 골라 보여드려요. 관심 상품은 찜해두면 가격이 내려갈 때 알림이 갑니다.
           </p>
         </section>
 
-        {/* --- [Live Deals CTA Card] --- */}
-        <Link
-          href="/market"
-          className="relative group block overflow-hidden rounded-[24px] md:rounded-[28px] border border-white/10 hover:border-blue-500/40 bg-gradient-to-br from-blue-950/25 via-zinc-900/40 to-zinc-950 p-5 md:p-7 transition-all duration-300 hover:shadow-[0_0_40px_rgba(59,130,246,0.18)] hover:-translate-y-0.5"
-        >
-          {/* 배경 앰비언트 */}
-          <div className="absolute -top-20 -right-20 w-72 h-72 bg-blue-500/8 rounded-full blur-3xl group-hover:bg-blue-500/15 transition-colors duration-700 pointer-events-none" />
-          <div className="absolute -bottom-20 -left-20 w-56 h-56 bg-amber-500/[0.04] rounded-full blur-3xl group-hover:bg-amber-500/8 transition-colors duration-700 pointer-events-none" />
-
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 md:gap-8">
-            {/* 좌측: LIVE + 큰 숫자 두 개 + 부가 설명 */}
-            <div className="space-y-3 md:space-y-4 flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                </span>
-                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-zinc-400">Live Now</span>
-              </div>
-
-              <div className="flex flex-wrap items-baseline gap-x-6 md:gap-x-10 gap-y-2">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl md:text-5xl font-black text-amber-400 leading-none tabular-nums">
-                    {goldenCount.toLocaleString()}
-                  </span>
-                  <span className="text-[12px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
-                    역대 최저
-                  </span>
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl md:text-5xl font-black text-red-400 leading-none tabular-nums">
-                    {trueDealsCount.toLocaleString()}
-                  </span>
-                  <span className="text-[12px] md:text-xs font-bold text-zinc-400 uppercase tracking-wider whitespace-nowrap">
-                    평균 대비 급락
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-xs md:text-sm text-zinc-400 font-medium leading-relaxed">
-                지금 마켓에서 실시간으로 감지된 가격 기회입니다.
-              </p>
+        {/* --- [명확한 3개 액션 카드] --- */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          {/* 역대 최저 */}
+          <Link
+            href="/products?filter=golden"
+            className="group relative overflow-hidden rounded-2xl md:rounded-3xl border border-amber-500/20 bg-amber-500/[0.06] hover:bg-amber-500/[0.1] hover:border-amber-500/40 p-5 md:p-6 transition-all hover:-translate-y-0.5 flex flex-col justify-between min-h-[130px] md:min-h-[150px]"
+          >
+            <div className="flex items-center justify-between">
+              <Trophy className="w-5 h-5 md:w-6 md:h-6 text-amber-400" />
+              <ArrowRight size={16} className="text-amber-400/50 group-hover:text-amber-400 group-hover:translate-x-1 transition-all" />
             </div>
-
-            {/* 우측: 진짜 버튼처럼 보이는 CTA */}
-            <div className="shrink-0 w-full md:w-auto">
-              <div className="flex w-full md:w-auto items-center justify-center gap-2 px-5 md:px-7 py-3.5 md:py-4 rounded-2xl bg-white text-black font-black text-sm md:text-base uppercase tracking-wider group-hover:bg-amber-300 transition-colors shadow-[0_4px_24px_rgba(255,255,255,0.08)] group-hover:shadow-[0_6px_28px_rgba(252,211,77,0.25)]">
-                <span>마켓 보러 가기</span>
-                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </div>
+            <div>
+              <p className="text-3xl md:text-4xl font-black text-amber-400 tabular-nums leading-none">{goldenCount.toLocaleString()}</p>
+              <p className="text-xs md:text-sm font-black text-white mt-1.5">역대 최저가</p>
+              <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-0.5">지금이 가장 쌀 때인 상품</p>
             </div>
-          </div>
-        </Link>
+          </Link>
+
+          {/* 평균 대비 급락 */}
+          <Link
+            href="/products?filter=true"
+            className="group relative overflow-hidden rounded-2xl md:rounded-3xl border border-red-500/20 bg-red-500/[0.06] hover:bg-red-500/[0.1] hover:border-red-500/40 p-5 md:p-6 transition-all hover:-translate-y-0.5 flex flex-col justify-between min-h-[130px] md:min-h-[150px]"
+          >
+            <div className="flex items-center justify-between">
+              <Flame className="w-5 h-5 md:w-6 md:h-6 text-red-400" />
+              <ArrowRight size={16} className="text-red-400/50 group-hover:text-red-400 group-hover:translate-x-1 transition-all" />
+            </div>
+            <div>
+              <p className="text-3xl md:text-4xl font-black text-red-400 tabular-nums leading-none">{trueDealsCount.toLocaleString()}</p>
+              <p className="text-xs md:text-sm font-black text-white mt-1.5">평소보다 급락</p>
+              <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-0.5">한 달 평균가보다 크게 떨어짐</p>
+            </div>
+          </Link>
+
+          {/* 마켓 전체 */}
+          <Link
+            href="/market"
+            className="group relative overflow-hidden rounded-2xl md:rounded-3xl border border-blue-500/20 bg-blue-500/[0.06] hover:bg-blue-500/[0.1] hover:border-blue-500/40 p-5 md:p-6 transition-all hover:-translate-y-0.5 flex flex-col justify-between min-h-[130px] md:min-h-[150px] col-span-2 md:col-span-1"
+          >
+            <div className="flex items-center justify-between">
+              <BarChart3 className="w-5 h-5 md:w-6 md:h-6 text-blue-400" />
+              <ArrowRight size={16} className="text-blue-400/50 group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
+            </div>
+            <div>
+              <p className="text-xl md:text-2xl font-black text-white leading-tight">전체 마켓 보기</p>
+              <p className="text-[11px] md:text-xs text-zinc-500 font-medium mt-1">오늘의 픽·핫딜·카테고리별 분석</p>
+            </div>
+          </Link>
+        </div>
 
         {/* --- [Top Tier Metrics] --- */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
@@ -377,7 +384,7 @@ function MetricCard({ title, value, sub, icon: Icon, accent }: any) {
     <div className="glass p-5 md:p-8 rounded-[32px] md:rounded-[40px] flex flex-col md:flex-row items-start justify-between gap-3 md:gap-4 border-white/[0.03] group hover:border-white/10 transition-all">
       <div className="order-2 md:order-1 mt-4 md:mt-0 min-w-0 flex-1">
         <p className="text-[10px] md:text-[11px] font-black text-zinc-600 uppercase tracking-[0.2em] mb-2 md:mb-4">{title}</p>
-        <p className="text-2xl md:text-4xl xl:text-5xl font-black text-white tabular-nums tracking-tighter">{value}</p>
+        <p className="text-2xl md:text-4xl xl:text-5xl font-black text-white tabular-nums tracking-tighter whitespace-nowrap">{value}</p>
         <p className={cn("text-[10px] md:text-[11px] font-bold mt-2 md:mt-4 uppercase tracking-widest opacity-80", accent)}>{sub}</p>
       </div>
       <div className={cn("order-1 md:order-2 shrink-0 p-3 md:p-4 bg-zinc-950/50 rounded-xl md:rounded-2xl border border-white/5 group-hover:scale-110 transition-transform", accent)}>

@@ -4,10 +4,10 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
-import { LayoutDashboard, Compass, BarChart3, Heart, User as UserIcon } from "lucide-react";
+import { LayoutDashboard, Compass, BarChart3, Heart, User as UserIcon, TerminalSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const TABS = [
+const BASE_TABS = [
   { name: "홈", href: "/", icon: LayoutDashboard },
   { name: "탐색", href: "/products", icon: Compass },
   { name: "마켓", href: "/market", icon: BarChart3 },
@@ -25,10 +25,17 @@ export default function BottomNav() {
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : !!pathname?.startsWith(href);
 
+  // 관리자면 Terminal 탭 추가. 프로필/로그인 1칸 포함해 그리드 열 수 동적 계산.
+  const isAdmin = session?.user?.isAdmin;
+  const tabs = isAdmin
+    ? [...BASE_TABS, { name: "터미널", href: "/terminal", icon: TerminalSquare }]
+    : BASE_TABS;
+  const colCount = tabs.length + 1;
+
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-[100] bg-zinc-950/90 backdrop-blur-lg border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
-      <div className="grid grid-cols-5 h-16">
-        {TABS.map((t) => {
+      <div className="grid h-16" style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}>
+        {tabs.map((t) => {
           const Icon = t.icon;
           const active = isActive(t.href);
           return (
