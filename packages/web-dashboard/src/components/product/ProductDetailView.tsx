@@ -7,6 +7,7 @@ import WatchlistButton from "./WatchlistButton";
 import MnoCalculator from "./MnoCalculator";
 import PriceScoreBadge from "../common/PriceScoreBadge";
 import SimilarProducts, { SimilarItem } from "./SimilarProducts";
+import PriceComparison from "./PriceComparison";
 import { 
   AreaChart, 
   Area, 
@@ -63,11 +64,13 @@ interface ProductDetailViewProps {
   similar?: SimilarItem[];
   /** 로그인 사용자의 관심상품 등록 여부 */
   watched?: boolean;
+  /** 네이버 쇼핑 최저가 비교. matched=false면 섹션 숨김 */
+  priceComparison?: import("@/lib/naverPrice").PriceComparison;
 }
 
 type RangeType = '1M' | '3M' | '6M' | 'ALL';
 
-export default function ProductDetailView({ product, history, existingAlerts, isMnoItem = false, externalUrl, mnoOption, similar, watched = false }: ProductDetailViewProps) {
+export default function ProductDetailView({ product, history, existingAlerts, isMnoItem = false, externalUrl, mnoOption, similar, watched = false, priceComparison }: ProductDetailViewProps) {
   // externalUrl이 주입되면 그대로, 아니면 isMnoItem 분기로 fallback
   const buyNowUrl = externalUrl ?? (isMnoItem
     ? `https://www.univstore.com/mno/item/${product.id}`
@@ -318,41 +321,10 @@ export default function ProductDetailView({ product, history, existingAlerts, is
               )}
             </div>
 
-            {/* Metrics Dashboard */}
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <div className="glass p-5 md:p-6 rounded-[24px] md:rounded-[32px] border-white/[0.03] min-w-0">
-                <p className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest mb-4 flex items-center">
-                  <History className="mr-1.5 w-2.5 h-2.5 md:w-3 md:h-3" /> Volatility
-                </p>
-                <div className="h-20 md:h-24 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={volatilityData}>
-                      <Bar dataKey="price" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-                        {volatilityData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={index === 1 ? '#ef4444' : '#27272a'} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="text-[10px] md:text-[11px] font-bold text-zinc-400 mt-3 md:mt-4 text-center italic leading-none truncate">
-                  {currentPrice <= minPrice ? "Lowest recorded🎯" : "Market scan"}
-                </p>
-              </div>
-
-              <div className="glass p-5 md:p-6 rounded-[24px] md:rounded-[32px] border-white/[0.03] flex flex-col justify-between min-w-0">
-                <div className="space-y-2 md:space-y-4">
-                  <p className="text-[10px] md:text-[11px] font-black text-zinc-500 uppercase tracking-widest flex items-center">
-                    <Percent className="mr-1.5 w-2.5 h-2.5 md:w-3 md:h-3" /> Perk
-                  </p>
-                  <p className="text-xl md:text-2xl font-black text-white leading-none">Exclusive <br/> Benefit</p>
-                </div>
-                <div className="flex items-center text-blue-500 space-x-1 text-[11px] md:text-xs font-black uppercase tracking-tighter cursor-pointer hover:underline pt-2">
-                  <span>Policy</span>
-                  <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                </div>
-              </div>
-            </div>
+            {/* 다른 곳 최저가 비교 (네이버 쇼핑) — 신뢰도 낮으면 자동 숨김 */}
+            {priceComparison && (
+              <PriceComparison data={priceComparison} univPrice={currentPrice} />
+            )}
 
             {/* Price Alert Center (계정 귀속 목표가 알림) */}
             <PriceAlertControl
@@ -360,18 +332,6 @@ export default function ProductDetailView({ product, history, existingAlerts, is
               currentPrice={currentPrice}
               existingAlerts={existingAlerts}
             />
-
-            <div className="glass p-6 md:p-10 rounded-[32px] md:rounded-[40px] border-white/[0.03] space-y-4 md:space-y-6">
-               <div className="flex items-center space-x-2 text-zinc-400 font-bold text-[11px] md:text-xs uppercase tracking-widest">
-                  <Info className="w-3 h-3 md:w-3.5 md:h-3.5" />
-                  <span>Insight</span>
-               </div>
-               <p className="text-xs md:text-sm text-zinc-300 font-medium leading-relaxed">
-                  {currentPrice < avgPrice 
-                    ? `현재 가격은 전체 평균 대비 ₩${(avgPrice - currentPrice).toLocaleString()} 저렴합니다. 구매하기 좋은 시점입니다.`
-                    : `현재 가격은 시장 평균 수준입니다. 급하지 않다면 다음 할인 주기를 기다려보세요.`}
-               </p>
-            </div>
 
           </div>
         </div>

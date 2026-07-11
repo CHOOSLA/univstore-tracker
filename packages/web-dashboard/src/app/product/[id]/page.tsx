@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import ProductDetailView from "@/components/product/ProductDetailView";
 import { auth } from "@/auth";
 import { isWatched } from "@/app/watchlist/actions";
+import { getPriceComparison } from "@/lib/naverPrice";
 
 export const dynamic = 'force-dynamic';
 
@@ -73,6 +74,17 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     priceScore: s.priceScore ?? null,
   }));
 
+  // 네이버 쇼핑 최저가 비교 — 모델코드는 web-api에서 live fetch (스키마 미저장)
+  let modelCode = '';
+  try {
+    const r = await fetch(`https://web-api.univstore.com/api/v1/items/${id}`, {
+      headers: { Referer: `https://www.univstore.com/item/${id}` },
+      next: { revalidate: 86400 },
+    });
+    if (r.ok) modelCode = (await r.json())?.result?.item?.code || '';
+  } catch { /* code 없으면 title로 폴백 */ }
+  const priceComparison = await getPriceComparison(modelCode, product.title, Number(product.originalPrice ?? currentPrice ?? 0));
+
   return (
     <ProductDetailView
       product={product}
@@ -83,6 +95,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       mnoOption={mnoOption ? JSON.parse(JSON.stringify(mnoOption)) : null}
       similar={similar}
       watched={watched}
+      priceComparison={priceComparison}
     />
   );
 }

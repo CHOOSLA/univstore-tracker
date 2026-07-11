@@ -58,6 +58,8 @@ services:
       - AUTH_KAKAO_ID=${AUTH_KAKAO_ID}
       - AUTH_KAKAO_SECRET=${AUTH_KAKAO_SECRET}
       - ADMIN_EMAILS=${ADMIN_EMAILS}
+      - NAVER_CLIENT_ID=${NAVER_CLIENT_ID}
+      - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}
     depends_on:
       - postgres
       - redis
