@@ -249,15 +249,15 @@ export default async function ProductsPage({
               )}
             </div>
           )}
-          {/* 스크롤 시 상단 고정되는 검색·필터 바 (navbar h-20 아래) */}
-          <div className="sticky top-[84px] z-40 space-y-3 -mx-4 md:-mx-6 px-4 md:px-6 py-3 bg-zinc-950/85 backdrop-blur-xl border-b border-white/5">
+          {/* 스크롤 시 상단 고정되는 통합 검색·필터·카테고리 툴바 (하나의 카드로 응집) */}
+          <div className="sticky top-[92px] z-40 rounded-[28px] border border-white/10 bg-zinc-900/70 backdrop-blur-2xl shadow-2xl shadow-black/40 p-3 md:p-4 space-y-3">
             {/* 검색: 전체폭 prominent */}
             <Suspense fallback={<div className="h-14 md:h-16 bg-zinc-900/50 animate-pulse rounded-2xl" />}>
               <SearchBar />
             </Suspense>
 
             {/* 필터: 정렬 + 브랜드 (한 줄, 가로 스크롤) */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar border-t border-white/5 pt-3">
               <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest shrink-0 hidden md:block">정렬</span>
               {[
                 ...(searchQuery ? [{ id: 'relevance', label: 'Relevance' }] : []),
@@ -307,9 +307,11 @@ export default async function ProductsPage({
             </div>
 
             {/* 라이브 카테고리 메가메뉴 */}
-            <Suspense fallback={<div className="h-12 bg-zinc-900/30 rounded-2xl animate-pulse" />}>
-              <CategoryMenu tree={categoryTree} />
-            </Suspense>
+            <div className="border-t border-white/5 pt-3">
+              <Suspense fallback={<div className="h-12 bg-zinc-900/30 rounded-2xl animate-pulse" />}>
+                <CategoryMenu tree={categoryTree} />
+              </Suspense>
+            </div>
           </div>
         </div>
 

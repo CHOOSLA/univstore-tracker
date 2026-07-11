@@ -104,16 +104,30 @@ export default function HomeSearchBar() {
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    router.push(`/products?q=${encodeURIComponent(query.trim())}`);
+    const url = `/products?q=${encodeURIComponent(query.trim())}`;
+    // View Transition으로 검색바가 Explorer로 부드럽게 이어지도록 (지원 브라우저)
+    const doc = document as any;
+    if (typeof doc.startViewTransition === 'function') {
+      doc.startViewTransition(() => router.push(url));
+    } else {
+      router.push(url);
+    }
   }, [query, router]);
 
   return (
-    <form onSubmit={handleSubmit} className="w-full">
+    <form onSubmit={handleSubmit} className="relative w-full">
+      {/* 파란 앰비언트 글로우 (검색 가능함을 시각적으로 유도) */}
       <div className={cn(
-        'relative flex items-center rounded-[28px] border transition-all duration-300',
+        'absolute -inset-0.5 rounded-[30px] bg-gradient-to-r from-blue-600/20 via-blue-500/10 to-purple-600/20 blur-lg transition-opacity duration-300 pointer-events-none',
+        focused ? 'opacity-100' : 'opacity-40'
+      )} />
+      <div
+        style={{ viewTransitionName: 'main-search' }}
+        className={cn(
+        'relative flex items-center rounded-[28px] border backdrop-blur-2xl transition-all duration-300',
         focused
-          ? 'border-blue-500/60 bg-zinc-900 shadow-[0_0_40px_rgba(59,130,246,0.15)]'
-          : 'border-white/15 bg-zinc-900/70 shadow-lg shadow-black/20 hover:border-white/30 hover:bg-zinc-900/90'
+          ? 'border-blue-500/60 bg-zinc-900/95 shadow-[0_0_40px_rgba(59,130,246,0.18)]'
+          : 'border-white/20 bg-zinc-900/85 shadow-xl shadow-black/30 hover:border-blue-500/40'
       )}>
 
         {/* 검색 아이콘 */}

@@ -49,3 +49,17 @@ body {
   background: #3f3f46;
 }
 
+
+/* --- View Transitions: 홈 검색 → Explorer 부드러운 이동 --- */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.35s;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  /* 검색바는 위치가 morph되며 자연스럽게 이어짐 */
+  ::view-transition-group(main-search) {
+    animation-duration: 0.45s;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}

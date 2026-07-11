@@ -43,7 +43,9 @@ export default function SearchBar() {
   };
 
   return (
-    <div className="relative w-full flex items-center rounded-2xl border border-white/10 bg-zinc-900/60 transition-all duration-200 focus-within:border-blue-500/60 focus-within:bg-zinc-900 focus-within:shadow-[0_0_30px_rgba(59,130,246,0.12)]">
+    <div
+      style={{ viewTransitionName: 'main-search' }}
+      className="relative w-full flex items-center rounded-2xl border border-white/10 bg-zinc-900/60 transition-all duration-200 focus-within:border-blue-500/60 focus-within:bg-zinc-900 focus-within:shadow-[0_0_30px_rgba(59,130,246,0.12)]">
       <Search className={`absolute left-5 transition-colors ${isPending ? 'text-blue-400' : 'text-zinc-500'}`} size={20} />
 
       <input
