@@ -8,6 +8,23 @@ export type PriceComparison = { matched: boolean; items: MallPrice[]; lowest: nu
 
 const strip = (s: string) => s.replace(/<[^>]+>/g, "").trim();
 
+// 매칭 무의미 토큰(수량/포장/공용어)
+const STOP = new Set(["박스", "1박스", "세트", "정품", "본품", "무료배송", "공식", "국내", "당일", "new", "단품", "구성", "브랜드", "정품기"]);
+
+// 상품명/브랜드 → 의미있는 토큰 집합 (2자 이상, 스톱워드 제외)
+function tokenize(s: string): string[] {
+  return s
+    .replace(/[^0-9A-Za-z가-힣]+/g, " ")
+    .split(/\s+/)
+    .map((t) => t.toLowerCase())
+    .filter((t) => t.length >= 2 && !STOP.has(t));
+}
+
+// code가 진짜 모델번호처럼 생겼는지 (문자 포함 필수). "40130" 같은 순수 숫자는 무의미.
+function isRealCode(code: string): boolean {
+  return !!code && /[A-Za-z]/.test(code) && code.replace(/[^0-9A-Za-z]/g, "").length >= 4;
+}
+
 async function fetchNaver(query: string): Promise<any[]> {
   const id = process.env.NAVER_CLIENT_ID;
   const secret = process.env.NAVER_CLIENT_SECRET;
@@ -25,12 +42,17 @@ async function fetchNaver(query: string): Promise<any[]> {
   }
 }
 
-// 정가 밴드 + 액세서리 제외 + 몰별 최저가 dedup → 저렴한순 상위 N
-function build(items: any[], price1: number): MallPrice[] {
+// 정가 밴드 + 액세서리 제외 + 상품명 토큰 겹침 검증 + 몰별 최저가 dedup → 저렴한순 상위 N
+function build(items: any[], price1: number, prodTokens: Set<string>): MallPrice[] {
   const lo = price1 * 0.5, hi = price1 * 1.35;
   const filtered = items
     .map((it) => ({ mall: it.mallName, price: Number(it.lprice), link: it.link, title: strip(it.title) }))
-    .filter((m) => m.price >= lo && m.price <= hi && !ACCESSORY.test(m.title));
+    .filter((m) => {
+      if (m.price < lo || m.price > hi) return false;
+      if (ACCESSORY.test(m.title)) return false;
+      // 결과 타이틀이 상품명과 최소 1개 의미 토큰을 공유해야 함 (엉뚱한 상품 배제)
+      return tokenize(m.title).some((t) => prodTokens.has(t));
+    });
 
   const byMall = new Map<string, MallPrice>();
   for (const m of filtered) {
@@ -41,22 +63,26 @@ function build(items: any[], price1: number): MallPrice[] {
 }
 
 /**
- * 네이버 쇼핑 최저가 비교. code(모델번호) 우선, 부족하면 상품명 폴백.
- * 신뢰도 게이팅: 밴드 내 본품이 2개 몰 이상일 때만 matched=true (오답 방지).
- * 상품별 1일 캐시.
+ * 네이버 쇼핑 최저가 비교. 진짜 모델코드면 우선, 아니면(숫자뿐 등) 상품명으로.
+ * 신뢰도 게이팅: 정가 밴드 + 액세서리 제외 + 상품명 토큰 겹침 + 2개 몰 이상일 때만 matched.
+ * brand는 토큰 세트에 포함해 매칭 정확도 보강. 상품별 1일 캐시.
  */
 export const getPriceComparison = unstable_cache(
-  async (code: string, title: string, price1: number): Promise<PriceComparison> => {
+  async (code: string, title: string, price1: number, brand?: string): Promise<PriceComparison> => {
     if (!price1 || price1 <= 0) return { matched: false, items: [], lowest: null };
 
-    let malls = build(await fetchNaver(code), price1);
+    const prodTokens = new Set(tokenize(`${title} ${brand || ""}`));
+    if (prodTokens.size === 0) return { matched: false, items: [], lowest: null };
+
+    // 진짜 코드일 때만 코드 쿼리 시도, 부족하면 상품명 폴백
+    let malls: MallPrice[] = isRealCode(code) ? build(await fetchNaver(code), price1, prodTokens) : [];
     if (malls.length < 2) {
-      const alt = build(await fetchNaver(title.slice(0, 40)), price1);
+      const alt = build(await fetchNaver(title.slice(0, 40)), price1, prodTokens);
       if (alt.length > malls.length) malls = alt;
     }
 
     return { matched: malls.length >= 2, items: malls, lowest: malls[0]?.price ?? null };
   },
-  ["naver-price-comparison"],
+  ["naver-price-comparison-v2"],
   { revalidate: 86400 }
 );
