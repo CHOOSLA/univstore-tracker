@@ -7,6 +7,7 @@ import MarketPulse from "@/components/market/MarketPulse";
 import BrandDefenseBanner from "@/components/market/BrandDefenseBanner";
 import { getMyWatchlistIds } from "@/app/watchlist/actions";
 import { unstable_cache } from "next/cache";
+import ScrollToHash from "@/components/common/ScrollToHash";
 
 // 페이지는 동적 렌더(빌드시 DB 없음)하되, 무거운 딜 쿼리는 unstable_cache로 데이터 캐시.
 export const dynamic = 'force-dynamic';
@@ -173,6 +174,7 @@ export default async function MarketPage() {
 
   return (
     <div className="pb-24 bg-zinc-950 text-zinc-100 min-h-screen overflow-x-clip">
+      <ScrollToHash />
       <main className="max-w-7xl mx-auto px-4 md:px-6 pt-8 md:pt-12 space-y-12">
         <header className="space-y-4 text-center md:text-left border-b border-white/5 pb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6 px-2">
           <div className="space-y-3 flex-1">
