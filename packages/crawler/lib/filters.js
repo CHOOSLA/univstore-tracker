@@ -1,4 +1,4 @@
-const { prisma, redis, withPrismaRetry, sleep, BlockDetectedError, SessionExpiredError } = require('./engine');
+const { prisma, redis, withPrismaRetry, sleep, BlockDetectedError, SessionExpiredError, sendTelegramAlert } = require('./engine');
 const { blockGuard } = require('./blockGuard');
 const { extractMnoOption } = require('./mnoExtract');
 
@@ -43,14 +43,13 @@ class DirectApiFilter {
     const randomWait = Math.floor(Math.random() * 600);
     await sleep(baseJitter + randomWait);
 
-    const url = `https://www.univstore.com/api/item/${ctx.id}`;
+    // univstore 신 공개 API (web-api.univstore.com/api/v1). 구 www/api/item은 폐기(404/HTML).
+    // 학생 할인가(price2)는 로그인 세션일 때만 응답에 포함된다.
+    const url = `https://web-api.univstore.com/api/v1/items/${ctx.id}`;
     const res = await ctx.browserContext.request.get(url, {
       headers: {
         'Referer': `https://www.univstore.com/item/${ctx.id}`,
-        'Sec-Fetch-Site': 'same-origin',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Dest': 'empty',
-        'X-Requested-With': 'XMLHttpRequest',
+        'Origin': 'https://www.univstore.com',
         'Accept': 'application/json, text/plain, */*',
       },
       timeout: 15000,
@@ -60,102 +59,75 @@ class DirectApiFilter {
     if (status === 403 || status === 429 || status === 405) {
       throw new BlockDetectedError(`Bot detected via API (HTTP ${status})`, status);
     }
+
+    // 신 API가 인증(401)을 요구하기 시작하면 = 공개 API를 조인 것. 1시간 1회 알림 후 fallback.
     if (status === 401) {
-      throw new SessionExpiredError();
-    }
-    if (status >= 400) {
-      console.warn(`⚠️ [ID ${ctx.id}] API ${status} - 페이지 fallback으로 위임`);
-      return; // apiHandled를 set하지 않고 빠져나가면 NavigationFilter가 이어받음
-    }
-
-    // univstore는 단종/삭제 상품에 대해 200 OK + 빈 body로 응답한다.
-    // 다만 통신사(mno) 카테고리 상품은 /api/item/{id}에서도 빈 응답을 주지만
-    // /api/mno/item/{id}에서는 정상 응답을 준다 (실제 단종 아님).
-    let rawText = await res.text();
-    if (!rawText || rawText.length === 0) {
-      const isMno = ctx.productStatus?.menuSubCategories?.includes('통신사');
-      if (isMno) {
-        try {
-          const mnoUrl = `https://www.univstore.com/api/mno/item/${ctx.id}`;
-          const mnoRes = await ctx.browserContext.request.get(mnoUrl, {
-            headers: {
-              'Referer': `https://www.univstore.com/mno/item/${ctx.id}`,
-              'Sec-Fetch-Site': 'same-origin',
-              'Sec-Fetch-Mode': 'cors',
-              'Sec-Fetch-Dest': 'empty',
-              'Accept': 'application/json',
-              'X-Requested-With': 'XMLHttpRequest',
-            },
-            timeout: 15000,
-          });
-          if (mnoRes.status() === 200) {
-            const mnoText = await mnoRes.text();
-            if (mnoText && mnoText.length > 0) {
-              rawText = mnoText;
-              // 부수 효과: mno 옵션 메타데이터 (색상/용량/가입유형/요금제)를 같이 저장.
-              // 가격 추적은 기존 흐름 그대로 유지, 옵션은 상세 페이지 계산기에서만 사용.
-              try {
-                const mnoJson = JSON.parse(mnoText);
-                const mnoMeta = extractMnoOption(mnoJson);
-                if (mnoMeta) {
-                  await withPrismaRetry(() => prisma.mnoOption.upsert({
-                    where: { productId: ctx.id },
-                    create: { productId: ctx.id, ...mnoMeta },
-                    update: mnoMeta,
-                  })).catch(e => console.warn(`  MnoOption 저장 실패 [${ctx.id}]: ${e.message}`));
-                }
-              } catch (e) { /* JSON 파싱 실패 시 옵션만 skip, 가격 흐름은 진행 */ }
-            }
-          }
-        } catch (e) { /* fall through to Discontinued check */ }
-      }
-
-      if (!rawText || rawText.length === 0) {
-        console.warn(`⛔ [ID ${ctx.id}] API 빈 응답 - 단종/삭제 상품으로 마킹`);
-        await withPrismaRetry(() => prisma.product.update({
-          where: { id: ctx.id },
-          data: { stockStatus: 'Discontinued' }
-        })).catch(e => console.warn(`  Discontinued 마킹 실패: ${e.message}`));
-        ctx.shouldSkip = true;
-        return;
-      }
+      try {
+        const first = await redis.set('univstore:api_auth_required', '1', 'EX', 3600, 'NX');
+        if (first !== null) {
+          await sendTelegramAlert('🚨 *신 API 인증 요구 전환 감지*\n\nweb-api.univstore.com이 인증(401)을 요구하기 시작했습니다.\n대응이 필요합니다.').catch(() => {});
+        }
+      } catch (_) { /* redis 장애 시 알림만 skip */ }
+      console.warn(`⚠️ [ID ${ctx.id}] 신 API 401 - 페이지 fallback으로 위임`);
+      return;
     }
 
     let apiData;
     try {
-      apiData = JSON.parse(rawText);
+      apiData = await res.json();
     } catch (e) {
       console.warn(`⚠️ [ID ${ctx.id}] API JSON 파싱 실패 (${e.message}) - 페이지 fallback으로 위임`);
       return;
     }
-    if (!apiData || !apiData.id) {
-      console.warn(`⚠️ [ID ${ctx.id}] API 응답 형식 불일치 - 페이지 fallback으로 위임`);
+
+    // 존재하지 않는 상품: ITEM_NOT_FOUND → 단종/삭제 마킹하고 skip
+    if (apiData?.errorCode === 'ITEM_NOT_FOUND') {
+      console.warn(`⛔ [ID ${ctx.id}] 신 API ITEM_NOT_FOUND - 단종/삭제 상품으로 마킹`);
+      await withPrismaRetry(() => prisma.product.update({
+        where: { id: ctx.id },
+        data: { stockStatus: 'Discontinued' }
+      })).catch(e => console.warn(`  Discontinued 마킹 실패: ${e.message}`));
+      ctx.shouldSkip = true;
       return;
     }
 
+    if (status >= 400 || apiData?.statusCode !== 'SUCCESS' || !apiData?.result?.item) {
+      console.warn(`⚠️ [ID ${ctx.id}] API ${status}/${apiData?.statusCode} - 페이지 fallback으로 위임`);
+      return;
+    }
+
+    const it = apiData.result.item;
+
     // 복구 모드에서 이미지가 비어 있으면 DOM fallback 필요
-    if (ctx.isRecoveryMode && !apiData.thumbnail_url) {
+    if (ctx.isRecoveryMode && !it.thumbnailUrl) {
       console.warn(`⚠️ [ID ${ctx.id}] recovery 모드인데 API에 이미지 없음 - 페이지 fallback으로 위임`);
       return;
     }
 
-    const price = apiData.price2 ?? apiData.price1 ?? 0;
-    const originalPrice = apiData.price1 ?? price;
-    let stockStatus = 'In Stock';
-    if (typeof apiData.has_stock !== 'undefined') {
-      stockStatus = apiData.has_stock ? 'In Stock' : 'Out of Stock';
+    // 오염 방지 가드: 학생전용 상품인데 학생가(price2)가 없으면 = 세션 미인증.
+    // 정가(price1)를 학생가로 잘못 저장하지 않도록 세션만료로 처리 → 관리자 알림 + 수집 중단.
+    if (it.isOnlyForUnivStudent && (it.price2 === null || typeof it.price2 === 'undefined')) {
+      throw new SessionExpiredError();
     }
 
+    // 학생가(price2) 우선, 없으면 정가(price1). 정가는 항상 price1.
+    const price = it.price2 ?? it.price1 ?? 0;
+    const originalPrice = it.price1 ?? price;
+
+    // 혜택: paymentDiscountList의 결제수단 할인명 상위 2개
+    const benefitList = Array.isArray(apiData.result.paymentDiscountList) ? apiData.result.paymentDiscountList : [];
+    const bestBenefit = benefitList.slice(0, 2).map(b => b.cartTabName).filter(Boolean).join(' / ') || null;
+
     ctx.itemInfo = {
-      brand: apiData.brand_name || '',
-      title: apiData.front_name || apiData.name || '이름 없음',
+      brand: it.brandName || '',
+      title: it.frontName || it.nameOption || '이름 없음',
       price: String(price),
       originalPrice: String(originalPrice),
-      imageUrl: apiData.thumbnail_url || null,
-      stockStatus,
-      bestBenefit: apiData.benefit || null,
-      category: apiData.item_category_name || null,
-      subCategory: apiData.brand_item_category_name || null,
+      imageUrl: it.thumbnailUrl || null,
+      stockStatus: (typeof it.hasStock !== 'undefined') ? (it.hasStock ? 'In Stock' : 'Out of Stock') : 'In Stock',
+      bestBenefit,
+      category: it.categoryName || it.brandItemCategoryName || null,
+      subCategory: it.brandItemCategoryName || null,
     };
     ctx.apiHandled = true;
   }

@@ -104,23 +104,36 @@ async function withPrismaRetry(fn, retries = 3) {
   }
 }
 
+// 신 사이트는 로그인이 에브리타임 SSO + 2FA라 자동 재로그인이 불가능하다.
+// 따라서 checkLogin은 '검증'만 한다: 학생가(price2)가 응답에 포함되면 인증된 세션.
+// 미인증이면 SessionExpiredError를 던져 상위(init/loop)에서 관리자 알림 → prime-session 유도.
+const SESSION_PROBE_IDS = ['9991', '138557', '62345'];
+
 async function checkLogin(page) {
   console.log("🔍 세션 상태 확인 중...");
-  await page.goto('https://www.univstore.com/user/login');
-  
-  if (await page.isVisible('input[name="userid"]')) {
-    console.log("🔑 로그인 필요 감지. 세션 갱신을 시작합니다...");
-    await page.click('.usEverytimeLoginTitle');
-    await page.fill('input[name="id"]', process.env.EVERYTIME_ID);
-    await page.fill('input[name="password"]', process.env.EVERYTIME_PW);
-    await page.click('input[type="submit"]');
-    
-    // 최소한의 성공 판별 (기존 로직)
-    await page.waitForURL(url => url.href.includes('univstore.com') && !url.href.includes('login'), { timeout: 60000 });
-    console.log("🎉 로그인 성공!");
-  } else {
-    console.log("✅ 이미 로그인된 세션입니다.");
+  for (const id of SESSION_PROBE_IDS) {
+    try {
+      const res = await page.request.get(`https://web-api.univstore.com/api/v1/items/${id}`, {
+        headers: { 'Referer': `https://www.univstore.com/item/${id}` },
+        timeout: 15000,
+      });
+      if (res.status() !== 200) continue;
+      const j = await res.json();
+      const it = j?.result?.item;
+      if (!it) continue;
+      // 학생전용 상품에 price2(학생가)가 있으면 로그인된 세션
+      if (it.isOnlyForUnivStudent && it.price2 != null) {
+        console.log("✅ 로그인된 세션 확인 (학생가 응답 정상).");
+        return;
+      }
+      // 학생전용인데 price2 없음 = 미인증
+      if (it.isOnlyForUnivStudent && it.price2 == null) {
+        break;
+      }
+    } catch (_) { /* 다음 probe id 시도 */ }
   }
+  console.error("🔐 세션 미인증 감지 — prime-session 재실행 필요.");
+  throw new SessionExpiredError();
 }
 
 // Redis 키 상수
