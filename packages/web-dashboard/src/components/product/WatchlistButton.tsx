@@ -46,15 +46,18 @@ export default function WatchlistButton({ productId, initialWatched = false, var
       <button
         onClick={handleClick}
         aria-label={watched ? "관심상품 해제" : "관심상품 추가"}
+        title={watched ? "관심상품 해제" : "관심상품 추가"}
         className={cn(
-          "z-20 flex items-center justify-center w-9 h-9 rounded-full backdrop-blur-md border transition-all",
+          "z-20 flex items-center justify-center w-10 h-10 rounded-full backdrop-blur-md border transition-all duration-200 shadow-lg hover:scale-110 active:scale-90",
           watched
-            ? "bg-red-500/90 border-red-400 text-white"
-            : "bg-black/40 border-white/10 text-white/70 hover:text-white hover:border-white/30",
+            ? "bg-red-500 border-red-300 text-white shadow-red-500/40"
+            : "bg-zinc-950/70 border-white/25 text-white shadow-black/40 hover:bg-zinc-900 hover:border-white/50",
           className
         )}
       >
-        {loading ? <Loader2 size={16} className="animate-spin" /> : <Heart size={16} fill={watched ? "currentColor" : "none"} />}
+        {loading
+          ? <Loader2 size={17} className="animate-spin" />
+          : <Heart size={17} className={cn(!watched && "group-hover:scale-105 transition-transform")} fill={watched ? "currentColor" : "none"} strokeWidth={watched ? 2 : 2.4} />}
       </button>
     );
   }
