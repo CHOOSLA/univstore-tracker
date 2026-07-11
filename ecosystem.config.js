@@ -33,6 +33,16 @@ module.exports = {
       env: {
         NODE_ENV: "development",
       }
+    },
+    {
+      name: "univ-sync-categories",
+      script: "node",
+      args: "packages/crawler/sync-categories.js",
+      cron_restart: "30 4 * * *", // 매일 새벽 4시 30분 (카테고리 트리 + 상품 태깅)
+      autorestart: false,
+      env: {
+        NODE_ENV: "development",
+      }
     }
   ]
 };

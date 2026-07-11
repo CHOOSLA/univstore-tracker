@@ -6,7 +6,8 @@ import { prisma } from "@/lib/prisma";
 import SearchBar from "@/components/products/SearchBar";
 import VirtualizedProductList from "@/components/products/VirtualizedProductList";
 import { getMyWatchlistIds } from "@/app/watchlist/actions";
-import CategoryMenu, { CategoryCounts } from "@/components/products/CategoryMenu";
+import CategoryMenu from "@/components/products/CategoryMenu";
+import { getCategoryTreeWithCounts, getLeafIdsForCode, getCategoryPath } from "@/lib/categoryTree";
 import { Suspense } from 'react';
 import { getSearchKeywords, getQueryVariants } from "@/lib/search-utils";
 import { parseNaturalQuery } from "@/lib/parseNaturalQuery";
@@ -17,9 +18,13 @@ export const dynamic = 'force-dynamic';
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ brand?: string; q?: string; menuCategory?: string; menuSubCategory?: string; thirdCategory?: string; sort?: string; filter?: string }>;
+  searchParams: Promise<{ brand?: string; q?: string; category?: string; sort?: string; filter?: string }>;
 }) {
-  const { brand: brandFilter, q: searchQuery, menuCategory, menuSubCategory, thirdCategory, sort: sortParam, filter: activeFilter } = await searchParams;
+  const { brand: brandFilter, q: searchQuery, category: categoryCode, sort: sortParam, filter: activeFilter } = await searchParams;
+
+  // 선택 카테고리(어느 depth든) → 하위 리프 id 배열로 확장. 상품은 categoryId(리프)로 필터.
+  const categoryLeafIds = categoryCode ? await getLeafIdsForCode(categoryCode) : undefined;
+  const categoryPath = categoryCode ? await getCategoryPath(categoryCode) : [];
   // 검색어가 있으면 default sort를 relevance로, 없으면 latest로
   const sortOption = sortParam || (searchQuery ? 'relevance' : 'latest');
 
@@ -97,9 +102,8 @@ export default async function ProductsPage({
     AND: [
       { imageUrl: { not: null }, stockStatus: { not: 'Discontinued' } },
       brandFilter ? { brand: brandFilter } : {},
-      menuCategory ? { menuCategories: { has: menuCategory } } : {},
-      menuSubCategory ? { menuSubCategories: { has: menuSubCategory } } : {},
-      thirdCategory ? { thirdCategories: { has: thirdCategory } } : {},
+      // 카테고리 필터: 선택 노드 하위 리프 id 집합으로. 매칭 리프 없으면 빈 결과 가드.
+      categoryCode ? { categoryId: { in: categoryLeafIds && categoryLeafIds.length > 0 ? categoryLeafIds : [-1] } } : {},
       filteredIds ? { id: { in: filteredIds } } : activeFilter ? { id: { in: [] } } : {}, // activeFilter가 있지만 매칭되는 ID가 없는 경우를 위한 빈 리스트 가드
       searchKeywords.length > 0 ? {
         OR: searchKeywords.flatMap(kw => [
@@ -164,41 +168,8 @@ export default async function ProductsPage({
       .map(x => x.p);
   }
 
-  // 4. 메뉴 분류별 상품 수 (array는 CROSS JOIN LATERAL UNNEST로 별도 펼침)
-  // 멀티 unnest를 SELECT 절에 같이 쓰면 row-wise 매칭이라 길이 불일치 시 NULL pad 발생
-  // COUNT(DISTINCT id)로 한 상품이 여러 sub/third에 속해도 각 조합당 1번씩만 카운트
-  const [mainCounts, subCounts, thirdCounts] = await Promise.all([
-    prisma.$queryRaw<{ name: string; cnt: bigint }[]>`
-      SELECT m AS name, COUNT(DISTINCT p.id) AS cnt
-      FROM "Product" p
-      CROSS JOIN LATERAL UNNEST(p."menuCategories") AS m
-      WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
-      GROUP BY m
-    `,
-    prisma.$queryRaw<{ main: string; sub: string; cnt: bigint }[]>`
-      SELECT m AS main, s AS sub, COUNT(DISTINCT p.id) AS cnt
-      FROM "Product" p
-      CROSS JOIN LATERAL UNNEST(p."menuCategories") AS m
-      CROSS JOIN LATERAL UNNEST(p."menuSubCategories") AS s
-      WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
-      GROUP BY m, s
-    `,
-    prisma.$queryRaw<{ main: string; sub: string; third: string; cnt: bigint }[]>`
-      SELECT m AS main, s AS sub, t AS third, COUNT(DISTINCT p.id) AS cnt
-      FROM "Product" p
-      CROSS JOIN LATERAL UNNEST(p."menuCategories") AS m
-      CROSS JOIN LATERAL UNNEST(p."menuSubCategories") AS s
-      CROSS JOIN LATERAL UNNEST(p."thirdCategories") AS t
-      WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
-      GROUP BY m, s, t
-    `,
-  ]);
-
-  const categoryCounts: CategoryCounts = {
-    byMain: Object.fromEntries(mainCounts.map(c => [c.name, Number(c.cnt)])),
-    bySub: Object.fromEntries(subCounts.map(c => [`${c.main}|${c.sub}`, Number(c.cnt)])),
-    byThird: Object.fromEntries(thirdCounts.map(c => [`${c.main}|${c.sub}|${c.third}`, Number(c.cnt)])),
-  };
+  // 4. 카테고리 트리(카운트 포함) — Category 테이블 기반 라이브 트리
+  const categoryTree = await getCategoryTreeWithCounts();
 
   const initialCursor = productsSorted.length === 100 ? productsSorted[productsSorted.length - 1].id : null;
 
@@ -218,12 +189,8 @@ export default async function ProductsPage({
             <p className="text-zinc-500 text-base md:text-lg max-w-2xl leading-snug">
               {searchQuery
                 ? `"${searchQuery}" 검색 결과`
-                : thirdCategory
-                ? `${menuCategory} > ${menuSubCategory} > ${thirdCategory} 분석 센터`
-                : menuSubCategory
-                ? `${menuCategory} > ${menuSubCategory} 카테고리 분석 센터`
-                : menuCategory
-                ? `${menuCategory} 카테고리 분석 센터`
+                : categoryPath.length > 0
+                ? `${categoryPath.map((c) => c.name).join(" > ")} 분석 센터`
                 : "전국 대학생 복지 스토어 실시간 가격 및 혜택 추적 시스템"}
             </p>
           </div>
@@ -301,7 +268,7 @@ export default async function ProductsPage({
                   key={opt.id}
                   href={{
                     pathname: '/products',
-                    query: { ...(searchQuery ? { q: searchQuery } : {}), ...(brandFilter ? { brand: brandFilter } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(activeFilter ? { filter: activeFilter } : {}), sort: opt.id }
+                    query: { ...(searchQuery ? { q: searchQuery } : {}), ...(brandFilter ? { brand: brandFilter } : {}), ...(categoryCode ? { category: categoryCode } : {}), ...(activeFilter ? { filter: activeFilter } : {}), sort: opt.id }
                   }}
                   className={cn(
                     "px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
@@ -317,7 +284,7 @@ export default async function ProductsPage({
               <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest mr-2 hidden xl:block shrink-0">Brand</span>
               <Link href={{
                 pathname: '/products',
-                query: { ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}), ...(activeFilter ? { filter: activeFilter } : {}) }
+                query: { ...(searchQuery ? { q: searchQuery } : {}), ...(categoryCode ? { category: categoryCode } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}), ...(activeFilter ? { filter: activeFilter } : {}) }
               }} className={cn(
                 "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
                 !brandFilter ? "bg-zinc-100 text-black border-white" : "bg-zinc-900 text-zinc-500 border-white/5 hover:border-white/10"
@@ -327,7 +294,7 @@ export default async function ProductsPage({
                   key={b}
                   href={{
                     pathname: '/products',
-                    query: { brand: b, ...(searchQuery ? { q: searchQuery } : {}), ...(menuCategory ? { menuCategory } : {}), ...(menuSubCategory ? { menuSubCategory } : {}), ...(thirdCategory ? { thirdCategory } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}), ...(activeFilter ? { filter: activeFilter } : {}) }
+                    query: { brand: b, ...(searchQuery ? { q: searchQuery } : {}), ...(categoryCode ? { category: categoryCode } : {}), ...(sortOption !== 'latest' ? { sort: sortOption } : {}), ...(activeFilter ? { filter: activeFilter } : {}) }
                   }}
                   className={cn(
                     "px-4 md:px-5 py-2 md:py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all border shrink-0",
@@ -340,9 +307,9 @@ export default async function ProductsPage({
             </div>
           </div>
 
-          {/* 공식 메뉴 분류 기반 메가메뉴 (univstore 8 × 65 × 444 트리) */}
+          {/* 라이브 카테고리 메가메뉴 (Category 테이블 기반 8×65×300+ 트리) */}
           <Suspense fallback={<div className="h-14 bg-zinc-900/30 rounded-2xl animate-pulse" />}>
-            <CategoryMenu counts={categoryCounts} />
+            <CategoryMenu tree={categoryTree} />
           </Suspense>
         </div>
 
@@ -350,7 +317,7 @@ export default async function ProductsPage({
         <VirtualizedProductList
           initialItems={safeInitialItems}
           initialCursor={initialCursor}
-          searchParams={{ q: searchQuery, brand: brandFilter, menuCategory, menuSubCategory, thirdCategory, sort: sortOption, filter: activeFilter }}
+          searchParams={{ q: searchQuery, brand: brandFilter, category: categoryCode, sort: sortOption, filter: activeFilter }}
           watchedIds={await getMyWatchlistIds()}
         />
       </main>

@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getSearchKeywords } from "@/lib/search-utils";
+import { getLeafIdsForCode } from "@/lib/categoryTree";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q');
   const brand = searchParams.get('brand');
-  const menuCategory = searchParams.get('menuCategory');
-  const menuSubCategory = searchParams.get('menuSubCategory');
-  const thirdCategory = searchParams.get('thirdCategory');
+  const categoryCode = searchParams.get('category');
+  const categoryLeafIds = categoryCode ? await getLeafIdsForCode(categoryCode) : undefined;
   const sort = searchParams.get('sort') || 'latest';
   const cursor = searchParams.get('cursor');
   const limit = 20;
@@ -23,15 +23,15 @@ export async function GET(request: Request) {
     let idsRow: { id: string }[] = [];
     if (activeFilter === 'flash') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
-        WITH price_48h_ago AS (
+        WITH price_baseline AS (
           SELECT DISTINCT ON (ph."productId") ph."productId", ph.price
           FROM "PriceHistory" ph
-          WHERE ph.timestamp >= NOW() - INTERVAL '48 hours' AND ph.timestamp < NOW() - INTERVAL '24 hours'
-          ORDER BY ph."productId", ph.timestamp ASC
+          WHERE ph.timestamp < NOW() - INTERVAL '24 hours'
+          ORDER BY ph."productId", ph.timestamp DESC
         )
         SELECT p.id
         FROM "Product" p
-        JOIN price_48h_ago old ON p.id = old."productId"
+        JOIN price_baseline old ON p.id = old."productId"
         WHERE p."currentPrice" < old.price
           AND p."currentPrice" >= 10000
           AND ((old.price - p."currentPrice")::numeric / old.price::numeric) < 0.7
@@ -57,16 +57,16 @@ export async function GET(request: Request) {
       `;
     } else if (activeFilter === 'target') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
-        WITH alert_counts AS (
-          SELECT "productId", COUNT(*)::int as alerts_count
-          FROM "PriceAlert"
-          WHERE "isActive" = true
+        WITH watch_counts AS (
+          SELECT "productId", COUNT(*)::int as watch_count
+          FROM "WatchlistItem"
           GROUP BY "productId"
         )
         SELECT p.id
         FROM "Product" p
-        JOIN alert_counts ac ON p.id = ac."productId"
+        JOIN watch_counts wc ON p.id = wc."productId"
         WHERE p."imageUrl" IS NOT NULL AND p."stockStatus" != 'Discontinued'
+        ORDER BY wc.watch_count DESC
       `;
     } else if (activeFilter === 'defense') {
       idsRow = await prisma.$queryRaw<{ id: string }[]>`
@@ -85,9 +85,7 @@ export async function GET(request: Request) {
     AND: [
       { imageUrl: { not: null }, stockStatus: { not: 'Discontinued' } },
       brand ? { brand } : {},
-      menuCategory ? { menuCategories: { has: menuCategory } } : {},
-      menuSubCategory ? { menuSubCategories: { has: menuSubCategory } } : {},
-      thirdCategory ? { thirdCategories: { has: thirdCategory } } : {},
+      categoryCode ? { categoryId: { in: categoryLeafIds && categoryLeafIds.length > 0 ? categoryLeafIds : [-1] } } : {},
       filteredIds ? { id: { in: filteredIds } } : activeFilter ? { id: { in: [] } } : {}, // activeFilter가 있지만 매칭되는 ID가 없는 경우를 위한 빈 리스트 가드
       q ? {
         OR: searchKeywords.flatMap(kw => [

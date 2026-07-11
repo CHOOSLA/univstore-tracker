@@ -28,7 +28,7 @@ interface Product {
 interface VirtualizedProductListProps {
   initialItems: Product[];
   initialCursor: string | null;
-  searchParams: { q?: string; brand?: string; menuCategory?: string; menuSubCategory?: string; thirdCategory?: string; sort?: string; filter?: string };
+  searchParams: { q?: string; brand?: string; category?: string; sort?: string; filter?: string };
   /** 로그인 사용자의 관심상품 productId 목록 */
   watchedIds?: string[];
 }
@@ -101,9 +101,7 @@ export default function VirtualizedProductList({ initialItems, initialCursor, se
       const params = new URLSearchParams();
       if (searchParams.q) params.set('q', searchParams.q);
       if (searchParams.brand) params.set('brand', searchParams.brand);
-      if (searchParams.menuCategory) params.set('menuCategory', searchParams.menuCategory);
-      if (searchParams.menuSubCategory) params.set('menuSubCategory', searchParams.menuSubCategory);
-      if (searchParams.thirdCategory) params.set('thirdCategory', searchParams.thirdCategory);
+      if (searchParams.category) params.set('category', searchParams.category);
       if (searchParams.sort) params.set('sort', searchParams.sort);
       if (searchParams.filter) params.set('filter', searchParams.filter);
       if (cursor) params.set('cursor', cursor);

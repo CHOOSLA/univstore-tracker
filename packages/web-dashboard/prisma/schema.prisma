@@ -30,6 +30,12 @@ model Product {
   menuCategories     String[]       @default([])
   menuSubCategories  String[]       @default([])
   thirdCategories    String[]       @default([])
+  // 신 web-api 기반 정확 카테고리(leaf) + 리뷰 지표
+  categoryId         Int?           // Category.id (depth3 leaf). 구 menuCategories[] 퍼지매핑 대체
+  categoryNode       Category?      @relation(fields: [categoryId], references: [id])
+  reviewCount        Int?
+  reviewAvgGrade     Float?
+  isMnoItem          Boolean?
   mnoOption          MnoOption?     // 통신사 상품일 때만 row 존재 (1:1)
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
@@ -39,6 +45,23 @@ model Product {
   watchlistItems     WatchlistItem[]
 
   @@index([menuCategory, menuSubCategory])
+  @@index([categoryId])
+}
+
+/// univstore 카테고리 트리 (3단: 대분류→중분류→소분류). web-api /categories 미러.
+model Category {
+  id         Int        @id           // univstore 카테고리 id (예: 12, 80, 1215)
+  code       String     @unique       // urlPath. depth1=슬러그("digital"), depth2/3=숫자코드("120106")
+  name       String
+  depth      Int                       // 1|2|3
+  parentId   Int?
+  sortOrder  Int        @default(0)
+  parent     Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children   Category[] @relation("CategoryTree")
+  products   Product[]
+
+  @@index([parentId])
+  @@index([depth])
 }
 
 model PriceHistory {
