@@ -79,6 +79,8 @@ services:
       - EMBED_MODEL=jhgan/ko-sroberta-multitask
     volumes:
       - ./embed_cache:/root/.cache/huggingface
+    ports:
+      - "127.0.0.1:8000:8000"   # host 배치 스크립트(sync-embeddings) 접근용, localhost only
     networks:
       - univ-network
     deploy:

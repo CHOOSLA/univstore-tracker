@@ -27,6 +27,19 @@ class RerankReq(BaseModel):
     candidates: list[str]
 
 
+class EmbedReq(BaseModel):
+    texts: list[str]
+
+
+@app.post("/embed")
+def embed(req: EmbedReq):
+    """텍스트 배치 → 정규화 임베딩 벡터(list[float]) 반환."""
+    if not req.texts:
+        return {"vectors": []}
+    vecs = model.encode(req.texts, convert_to_numpy=True, normalize_embeddings=True, batch_size=64)
+    return {"vectors": vecs.tolist()}
+
+
 @app.get("/health")
 def health():
     return {"ok": model is not None, "device": device, "model": MODEL_NAME}

@@ -5,6 +5,10 @@ export type PriceComparison = { matched: boolean; items: MallPrice[]; lowest: nu
 
 const strip = (s: string) => s.replace(/<[^>]+>/g, "").trim();
 
+// 상품명에서 마케팅 접두/괄호문구 제거 ([리뷰 이벤트]/(사은품 증정)/【단독】 등) → 쿼리·임베딩 오염 방지
+const cleanTitle = (s: string) =>
+  s.replace(/[\[\(【][^\]\)】]*[\]\)】]/g, " ").replace(/\s+/g, " ").trim();
+
 // 검색어에서 빼는 일반명사·색상(핵심 모델 토큰만 남겨 recall↑). 매칭 판정은 임베딩이 담당.
 const GENERIC = new Set([
   "블루투스", "무선", "유선", "이어폰", "헤드폰", "이어버드", "노트북", "태블릿", "스마트폰",
@@ -55,19 +59,33 @@ async function rerank(query: string, candidates: string[]): Promise<number[]> {
   } catch { return []; }
 }
 
-const MIN_SIM = 0.55;   // 최고 유사도가 이보다 낮으면 매칭 실패(숨김)
+const MIN_SIM = 0.62;   // 최고 유사도가 이보다 낮으면 매칭 실패(숨김)
 const MARGIN = 0.12;    // 최고점 대비 이 안쪽만 같은 상품으로 인정(3 vs 4 세대 오염 방지)
 
+// 가격을 크게 바꾸는 사양 토큰(용량/화면크기/RAM 등)을 정규화 추출. 변형(256 vs 512) 구분용.
+function specTokens(title: string): string[] {
+  const specs: string[] = [];
+  const up = title.toUpperCase();
+  for (const m of up.matchAll(/(\d+)\s?(TB|GB)\b/g)) specs.push(m[1] + m[2]);          // 256GB, 1TB
+  for (const m of title.matchAll(/(\d+(?:\.\d+)?)\s?(인치|INCH|"|cm)/gi)) {
+    const unit = /인치|inch|"/i.test(m[2]) ? "IN" : "CM";
+    specs.push(m[1].replace(/\.0$/, "") + unit);                                        // 13인치→13IN
+  }
+  return [...new Set(specs)];
+}
+
 export const getPriceComparison = unstable_cache(
-  async (code: string, title: string, currentPrice: number, originalPrice: number, brand?: string): Promise<PriceComparison> => {
+  async (code: string, rawTitle: string, currentPrice: number, originalPrice: number, brand?: string): Promise<PriceComparison> => {
     const base = Math.max(currentPrice || 0, originalPrice || 0);
     if (base <= 0) return { matched: false, items: [], lowest: null };
     const lo = Math.min(currentPrice || base, originalPrice || base) * 0.5;
     const hi = base * 1.4;
+    const title = cleanTitle(rawTitle); // 마케팅 접두/괄호 제거한 상품명으로 쿼리·임베딩
 
-    // 후보 수집: 짧은 상품명 쿼리 우선, 진짜 코드면 병합
-    const raw = await fetchNaver(buildQuery(title, brand));
-    if (isRealCode(code) && raw.length < 10) raw.push(...(await fetchNaver(code)));
+    // 후보 수집: 진짜 모델코드가 있으면 코드 쿼리 우선(가장 특이적). 부족하면 상품명 쿼리로 보강.
+    const codeQuery = isRealCode(code) ? [(brand || "").toLowerCase(), code].filter(Boolean).join(" ") : "";
+    const raw = await fetchNaver(codeQuery || buildQuery(title, brand));
+    if (raw.length < 8) raw.push(...(await fetchNaver(buildQuery(title, brand))));
 
     // 가격 밴드로 1차 축소(액세서리·엉뚱 가격 제거)
     const seen = new Set<string>();
@@ -86,10 +104,33 @@ export const getPriceComparison = unstable_cache(
     const topSim = Math.max(...scores);
     if (topSim < MIN_SIM) return { matched: false, items: [], lowest: null };
 
-    // 최고점 근접(같은 상품 클러스터)만 유지 → 몰별 최저가 dedup → 저렴한순
+    // 최고점 근접(같은 상품 클러스터)만 유지
     const keepThreshold = Math.max(MIN_SIM, topSim - MARGIN);
+    let kept = cands.filter((c) => (c.sim ?? 0) >= keepThreshold);
+
+    // 사양 게이팅: 상품에 용량/크기 스펙이 있으면 후보도 동일 스펙만(256 vs 512 등 변형 오염 방지).
+    // 단, 스펙을 명시한 후보가 하나도 없으면(리콜 0) 게이팅 생략.
+    const wantSpecs = specTokens(title);
+    if (wantSpecs.length > 0) {
+      const specMatched = kept.filter((c) => {
+        const cs = specTokens(c.title);
+        return cs.length > 0 && wantSpecs.every((s) => cs.includes(s));
+      });
+      if (specMatched.length > 0) kept = specMatched;
+    }
+
+    // 코드 게이팅: 진짜 모델코드가 후보 타이틀에 그대로 있으면 그것만(정확 모델/변형 확정).
+    // 코드 색상/용량 suffix(예 NJ0200-50L)까지 일치시켜 -50M/-50X 등 변형 오염 차단.
+    if (isRealCode(code)) {
+      const norm = (s: string) => s.toUpperCase().replace(/[^0-9A-Z]/g, "");
+      const nc = norm(code);
+      const codeMatched = kept.filter((c) => norm(c.title).includes(nc));
+      if (codeMatched.length > 0) kept = codeMatched;
+    }
+
+    // 몰별 최저가 dedup → 저렴한순
     const byMall = new Map<string, MallPrice>();
-    for (const c of cands.filter((c) => (c.sim ?? 0) >= keepThreshold)) {
+    for (const c of kept) {
       const ex = byMall.get(c.mall);
       if (!ex || c.price < ex.price) byMall.set(c.mall, c);
     }
@@ -97,6 +138,6 @@ export const getPriceComparison = unstable_cache(
 
     return { matched: items.length >= 1, items, lowest: items[0]?.price ?? null };
   },
-  ["naver-price-embed-v1"],
+  ["naver-price-embed-v4"],
   { revalidate: 86400 }
 );

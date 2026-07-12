@@ -8,6 +8,7 @@ import VirtualizedProductList from "@/components/products/VirtualizedProductList
 import { getMyWatchlistIds } from "@/app/watchlist/actions";
 import CategoryMenu from "@/components/products/CategoryMenu";
 import { getCategoryTreeWithCounts, getLeafIdsForCode, getCategoryPath } from "@/lib/categoryTree";
+import { semanticSearch } from "@/lib/semanticSearch";
 import { Suspense } from 'react';
 import { getSearchKeywords, getQueryVariants } from "@/lib/search-utils";
 import { parseNaturalQuery } from "@/lib/parseNaturalQuery";
@@ -27,6 +28,11 @@ export default async function ProductsPage({
   const categoryPath = categoryCode ? await getCategoryPath(categoryCode) : [];
   // 검색어가 있으면 default sort를 relevance로, 없으면 latest로
   const sortOption = sortParam || (searchQuery ? 'relevance' : 'latest');
+
+  // 시맨틱 후보(임베딩 의미검색) — 키워드로 못 잡는 개념/의도 질의 커버. 하이브리드로 합침.
+  const semanticHits = searchQuery ? await semanticSearch(searchQuery, 150) : [];
+  const semMap = new Map(semanticHits.map(h => [h.id, h.score]));
+  const semIds = semanticHits.map(h => h.id);
 
   // 자연어 파싱 (가격 범위/하락률/역대최저 등 토큰 추출). 잔여 키워드만 유사어 확장.
   const parsedNL = searchQuery ? parseNaturalQuery(searchQuery) : { keywords: '', detected: [] as string[] };
@@ -105,12 +111,16 @@ export default async function ProductsPage({
       // 카테고리 필터: 선택 노드 하위 리프 id 집합으로. 매칭 리프 없으면 빈 결과 가드.
       categoryCode ? { categoryId: { in: categoryLeafIds && categoryLeafIds.length > 0 ? categoryLeafIds : [-1] } } : {},
       filteredIds ? { id: { in: filteredIds } } : activeFilter ? { id: { in: [] } } : {}, // activeFilter가 있지만 매칭되는 ID가 없는 경우를 위한 빈 리스트 가드
-      searchKeywords.length > 0 ? {
-        OR: searchKeywords.flatMap(kw => [
-          { title: { contains: kw, mode: 'insensitive' } },
-          { brand: { contains: kw, mode: 'insensitive' } },
-          { id: { contains: kw } },
-        ])
+      (searchKeywords.length > 0 || semIds.length > 0) ? {
+        OR: [
+          ...searchKeywords.flatMap(kw => [
+            { title: { contains: kw, mode: 'insensitive' } },
+            { brand: { contains: kw, mode: 'insensitive' } },
+            { id: { contains: kw } },
+          ]),
+          // 시맨틱 top-k 후보도 포함(키워드 미매칭 개념질의 커버)
+          ...(semIds.length > 0 ? [{ id: { in: semIds } }] : []),
+        ]
       } : {},
       // 자연어 추출 가격 범위
       parsedNL.minPrice !== undefined ? { currentPrice: { gte: parsedNL.minPrice } } : {},
@@ -159,12 +169,18 @@ export default async function ProductsPage({
     });
   } else if (sortOption === 'price-asc') {
     productsSorted.sort((a, b) => (a.priceHistory[0]?.price || 0) - (b.priceHistory[0]?.price || 0));
-  } else if (sortOption === 'relevance' && searchQuery && parsedNL.keywords) {
-    // 관련도 점수 계산 후 desc 정렬, top 100만 노출
-    const synonyms = searchKeywords; // getSearchKeywords 결과(원문+동의어 확장)
-    const variants = getQueryVariants(parsedNL.keywords); // 한↔영 phrase cartesian
-    productsSorted = productsSorted
-      .map(p => ({ p, score: relevanceScore(p as any, parsedNL.keywords, synonyms, variants) }))
+  } else if (sortOption === 'relevance' && searchQuery) {
+    // 하이브리드: 키워드 관련도(정확) + 시맨틱 유사도(의미) 결합. top 100만 노출.
+    const synonyms = searchKeywords;
+    const variants = parsedNL.keywords ? getQueryVariants(parsedNL.keywords) : [];
+    const scored = productsSorted.map(p => {
+      const kw = parsedNL.keywords ? relevanceScore(p as any, parsedNL.keywords, synonyms, variants) : 0;
+      const sem = semMap.get((p as any).id) ?? 0;
+      return { p, kw, sem };
+    });
+    const maxKw = Math.max(1, ...scored.map(s => s.kw));
+    productsSorted = scored
+      .map(s => ({ p: s.p, score: 0.6 * (s.kw / maxKw) + 0.4 * s.sem }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 100)
       .map(x => x.p);

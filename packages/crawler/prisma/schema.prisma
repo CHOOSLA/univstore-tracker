@@ -36,6 +36,8 @@ model Product {
   reviewCount        Int?
   reviewAvgGrade     Float?
   isMnoItem          Boolean?
+  embedding          Float[]        @default([]) // 상품명 임베딩(ko-sroberta 768d). 시맨틱 검색용
+  embeddedAt         DateTime?      // 임베딩 갱신 시각(title 변경 감지용)
   mnoOption          MnoOption?     // 통신사 상품일 때만 row 존재 (1:1)
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt

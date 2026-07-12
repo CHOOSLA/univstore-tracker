@@ -43,6 +43,14 @@ module.exports = {
       env: {
         NODE_ENV: "development",
       }
+    },
+    {
+      name: "univ-sync-embeddings",
+      script: "node",
+      args: "packages/crawler/sync-embeddings.js",
+      cron_restart: "0 5 * * *", // 매일 5시 (신규 상품 임베딩)
+      autorestart: false,
+      env: { NODE_ENV: "development", EMBED_URL: "http://localhost:8000" }
     }
   ]
 };
