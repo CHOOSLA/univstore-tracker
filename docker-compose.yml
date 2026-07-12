@@ -60,12 +60,34 @@ services:
       - ADMIN_EMAILS=${ADMIN_EMAILS}
       - NAVER_CLIENT_ID=${NAVER_CLIENT_ID}
       - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}
+      - EMBED_URL=http://embed:8000
     depends_on:
       - postgres
       - redis
     networks:
       - univ-network
       - proxy-tier
+
+  # 상품명 의미 유사도 리랭크 (GTX 1060, sentence-transformers)
+  embed:
+    build:
+      context: ./services/embed
+    container_name: univstore-embed
+    restart: always
+    logging: *default-logging
+    environment:
+      - EMBED_MODEL=jhgan/ko-sroberta-multitask
+    volumes:
+      - ./embed_cache:/root/.cache/huggingface
+    networks:
+      - univ-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
 networks:
   univ-network:

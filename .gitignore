@@ -11,3 +11,4 @@ build/
 redis_data/
 *.traineddata
 backups/
+embed_cache/

@@ -83,7 +83,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
     });
     if (r.ok) modelCode = (await r.json())?.result?.item?.code || '';
   } catch { /* code 없으면 title로 폴백 */ }
-  const priceComparison = await getPriceComparison(modelCode, product.title, Number(product.originalPrice ?? currentPrice ?? 0), product.brand ?? undefined);
+  const priceComparison = await getPriceComparison(modelCode, product.title, currentPrice, Number(product.originalPrice ?? 0), product.brand ?? undefined);
 
   return (
     <ProductDetailView
