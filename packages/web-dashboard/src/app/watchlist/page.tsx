@@ -145,7 +145,8 @@ export default async function WatchlistPage() {
               const discount = original > 0 && original > current ? Math.round(((original - current) / original) * 100) : 0;
               const soldOut = item.product.stockStatus === 'Out of Stock';
               return (
-                <div key={item.id} className="glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] flex flex-col space-y-4 group border-white/[0.03] relative">
+                <div key={item.id} className="flex flex-col gap-2.5">
+                <div className="glass p-4 md:p-6 rounded-[32px] md:rounded-[40px] flex flex-col space-y-4 group border-white/[0.03] relative">
                   <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20">
                     <WatchlistButton productId={item.productId} initialWatched variant="icon" />
                   </div>
@@ -178,11 +179,13 @@ export default async function WatchlistPage() {
                       </div>
                     </div>
                   </Link>
-                  <WatchlistTargetControl
-                    productId={item.productId}
-                    currentPrice={current}
-                    alert={alertMap.get(item.productId) ?? null}
-                  />
+                </div>
+                <WatchlistTargetControl
+                  productId={item.productId}
+                  currentPrice={current}
+                  alert={alertMap.get(item.productId) ?? null}
+                  title={item.product.title}
+                />
                 </div>
               );
             })}
