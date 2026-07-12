@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { cn } from "@/lib/utils";
 import AuthButton from "@/components/AuthButton";
+import MobileSearchOverlay from "@/components/common/MobileSearchOverlay";
 
 const NAV_ITEMS = [
   { name: 'Dashboard', href: '/' },
@@ -27,7 +28,7 @@ export function Navbar() {
   }, []);
 
   if (!mounted) return (
-    <nav className="sticky top-0 z-50 glass border-b border-white/5 px-4 md:px-6 py-4 flex justify-between items-center mb-4">
+    <nav className="sticky top-0 z-50 glass border-b border-white/5 px-4 md:px-6 h-16 md:h-20 flex justify-between items-center mb-4">
       <div className="flex items-center space-x-2">
         <div className="w-8 h-8 bg-zinc-900 rounded-md animate-pulse" />
         <span className="text-xl font-black tracking-tighter text-white">UnivWatch.</span>
@@ -36,7 +37,7 @@ export function Navbar() {
   );
 
   return (
-    <nav className="sticky top-0 z-[100] relative glass border-b border-white/5 px-4 md:px-6 h-20 flex justify-between items-center mb-4">
+    <nav className="sticky top-0 z-[100] relative glass border-b border-white/5 px-4 md:px-6 h-16 md:h-20 flex justify-between items-center mb-4">
       {/* Logo */}
       <Link href="/" className="flex items-center space-x-2 relative z-[110]">
         <img src="/logo.svg" alt="UnivWatch" width={32} height={32} className="rounded-md" />
@@ -65,7 +66,8 @@ export function Navbar() {
       </div>
 
       {/* Right Actions — 데스크탑만. 모바일 네비/로그인은 하단 탭바(BottomNav)가 담당 */}
-      <div className="flex items-center space-x-4 relative z-[110]">
+      <div className="flex items-center space-x-2 md:space-x-4 relative z-[110]">
+        <MobileSearchOverlay />
         <div className="hidden md:block">
           <AuthButton variant="desktop" />
         </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Layers } from "lucide-react";
+import { Layers, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { prisma } from "@/lib/prisma";
 import SearchBar from "@/components/products/SearchBar";
@@ -267,15 +267,31 @@ export default async function ProductsPage({
               )}
             </div>
           )}
-          {/* 스크롤 시 상단 고정되는 통합 검색·필터·카테고리 툴바 (하나의 카드로 응집) */}
-          <div className="sticky top-[92px] z-40 rounded-2xl md:rounded-[28px] border border-white/10 bg-zinc-900/70 backdrop-blur-2xl shadow-2xl shadow-black/40 p-2 md:p-4 space-y-2.5 md:space-y-3">
-            {/* 검색: 전체폭 prominent */}
-            <Suspense fallback={<div className="h-14 md:h-16 bg-zinc-900/50 animate-pulse rounded-2xl" />}>
-              <SearchBar />
-            </Suspense>
+          {/* 스크롤 시 상단 고정되는 툴바. 모바일 검색은 navbar 돋보기(전체화면)로 분리 → 여기선 필터·카테고리만. */}
+          <div className="sticky top-16 md:top-[92px] z-40 rounded-2xl md:rounded-[28px] border border-white/10 bg-zinc-900/80 backdrop-blur-2xl shadow-xl shadow-black/30 p-3 md:p-4 space-y-2.5 md:space-y-3">
+            {/* 검색: 데스크톱 전체폭 prominent (모바일은 navbar 돋보기로 진입) */}
+            <div className="hidden md:block">
+              <Suspense fallback={<div className="h-16 bg-zinc-900/50 animate-pulse rounded-2xl" />}>
+                <SearchBar />
+              </Suspense>
+            </div>
+
+            {/* 모바일: 활성 검색어 칩 (탭 X로 해제) */}
+            {searchQuery && (
+              <Link
+                href={{ pathname: '/products', query: { ...(brandFilter ? { brand: brandFilter } : {}), ...(categoryCode ? { category: categoryCode } : {}), ...(activeFilter ? { filter: activeFilter } : {}) } }}
+                className="md:hidden flex items-center justify-between gap-2 px-4 py-2.5 rounded-2xl bg-blue-500/10 border border-blue-500/25 text-blue-300"
+              >
+                <span className="flex items-center gap-2 min-w-0">
+                  <Search size={15} className="shrink-0" />
+                  <span className="text-sm font-black truncate">&ldquo;{searchQuery}&rdquo;</span>
+                </span>
+                <X size={16} className="shrink-0 text-blue-400/70" />
+              </Link>
+            )}
 
             {/* 필터: 정렬 + 브랜드 (한 줄, 가로 스크롤) */}
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar border-t border-white/5 pt-3">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar md:border-t md:border-white/5 md:pt-3">
               <span className="text-[11px] font-black text-zinc-600 uppercase tracking-widest shrink-0 hidden md:block">정렬</span>
               {[
                 ...(searchQuery ? [{ id: 'relevance', label: 'Relevance' }] : []),

@@ -181,8 +181,8 @@ export default async function HomePage() {
            ))}
         </div>
 
-        {/* --- [Search Bar: 스크롤 시 떠있는 pill로 상단 고정] --- */}
-        <section className="sticky top-[92px] z-40">
+        {/* --- [Search Bar: 데스크톱 스크롤 시 nav 아래 고정 pill. 모바일은 navbar 돋보기로 진입] --- */}
+        <section className="hidden md:block sticky top-[92px] z-40">
           <HomeSearchBar />
         </section>
 
