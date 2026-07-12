@@ -179,8 +179,10 @@ export default async function ProductsPage({
       return { p, kw, sem };
     });
     const maxKw = Math.max(1, ...scored.map(s => s.kw));
+    // 시맨틱 후보(카테고리·의미 일치)에 우선권(+1) → "노트북" 든 액세서리가 실제 노트북 위로 오는 것 방지.
+    // 정확 키워드 매칭은 그 안에서 가점.
     productsSorted = scored
-      .map(s => ({ p: s.p, score: 0.6 * (s.kw / maxKw) + 0.4 * s.sem }))
+      .map(s => ({ p: s.p, score: (s.sem > 0 ? 1 : 0) + 0.5 * s.sem + 0.5 * (s.kw / maxKw) }))
       .sort((a, b) => b.score - a.score)
       .slice(0, 100)
       .map(x => x.p);
