@@ -65,11 +65,11 @@ export default function ProductCard({
       href={`/product/${id}`}
       onClick={onClick}
       className={cn(
-        "relative glass glass-hover p-4 md:p-6 rounded-[32px] md:rounded-[40px] border-white/[0.03] flex flex-col space-y-4 md:space-y-5 group transition-all duration-300",
+        "relative glass glass-hover p-2.5 md:p-6 rounded-2xl md:rounded-[40px] border-white/[0.03] flex flex-col space-y-2.5 md:space-y-5 group transition-all duration-300",
         className
       )}
     >
-      {overlay && <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20">{overlay}</div>}
+      {overlay && <div className="absolute top-3 right-3 md:top-6 md:right-6 z-20">{overlay}</div>}
       {/* 이미지 */}
       <div className="w-full aspect-square bg-zinc-950 rounded-2xl md:rounded-3xl border border-white/5 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 relative">
         {imageUrl ? (

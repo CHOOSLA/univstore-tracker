@@ -109,7 +109,7 @@ export default function TerminalView({
 
     const newLog = {
       id: Date.now(),
-      time: new Date().toLocaleTimeString('ko-KR', { hour12: false }),
+      time: new Date().toLocaleTimeString('en-GB', { hour12: false }),
       type: result.success ? 'SUCCESS' : 'WARNING',
       service: 'SYSTEM',
       message: result.success ? `Result: ${result.output}` : `Error: ${result.error}`

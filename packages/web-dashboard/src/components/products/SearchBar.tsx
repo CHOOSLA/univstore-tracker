@@ -53,11 +53,11 @@ export default function SearchBar() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder="상품명 · 브랜드 · 상품ID 검색..."
-        className="w-full bg-transparent border-none rounded-2xl py-4 md:py-5 pl-14 pr-36 text-sm md:text-base focus:outline-none placeholder:text-zinc-600 font-medium text-white"
+        placeholder="상품·브랜드 검색..."
+        className="w-full bg-transparent border-none rounded-2xl py-3.5 md:py-5 pl-12 md:pl-14 pr-24 md:pr-36 text-sm md:text-base focus:outline-none placeholder:text-zinc-600 font-medium text-white"
       />
 
-      <div className="absolute right-3 flex items-center gap-2">
+      <div className="absolute right-2.5 md:right-3 flex items-center gap-1.5 md:gap-2">
         {query && !isPending && (
           <button onClick={clearSearch} className="p-1.5 hover:bg-white/10 rounded-full text-zinc-500 hover:text-white transition-colors">
             <X size={16} />
@@ -67,9 +67,11 @@ export default function SearchBar() {
         <button
           onClick={() => handleSearch(query)}
           disabled={isPending}
-          className="flex items-center gap-1.5 px-4 md:px-5 py-2 md:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-black uppercase tracking-widest transition-colors shadow-lg shadow-blue-600/20"
+          aria-label="검색"
+          className="flex items-center gap-1.5 px-3 md:px-5 py-2 md:py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs md:text-sm font-black uppercase tracking-widest transition-colors shadow-lg shadow-blue-600/20"
         >
-          검색
+          <Search size={16} className="md:hidden" />
+          <span className="hidden md:inline">검색</span>
         </button>
       </div>
     </div>

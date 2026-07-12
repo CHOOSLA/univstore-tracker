@@ -268,7 +268,7 @@ export default async function ProductsPage({
             </div>
           )}
           {/* 스크롤 시 상단 고정되는 통합 검색·필터·카테고리 툴바 (하나의 카드로 응집) */}
-          <div className="sticky top-[92px] z-40 rounded-[28px] border border-white/10 bg-zinc-900/70 backdrop-blur-2xl shadow-2xl shadow-black/40 p-3 md:p-4 space-y-3">
+          <div className="sticky top-[92px] z-40 rounded-2xl md:rounded-[28px] border border-white/10 bg-zinc-900/70 backdrop-blur-2xl shadow-2xl shadow-black/40 p-2 md:p-4 space-y-2.5 md:space-y-3">
             {/* 검색: 전체폭 prominent */}
             <Suspense fallback={<div className="h-14 md:h-16 bg-zinc-900/50 animate-pulse rounded-2xl" />}>
               <SearchBar />

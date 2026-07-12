@@ -52,7 +52,7 @@ export default async function TerminalPage() {
 
   const formattedLogs = rawLogs.map(log => ({
     id: log.id,
-    time: log.time.toLocaleTimeString('ko-KR', { hour12: false }),
+    time: log.time.toLocaleTimeString('en-GB', { hour12: false }),
     type: log.type,
     service: log.service,
     message: log.message
