@@ -12,3 +12,4 @@ redis_data/
 *.traineddata
 backups/
 embed_cache/
+session-state.json

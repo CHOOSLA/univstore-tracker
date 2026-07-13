@@ -240,6 +240,48 @@ function getLaunchOptions(executablePath) {
   };
 }
 
+// ─────────────────────────────────────────────────────────────
+// 세션 영속화 (crash 내성)
+// everytime 로그인 쿠키(etsid)와 univstore everyuneez_ctx는 Expires 없는
+// session 쿠키라 브라우저가 정상 종료되지 않으면(디스크 풀 crash 등) 프로필에
+// flush되지 않고 사라진다 → 로그아웃. 로그인 성공 시 storageState를 파일로
+// 저장해두고, 크롤러 기동 때 addCookies로 되살려 crash→로그아웃 고리를 끊는다.
+// ⚠️ 파일에 인증 쿠키가 담기므로 절대 커밋 금지(.gitignore).
+const STORAGE_STATE_PATH = path.join(__dirname, '../session-state.json');
+
+async function saveStorageState(context) {
+  try {
+    await context.storageState({ path: STORAGE_STATE_PATH });
+    console.log(`💾 세션 상태 저장 → ${STORAGE_STATE_PATH}`);
+  } catch (e) {
+    console.warn('⚠️ 세션 상태 저장 실패:', e.message);
+  }
+}
+
+async function restoreStorageState(context) {
+  try {
+    if (!fs.existsSync(STORAGE_STATE_PATH)) return false;
+    const state = JSON.parse(fs.readFileSync(STORAGE_STATE_PATH, 'utf8'));
+    // 만료된 영속 쿠키는 제외. session 쿠키(expires=-1)는 이번 실행에 되살린다.
+    const cookies = (state.cookies || []).filter(c => c.expires === -1 || c.expires * 1000 > Date.now());
+    if (cookies.length) {
+      await context.addCookies(cookies);
+      console.log(`♻️  저장된 세션 쿠키 ${cookies.length}개 복원`);
+    }
+    return true;
+  } catch (e) {
+    console.warn('⚠️ 세션 복원 실패:', e.message);
+    return false;
+  }
+}
+
+// 영속 프로필로 컨텍스트를 띄우고 저장된 세션 쿠키까지 복원한다.
+async function launchWithSession(executablePath) {
+  const context = await chromium.launchPersistentContext(path.join(__dirname, '../user_data'), getLaunchOptions(executablePath));
+  await restoreStorageState(context);
+  return context;
+}
+
 const { blockGuard, sendTelegramAlert } = require('./blockGuard');
 
 module.exports = {
@@ -256,6 +298,9 @@ module.exports = {
   USER_DATA_DIR: path.join(__dirname, '../user_data'),
   getExecutablePath,
   getLaunchOptions,
+  launchWithSession,
+  saveStorageState,
+  restoreStorageState,
   TASK_QUEUE_KEY,
   enqueueTasks,
   getNextTasks,

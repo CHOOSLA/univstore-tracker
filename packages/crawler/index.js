@@ -3,7 +3,7 @@ const {
   prisma, redis, CrawlerContext, Pipeline, BlockDetectedError,
   withPrismaRetry, sleep, USER_DATA_DIR, checkLogin, SessionExpiredError,
   enqueueTasks, getNextTasks, finishTask, failTask, chromium, getExecutablePath, getLaunchOptions,
-  blockGuard, sendTelegramAlert,
+  blockGuard, sendTelegramAlert, launchWithSession, saveStorageState,
 } = require('./lib/engine');
 const {
   DBStateFilter, DirectApiFilter, NavigationFilter, SessionCheckFilter,
@@ -126,12 +126,14 @@ async function run() {
     console.warn("⚠️ 정식 Chrome을 찾을 수 없어 내장 Chromium으로 실행합니다.");
   }
 
-  let initContext = await chromium.launchPersistentContext(USER_DATA_DIR, getLaunchOptions(executablePath));
+  let initContext = await launchWithSession(executablePath);
 
   let totalItems = 0;
   try {
     const initPage = await initContext.newPage();
     await checkLogin(initPage);
+    // 로그인 확인된 세션을 파일로 저장 → 다음 기동/crash 복구 시 되살린다.
+    await saveStorageState(initContext);
     // [DISABLED] specials 수집 - 홈 배너 텍스트만 잡혀 실질적 데이터 없음
     // await discoverSpecials(initPage);
     const allItemIds = await discoverAllProductIds(initPage);
@@ -181,7 +183,7 @@ async function run() {
     create: { id: 'singleton', totalItems, currentIndex: startIndex, lastStatus: 'RUNNING' }
   }));
 
-  let browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, getLaunchOptions(executablePath));
+  let browserContext = await launchWithSession(executablePath);
 
   let i = startIndex;
   let processedCount = 0;
@@ -201,7 +203,7 @@ async function run() {
       console.log(`\n♻️  메모리 최적화를 위해 브라우저를 재시작합니다... (${processedCount}개 처리 완료)`);
       await browserContext.close();
       await sleep(5000);
-      browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, getLaunchOptions(executablePath));
+      browserContext = await launchWithSession(executablePath);
     }
 
     // 다음 배치 작업 가져오기
@@ -314,7 +316,7 @@ async function run() {
         for (const id of batchIds) await failTask(id);
         await browserContext.close();
         await sleep(600000);
-        browserContext = await chromium.launchPersistentContext(USER_DATA_DIR, getLaunchOptions(executablePath));
+        browserContext = await launchWithSession(executablePath);
         continue;
       }
 
