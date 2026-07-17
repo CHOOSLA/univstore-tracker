@@ -6,7 +6,9 @@ x-logging: &default-logging
 
 services:
   postgres:
-    image: postgres:15-alpine
+    # pgvector 확장 필요(시맨틱 검색 HNSW). PG15 동일 메이저라 data dir 호환.
+    # alpine(musl)→debian(glibc)이라 collation 버전이 바뀜 → 교체 후 REINDEX DATABASE 수행함.
+    image: pgvector/pgvector:pg15
     container_name: univstore-db
     restart: always
     logging: *default-logging

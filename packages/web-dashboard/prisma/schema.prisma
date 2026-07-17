@@ -38,6 +38,9 @@ model Product {
   isMnoItem          Boolean?
   embedding          Float[]        @default([]) // 상품명 임베딩(ko-sroberta 768d). 시맨틱 검색용
   embeddedAt         DateTime?      // 임베딩 갱신 시각(title 변경 감지용)
+  // pgvector HNSW 검색 경로(실사용). Prisma가 vector 타입을 모르므로 Unsupported로 선언만 해둔다
+  // — 선언이 없으면 이후 migrate가 컬럼을 drop한다. 읽기/쓰기는 $queryRaw로 처리.
+  embeddingVec       Unsupported("vector(768)")?
   mnoOption          MnoOption?     // 통신사 상품일 때만 row 존재 (1:1)
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt

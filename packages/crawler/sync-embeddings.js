@@ -38,10 +38,13 @@ async function run() {
       console.error(`  배치 ${i} 임베딩 실패: ${e.message}`); await sleep(2000); continue;
     }
     const now = new Date();
+    // embedding(Float[])은 호환용으로 유지, embeddingVec(pgvector)이 실제 검색 경로.
+    // vector 타입은 Prisma가 모르므로 $executeRaw로 함께 채운다. 누락되면 HNSW 검색에서 빠짐.
     await prisma.$transaction(
-      chunk.map((c, j) =>
-        prisma.product.update({ where: { id: c.id }, data: { embedding: vecs[j], embeddedAt: now } })
-      )
+      chunk.flatMap((c, j) => [
+        prisma.product.update({ where: { id: c.id }, data: { embedding: vecs[j], embeddedAt: now } }),
+        prisma.$executeRaw`UPDATE "Product" SET "embeddingVec" = ${`[${vecs[j].join(',')}]`}::vector WHERE id = ${c.id}`,
+      ])
     ).catch((e) => console.warn(`  배치 저장 실패 ${i}: ${e.message}`));
     done += chunk.length;
     if (done % 1024 === 0 || done === targets.length) console.log(`  ${done}/${targets.length}`);
