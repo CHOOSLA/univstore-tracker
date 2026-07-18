@@ -30,7 +30,9 @@ export default async function ProductsPage({
   const sortOption = sortParam || (searchQuery ? 'relevance' : 'latest');
 
   // 시맨틱 후보(임베딩 의미검색) — 키워드로 못 잡는 개념/의도 질의 커버. 하이브리드로 합침.
-  const semanticHits = searchQuery ? await semanticSearch(searchQuery, 150) : [];
+  // k=400: 본품이 영문표기(예: "에어팟"↔"AirPods")면 유사도가 밀려 rn 180~500권에 오는데,
+  // 150에서 잘리면 액세서리(케이스)만 남는다. 넉넉히 받고 아래 relevance에서 재정렬.
+  const semanticHits = searchQuery ? await semanticSearch(searchQuery, 400) : [];
   const semMap = new Map(semanticHits.map(h => [h.id, h.score]));
   const semIds = semanticHits.map(h => h.id);
 
@@ -143,12 +145,15 @@ export default async function ProductsPage({
           orderBy: { timestamp: 'desc' },
           take: 14,
         },
+        // 액세서리 디부스트용 카테고리명(케이스/주변기기 등). title 토큰이 못 잡는 변주 커버.
+        categoryNode: { select: { name: true } },
       },
       orderBy: sortOption === 'latest' ? { updatedAt: 'desc' }
         : sortOption === 'rating' ? [{ reviewAvgGrade: { sort: 'desc', nulls: 'last' } }, { reviewCount: 'desc' }]
         : undefined,
-      // 검색어가 있으면 relevance 정렬 위해 더 많이 가져와 candidate 풀을 늘림
-      take: searchQuery ? 400 : 100,
+      // 검색어가 있으면 relevance 정렬 위해 더 많이 가져와 candidate 풀을 늘림.
+      // 시맨틱 후보 400 + 키워드 매칭이 합쳐지므로 600으로 잡아 본품이 컷 전에 안 빠지게.
+      take: searchQuery ? 600 : 100,
     }),
     prisma.product.count({ where: whereClause as any })
   ]);
@@ -173,16 +178,27 @@ export default async function ProductsPage({
     // 하이브리드: 키워드 관련도(정확) + 시맨틱 유사도(의미) 결합. top 100만 노출.
     const synonyms = searchKeywords;
     const variants = parsedNL.keywords ? getQueryVariants(parsedNL.keywords) : [];
+    // 액세서리 디부스트: title만 임베딩하는 구조라 "에어팟"에 케이스류가 본품보다 높게 잡힌다.
+    // 상품명에 액세서리 토큰이 있으면 감점. 단 질의 자체가 그 액세서리를 원하면 스킵.
+    const ACC_RE = /케이스|커버|파우치|스트랩|필름|강화유리|보호|거치|스킨|젤리|범퍼|그립|악세|케이블|충전기|어댑터|클리너|렌즈|펜슬|받침|스탠드|홀더|마운트|젠더/;
+    // 카테고리명 기준(더 확실). 상품 카테고리가 액세서리류면 title 토큰이 없어도 디부스트.
+    const CAT_ACC_RE = /케이스|커버|파우치|필름|주변기기|거치|스탠드|받침|보호|악세|스킨|그립|클리너|충전/;
+    const queryWantsAcc = ACC_RE.test(searchQuery);
     const scored = productsSorted.map(p => {
       const kw = parsedNL.keywords ? relevanceScore(p as any, parsedNL.keywords, synonyms, variants) : 0;
       const sem = semMap.get((p as any).id) ?? 0;
-      return { p, kw, sem };
+      const catName = (p as any).categoryNode?.name || '';
+      const isAcc = !queryWantsAcc && (ACC_RE.test((p as any).title || '') || CAT_ACC_RE.test(catName));
+      return { p, kw, sem, isAcc };
     });
     const maxKw = Math.max(1, ...scored.map(s => s.kw));
     // 시맨틱 후보(카테고리·의미 일치)에 우선권(+1) → "노트북" 든 액세서리가 실제 노트북 위로 오는 것 방지.
-    // 정확 키워드 매칭은 그 안에서 가점.
+    // 정확 키워드 매칭은 그 안에서 가점. 액세서리는 ×0.35로 눌러 본품을 위로.
     productsSorted = scored
-      .map(s => ({ p: s.p, score: (s.sem > 0 ? 1 : 0) + 0.5 * s.sem + 0.5 * (s.kw / maxKw) }))
+      .map(s => {
+        const base = (s.sem > 0 ? 1 : 0) + 0.5 * s.sem + 0.5 * (s.kw / maxKw);
+        return { p: s.p, score: s.isAcc ? base * 0.35 : base };
+      })
       .sort((a, b) => b.score - a.score)
       .slice(0, 100)
       .map(x => x.p);
